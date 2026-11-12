@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rainy Cafe: Grand Master Edition</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app-wrapper">
+    <main id="game-container" aria-label="Rainy Cafe: Grand Master Edition">
+      
+      <!-- =================================================================
+           LEFT STAGE: WINDOW SCENE, MUG, CAT, HUD & STABILIZERS
+           ================================================================= -->
+      <section id="left-stage">
+        <!-- Interactive Canvas: Sky, Rain, Decor, Cat, Croissant, Mug, Steam & Popups -->
+        <canvas id="scene-canvas" width="440" height="632"></canvas>
+
+        <!-- Top Production & Level Overlay -->
+        <header id="hud-overlay">
+          <h1 id="beans-display">0 Beans</h1>
+          <div id="rates-display">0.0/s &nbsp;|&nbsp; +1.0/sip</div>
+          <div id="multiplier-display">Multiplier: 1.0x</div>
+
+          <!-- Barista Level & XP Dashboard -->
+          <div id="level-dashboard">
+            <div id="level-title">Lv. 1 - Amateur Sipper</div>
+            <div class="progress-track xp-track">
+              <div id="xp-bar-fill" class="progress-fill xp-fill" style="width: 0%;"></div>
+            </div>
+            <div id="xp-text">0 / 150 XP</div>
+          </div>
+
+          <!-- 2-Column Dynamic Currency Grid (Populated by game.js when > 0) -->
+          <div id="currency-grid" aria-live="polite"></div>
+        </header>
+
+        <!-- Bottom Stabilizer Meters (Silo Storage & Espresso Boiler) -->
+        <div id="stabilizer-panel">
+          <!-- Silo Storage Row -->
+          <div class="stabilizer-row">
+            <div class="meter-column">
+              <div id="silo-text" class="meter-label">Silo Storage: 0 / 50.00K</div>
+              <div class="progress-track stabilizer-track">
+                <div id="silo-bar-fill" class="progress-fill silo-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+            <button id="btn-silo-upgrade" class="btn btn-silo" type="button">
+              +Cap (12.00K)
+            </button>
+          </div>
+
+          <!-- Espresso Boiler Temperature Row -->
+          <div class="stabilizer-row">
+            <div class="meter-column">
+              <div id="boiler-text" class="meter-label heat-cold">Boiler: 70°C (Normal Temperature)</div>
+              <div class="progress-track stabilizer-track">
+                <div id="boiler-bar-fill" class="progress-fill heat-cold-fill" style="width: 40%;"></div>
+              </div>
+            </div>
+            <div class="boiler-btn-group">
+              <button id="btn-vent" class="btn btn-vent" type="button" title="Hotkey: V">Vent</button>
+              <button id="btn-auto-vent" class="btn btn-toggle" type="button">AUTO</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide-In Achievement Toast Notification -->
+        <div id="achievement-toast" class="toast hidden" role="status" aria-live="polite">
+          <div class="toast-accent"></div>
+          <div class="toast-body">
+            <div id="toast-title" class="toast-title">Achievement: First Sip</div>
+            <div id="toast-desc" class="toast-desc">Click coffee mug 1 time.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================
+           RIGHT PANEL: DUAL-ROW 14-TAB NAVIGATION & SCROLLABLE VIEWS
+           ================================================================= -->
+      <section id="right-panel">
+        <!-- Dual-Row Top Shelf Tabs -->
+        <nav id="tab-shelf" aria-label="Cafe Management Tabs">
+          <div class="tab-row" id="tab-row-0">
+            <button class="tab-btn active" data-tab="menu" type="button">Menu</button>
+            <button class="tab-btn" data-tab="staff" type="button">Staff</button>
+            <button class="tab-btn" data-tab="decor" type="button">Decor</button>
+            <button class="tab-btn" data-tab="brew" type="button">Brew</button>
+            <button class="tab-btn" data-tab="orders" type="button">Orders</button>
+            <button class="tab-btn" data-tab="plinko" type="button">Plinko</button>
+            <button class="tab-btn" data-tab="talents" type="button">Talents</button>
+          </div>
+          <div class="tab-row" id="tab-row-1">
+            <button class="tab-btn" data-tab="sinks" type="button">Sinks</button>
+            <button class="tab-btn" data-tab="cosmos" type="button">Cosmos</button>
+            <button class="tab-btn" data-tab="roast" type="button">Roast</button>
+            <button class="tab-btn" data-tab="dynasty" type="button">Dynasty</button>
+            <button class="tab-btn" data-tab="pantheon" type="button">Pantheon</button>
+            <button class="tab-btn" data-tab="quests" type="button">Quests</button>
+            <button class="tab-btn" data-tab="config" type="button">Config</button>
+          </div>
+        </nav>
+
+        <!-- Scrollable Tab Viewport -->
+        <div id="tab-viewport">
+
+          <!-- 1. MENU TAB (30 Regular Upgrades) -->
+          <div id="tab-menu" class="tab-pane active">
+            <div class="pane-toolbar">
+              <span class="toolbar-label">Buy Mode:</span>
+              <div class="buy-mode-group" role="group" aria-label="Buy Quantity">
+                <button class="mode-btn active" data-mode="1" type="button">x1</button>
+                <button class="mode-btn" data-mode="10" type="button">x10</button>
+                <button class="mode-btn" data-mode="100" type="button">x100</button>
+                <button class="mode-btn" data-mode="max" type="button">MAX</button>
+              </div>
+              <button id="btn-buy-max-menu" class="btn btn-gold btn-sm" type="button">
+                BUY MAX ALL (B)
+              </button>
+            </div>
+            <div id="upgrades-list" class="card-list"></div>
+          </div>
+
+          <!-- 2. STAFF TAB (5 Cafe Companions) -->
+          <div id="tab-staff" class="tab-pane">
+            <div class="pane-header-row">
+              <h2 class="pane-title">Cafe Staff &amp; Companions</h2>
+              <button id="btn-buy-max-staff" class="btn btn-gold btn-sm" type="button">
+                BUY MAX ALL (B)
+              </button>
+            </div>
+            <div id="staff-list" class="card-list"></div>
+          </div>
+
+          <!-- 3. DECOR TAB (6 Visual & Passive Decor Pieces) -->
+          <div id="tab-decor" class="tab-pane">
+            <div id="decor-list" class="card-list"></div>
+          </div>
+
+          <!-- 4. BREW TAB (12 Coffee Recipes) -->
+          <div id="tab-brew" class="tab-pane">
+            <div id="brew-list" class="card-list"></div>
+          </div>
+
+          <!-- 5. ORDERS TAB (Customer Counter) -->
+          <div id="tab-orders" class="tab-pane">
+            <div class="pane-header-row">
+              <h2 class="pane-title">Customer Counter</h2>
+              <button id="btn-auto-serve" class="btn btn-success btn-sm" type="button">
+                Auto-Serve: ON
+              </button>
+            </div>
+            <p id="customer-stars-display" class="sub-stat-star">
+              Customer Stars Collected: 0 ★ (+0% Multiplier)
+            </p>
+            <div id="order-card" class="game-card order-box">
+              <div id="order-title" class="card-title">Waiting for next customer...</div>
+              <div id="order-timer" class="card-desc"></div>
+              <button id="btn-serve-order" class="btn btn-serve hidden" type="button">
+                Serve Drink!
+              </button>
+            </div>
+          </div>
+
+          <!-- 6. PLINKO TAB (12-Currency Physics Simulator) -->
+          <div id="tab-plinko" class="tab-pane">
+            <div id="plinko-currency-grid" class="plinko-curr-grid"></div>
+            <div id="plinko-risk-label" class="plinko-risk-text">
+              Beans: Bias Handicap 0%
+            </div>
+            <canvas id="plinko-canvas" width="545" height="420"></canvas>
+            <div class="plinko-controls">
+              <div class="plinko-bal-col">
+                <div id="plinko-bal-label" class="plinko-bal-text">Bal: 0</div>
+                <label class="plinko-input-wrap">
+                  <span>Bet:</span>
+                  <input id="plinko-bet-input" type="text" value="100" maxlength="14" />
+                </label>
+              </div>
+              <div class="plinko-chips">
+                <button class="chip-btn" data-chip="min" type="button">Min</button>
+                <button class="chip-btn" data-chip="10" type="button">10%</button>
+                <button class="chip-btn" data-chip="50" type="button">50%</button>
+                <button class="chip-btn" data-chip="max" type="button">MAX</button>
+              </div>
+              <button id="btn-plinko-drop" class="btn btn-accent btn-drop" type="button">
+                DROP (100)
+              </button>
+            </div>
+          </div>
+
+          <!-- 7. TALENTS TAB (Barista Mastery & Level Crates) -->
+          <div id="tab-talents" class="tab-pane">
+            <div class="pane-header-row">
+              <div>
+                <h2 class="pane-title">Barista Mastery Talents</h2>
+                <div id="talent-points-display" class="sub-stat-muted">
+                  Unspent Points: 0 &nbsp;|&nbsp; Crit: 1% (3.0x)
+                </div>
+              </div>
+              <button id="btn-reset-talents" class="btn btn-secondary btn-sm" type="button">
+                Reset Talents
+              </button>
+            </div>
+            <div id="talents-list" class="card-list"></div>
+            <h2 class="pane-title section-spacer">Level Milestone Supply Crates</h2>
+            <div id="milestones-list" class="card-list"></div>
+          </div>
+
+          <!-- 8. SINKS TAB (Altar, Transmutation & Endless Crucible) -->
+          <div id="tab-sinks" class="tab-pane">
+            <!-- Altar of the Roast -->
+            <div class="game-card card-altar">
+              <div class="card-accent accent-gold"></div>
+              <div class="card-main">
+                <div id="altar-title" class="card-title">Altar of the Roast (Blessings: 0 ★)</div>
+                <div class="card-desc">Sacrifice 50% beans for +2% global mult &amp; massive XP.</div>
+              </div>
+              <button id="btn-altar-sacrifice" class="btn btn-gold" type="button">
+                Offer 50% Balance
+              </button>
+            </div>
+
+            <h2 class="pane-title section-spacer">Transmutation Forge (Exchange)</h2>
+            <div id="transmute-list" class="card-list compact-list"></div>
+
+            <h2 class="pane-title section-spacer">The Endless Crucible (Uncapped Sinks)</h2>
+            <div id="sinks-list" class="card-list"></div>
+          </div>
+
+          <!-- 9. COSMOS TAB (8 Forges, Pinnacle Sanctuary & God-Tier Perks) -->
+          <div id="tab-cosmos" class="tab-pane">
+            <h2 class="pane-title">The Celestial Forge &amp; Multiversal Sinks</h2>
+            <div id="cosmic-forges-list" class="card-list compact-list"></div>
+
+            <!-- Pinnacle Goal Banner -->
+            <button id="sanctuary-goal-banner" class="sanctuary-banner" type="button">
+              GOAL: Lv.100, 12 Recipes, Silo 10, 10 OSB, 1 Eternal Bean
+            </button>
+
+            <h2 class="pane-title section-spacer">God-Tier Cosmic Perks</h2>
+            <div id="cosmic-perks-list" class="card-list"></div>
+          </div>
+
+          <!-- 10. ROAST TAB (Tier 1 Prestige: Golden Beans) -->
+          <div id="tab-roast" class="tab-pane">
+            <div id="roast-bal-header" class="prestige-bal text-gold">
+              Available: 0 Golden Beans
+            </div>
+            <button id="btn-trigger-rebirth" class="prestige-banner banner-gold" type="button">
+              <span class="banner-accent accent-gold"></span>
+              <span class="banner-content">
+                <strong class="banner-title">Perform Roastery Rebirth (Tier 1)</strong>
+                <span id="rebirth-status-text" class="banner-sub">0 / 25.00K beans</span>
+              </span>
+            </button>
+            <div class="pane-header-row section-spacer">
+              <h3 class="pane-subtitle">Permanent Roastery Upgrades</h3>
+              <button id="btn-buy-max-roast" class="btn btn-gold btn-sm" type="button">
+                BUY MAX ALL (B)
+              </button>
+            </div>
+            <div id="roastery-list" class="card-list"></div>
+          </div>
+
+          <!-- 11. DYNASTY TAB (Tier 2 Prestige: Astral Crystals) -->
+          <div id="tab-dynasty" class="tab-pane">
+            <div id="dynasty-bal-header" class="prestige-bal text-astral">
+              Available: 0 Astral Crystals
+            </div>
+            <button id="btn-trigger-dynasty" class="prestige-banner banner-astral" type="button">
+              <span class="banner-accent accent-astral"></span>
+              <span class="banner-content">
+                <strong class="banner-title">Ascend to Franchise Dynasty (Tier 2)</strong>
+                <span id="dynasty-status-text" class="banner-sub">0 / 100 golden beans</span>
+              </span>
+            </button>
+            <div class="pane-header-row section-spacer">
+              <h3 class="pane-subtitle">Franchise Dynasty Perks</h3>
+              <button id="btn-buy-max-dynasty" class="btn btn-astral btn-sm" type="button">
+                BUY MAX ALL (B)
+              </button>
+            </div>
+            <div id="dynasty-list" class="card-list"></div>
+          </div>
+
+          <!-- 12. PANTHEON TAB (Tier 3 Prestige: Starlight Shards) -->
+          <div id="tab-pantheon" class="tab-pane">
+            <div id="pantheon-bal-header" class="prestige-bal text-pantheon">
+              Available: 0 Starlight Shards
+            </div>
+            <button id="btn-trigger-pantheon" class="prestige-banner banner-pantheon" type="button">
+              <span class="banner-accent accent-pantheon"></span>
+              <span class="banner-content">
+                <strong class="banner-title">Ascend to Cosmic Pantheon (Tier 3)</strong>
+                <span id="pantheon-status-text" class="banner-sub">0 / 50 astral crystals</span>
+              </span>
+            </button>
+            <div class="pane-header-row section-spacer">
+              <h3 class="pane-subtitle">Pantheon Constellation Perks</h3>
+              <button id="btn-buy-max-pantheon" class="btn btn-pantheon btn-sm" type="button">
+                BUY MAX ALL (B)
+              </button>
+            </div>
+            <div id="pantheon-list" class="card-list"></div>
+          </div>
+
+          <!-- 13. QUESTS TAB (6 Daily Cafe Contracts) -->
+          <div id="tab-quests" class="tab-pane">
+            <h2 class="pane-title">Daily Cafe Contracts &amp; Quests</h2>
+            <div id="quests-list" class="card-list"></div>
+          </div>
+
+          <!-- 14. CONFIG TAB (Audio, Visuals, Notation & Save Management) -->
+          <div id="tab-config" class="tab-pane">
+            <h2 class="pane-title">Cafe Settings &amp; Preferences</h2>
+            <div class="card-list config-list">
+              
+              <div class="game-card config-row">
+                <span class="card-title">Sound Effects</span>
+                <button id="btn-cfg-sfx" class="btn btn-success btn-cfg" type="button">ENABLED</button>
+              </div>
+
+              <div class="game-card config-row">
+                <span class="card-title">Master Volume</span>
+                <div class="vol-group">
+                  <button class="vol-btn" data-vol="0.25" type="button">25%</button>
+                  <button class="vol-btn" data-vol="0.5" type="button">50%</button>
+                  <button class="vol-btn active" data-vol="1" type="button">100%</button>
+                </div>
+              </div>
+
+              <div class="game-card config-row">
+                <span class="card-title">Ambient Rain Streaks</span>
+                <button id="btn-cfg-rain" class="btn btn-success btn-cfg" type="button">ENABLED</button>
+              </div>
+
+              <div class="game-card config-row">
+                <span class="card-title">Steam &amp; Smoke Particles</span>
+                <button id="btn-cfg-particles" class="btn btn-success btn-cfg" type="button">ENABLED</button>
+              </div>
+
+              <div class="game-card config-row">
+                <span class="card-title">Number Formatting</span>
+                <button id="btn-cfg-notation" class="btn btn-accent btn-cfg-wide" type="button">
+                  Suffixes (1.5M)
+                </button>
+              </div>
+
+              <div class="game-card config-row">
+                <span class="card-title">Manual Game Save (LocalStorage)</span>
+                <button id="btn-cfg-save" class="btn btn-success btn-cfg-wide" type="button">
+                  Save Progress Now
+                </button>
+              </div>
+
+              <div class="game-card config-danger">
+                <div class="card-accent accent-danger"></div>
+                <div class="card-main">
+                  <div class="card-title text-danger">Remove Data / Wipe Save</div>
+                  <div class="card-desc">Deletes local save data and resets all currencies to 0.</div>
+                </div>
+                <button id="btn-cfg-wipe" class="btn btn-danger btn-wipe" type="button">
+                  Wipe All Save Data
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
