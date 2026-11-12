@@ -22,7 +22,35 @@
           <h1 id="beans-display">0 Beans</h1>
           <div id="rates-display">0.0/s &nbsp;|&nbsp; +1.0/sip</div>
           <div id="multiplier-display">Multiplier: 1.0x</div>
+        <!-- Top Production & Level Overlay -->
+        <header id="hud-overlay">
+          <h1 id="beans-display">0 Beans</h1>
+          <div id="rates-display">0.0/s &nbsp;|&nbsp; +1.0/sip</div>
+          <div id="multiplier-display" role="button" tabindex="0" title="Click to inspect Multiplier Breakdown">
+            Multiplier: 1.0x ▾
+          </div>
 
+          <!-- Barista Level & XP Dashboard -->
+          <div id="level-dashboard">
+            <div id="level-title">Lv. 1 - Amateur Sipper</div>
+            <div class="progress-track xp-track">
+              <div id="xp-bar-fill" class="progress-fill xp-fill" style="width: 0%;"></div>
+            </div>
+            <div id="xp-text">0 / 150 XP</div>
+          </div>
+
+          <!-- 2-Column Dynamic Currency Grid -->
+          <div id="currency-grid" aria-live="polite"></div>
+        </header>
+
+        <!-- Clickable Multiplier Breakdown Popover -->
+        <aside id="multiplier-popover" class="mult-popover hidden" aria-label="Multiplier Breakdown">
+          <div class="mult-pop-header">
+            <span class="mult-pop-title">Global Multiplier Breakdown</span>
+            <button id="btn-close-mult-pop" class="mult-pop-close" type="button" aria-label="Close">×</button>
+          </div>
+          <div id="mult-pop-body" class="mult-pop-body"></div>
+        </aside>
           <!-- Barista Level & XP Dashboard -->
           <div id="level-dashboard">
             <div id="level-title">Lv. 1 - Amateur Sipper</div>

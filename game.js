@@ -1,7 +1,21 @@
 /**
- * Cozy Rainy Cafe: Grand Master Edition — Web Engine (game.js)
- * Complete HTML5 Canvas + Web Audio API + LocalStorage port
+ * Cozy Rainy Cafe: Grand Master Edition — Complete Rebalanced Web Engine
+ * Includes 12-Currency Progression, Multi-Currency Plinko, 10-Rarity RNG & Cutscenes
  */
+
+// Polyfill roundRect for older browsers on GitHub Pages
+if (typeof CanvasRenderingContext2D !== "undefined" && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+    const rad = Array.isArray(r) ? r[0] : (r || 0);
+    this.moveTo(x + rad, y);
+    this.arcTo(x + w, y, x + w, y + h, rad);
+    this.arcTo(x + w, y + h, x, y + h, rad);
+    this.arcTo(x, y + h, x, y, rad);
+    this.arcTo(x, y, x + w, y, rad);
+    this.closePath();
+    return this;
+  };
+}
 
 // =============================================================================
 // 1. MATHEMATICAL FORMATTERS & COLOR CONSTANTS
@@ -406,9 +420,9 @@ class GoldenCroissantEvent {
     this.spawnInterval = 60.0 + Math.random() * 50.0;
   }
 
-  update(dt, width, height) {
+  update(dt, width, height, rateMult = 1.0) {
     if (!this.active) {
-      this.timer += dt;
+      this.timer += dt * rateMult;
       if (this.timer >= this.spawnInterval) {
         this.spawn(width, height);
       }
@@ -451,7 +465,7 @@ class GoldenCroissantEvent {
 }
 
 // =============================================================================
-// 5. MULTI-CURRENCY PLINKO PHYSICS SIMULATOR
+// 5. MULTI-CURRENCY PLINKO PHYSICS SIMULATOR (WITH 10% BET CAP)
 // =============================================================================
 
 class MultiCurrencyPlinko {
@@ -478,7 +492,8 @@ class MultiCurrencyPlinko {
     }
 
     this.binY = this.yTop + 62 + (this.numRows - 1) * this.dy + 30;
-    this.multipliers = [25.0, 8.0, 2.0, 0.5, 0.2, 0.2, 0.5, 2.0, 8.0, 25.0];
+    // Balanced 10x edge bins (prevents infinite exponential exploits on prestige currencies)
+    this.multipliers = [10.0, 4.0, 1.8, 0.6, 0.25, 0.25, 0.6, 1.8, 4.0, 10.0];
     this.numBins = this.multipliers.length;
     const totalSpan = this.numBins * this.dx;
     this.binStartX = this.xCenter - totalSpan / 2.0;
@@ -498,7 +513,16 @@ class MultiCurrencyPlinko {
     return Math.max(0.0, base - talentReduction);
   }
 
+  getMaxBet(currentBalance) {
+    if (currentBalance < 1) return 0;
+    if (currentBalance < 10) return 1;
+    return Math.floor(currentBalance * 0.10); // Capped at 10% of balance
+  }
+
   parseBetAmount(str, currentBalance) {
+    const maxAllowed = this.getMaxBet(currentBalance);
+    if (maxAllowed <= 0) return 0;
+
     let s = (str || "").trim().toLowerCase();
     let mult = 1.0;
     if (s.endsWith("k")) { mult = 1e3; s = s.slice(0, -1); }
@@ -506,7 +530,7 @@ class MultiCurrencyPlinko {
     else if (s.endsWith("b")) { mult = 1e9; s = s.slice(0, -1); }
     let val = parseFloat(s) * mult;
     if (isNaN(val) || val <= 0) val = 1.0;
-    return Math.max(1.0, Math.min(currentBalance, val));
+    return Math.max(1.0, Math.min(maxAllowed, val));
   }
 
   dropBall(xPos, betStr, currentBalance, talentReduction = 0.0) {
@@ -603,7 +627,7 @@ class MultiCurrencyPlinko {
     ctx.fillStyle = COLORS.textLight;
     ctx.font = "600 11px 'Segoe UI', sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("CLICK STRIP TO AIM LAUNCH", this.xCenter, stripY + 17);
+    ctx.fillText("CLICK STRIP TO AIM LAUNCH (10% MAX BET)", this.xCenter, stripY + 17);
 
     // Pegs
     for (const p of this.pegs) {
@@ -623,9 +647,9 @@ class MultiCurrencyPlinko {
       const mult = this.multipliers[idx];
       const bx = this.binStartX + idx * this.dx;
       let bg = COLORS.cardLocked, border = COLORS.textMuted, tc = COLORS.textMuted;
-      if (mult >= 25.0) {
+      if (mult >= 10.0) {
         bg = COLORS.goldBg; border = COLORS.gold; tc = "rgb(160, 105, 15)";
-      } else if (mult >= 2.0) {
+      } else if (mult >= 1.8) {
         bg = "rgb(235, 248, 238)"; border = COLORS.success; tc = COLORS.success;
       }
 
@@ -703,13 +727,20 @@ class RegularUpgrade {
     this.count = 0;
   }
 
-  getCostSingle(discount = 1.0) {
-    return Math.max(1.0, this.baseCost * Math.pow(1.22, this.count) * discount);
+  getMilestoneMult() {
+    let m = 1.0;
+    for (const th of [25, 50, 100, 250, 500, 1000]) {
+      if (this.count >= th) m *= 2.0;
+    }
+    return m;
   }
 
-  getBulkInfo(buyMode, currentBeans, discount = 1.0) {
+  getCostSingle(discount = 1.0, r = 1.22) {
+    return Math.max(1.0, this.baseCost * Math.pow(r, this.count) * discount);
+  }
+
+  getBulkInfo(buyMode, currentBeans, discount = 1.0, r = 1.22) {
     const baseC = this.baseCost * discount;
-    const r = 1.22;
     if (buyMode === "1") {
       return { qty: 1, cost: Math.max(1.0, baseC * Math.pow(r, this.count)) };
     }
@@ -731,7 +762,7 @@ class RegularUpgrade {
       }
       return { qty, cost: Math.max(1.0, cost) };
     }
-    return { qty: 1, cost: this.getCostSingle(discount) };
+    return { qty: 1, cost: this.getCostSingle(discount, r) };
   }
 }
 
@@ -769,7 +800,631 @@ class EndlessMoneySink {
 }
 
 // =============================================================================
-// 7. MASTER GAME ENGINE
+// 7. 10-TIER RNG AURA SYSTEM & PROCEDURAL CUTSCENE ENGINE
+// =============================================================================
+
+const RNG_RARITIES = [
+  {
+    index: 0, id: "common", tierName: "Common", auraName: "House Blend Steam",
+    odds: 2, color: "#9e8c80", cssClass: "tier-common",
+    buffType: "bps", baseBuff: 0.05, desc: "+5% Passive BPS (+1% per dup)"
+  },
+  {
+    index: 1, id: "uncommon", tierName: "Uncommon", auraName: "Velvet Crema Glow",
+    odds: 5, color: "#3e8e57", cssClass: "tier-uncommon",
+    buffType: "click", baseBuff: 0.12, desc: "+12% Click Power (+2.5% per dup)"
+  },
+  {
+    index: 2, id: "rare", tierName: "Rare", auraName: "Raindrop Lo-Fi Pulse",
+    odds: 15, color: "#3670c7", cssClass: "tier-rare",
+    buffType: "global", baseBuff: 0.25, desc: "+25% Global Multiplier (+5% per dup)"
+  },
+  {
+    index: 3, id: "epic", tierName: "Epic", auraName: "Midnight Roast Vortex",
+    odds: 50, color: "#9b59b6", cssClass: "tier-epic",
+    buffType: "global", baseBuff: 0.60, desc: "+60% Global Multiplier (+12% per dup)"
+  },
+  {
+    index: 4, id: "legendary", tierName: "Legendary", auraName: "Golden Sovereign Crown",
+    odds: 250, color: "#f39c12", cssClass: "tier-legendary",
+    buffType: "global", baseBuff: 1.50, desc: "+150% Global Mult & +15% Luck"
+  },
+  {
+    index: 5, id: "mythic", tierName: "Mythic", auraName: "Crimson Supernova Core",
+    odds: 1250, color: "#e74c3c", cssClass: "tier-mythic",
+    buffType: "global", baseBuff: 4.50, desc: "+450% Global Mult & +50% Click Power"
+  },
+  {
+    index: 6, id: "exotic", tierName: "Exotic", auraName: "Prismatic Nebula Brew",
+    odds: 6000, color: "#00d2ff", cssClass: "tier-exotic",
+    buffType: "global", baseBuff: 15.00, desc: "+1,500% Global Mult & +35% Luck"
+  },
+  {
+    index: 7, id: "secret", tierName: "Secret", auraName: "Abyssal Cipher Espresso",
+    odds: 25000, color: "#c266ff", cssClass: "tier-secret",
+    buffType: "global", baseBuff: 50.00, desc: "+5,000% Global Mult & +100% Crit Power"
+  },
+  {
+    index: 8, id: "very_secret", tierName: "Very Secret", auraName: "Chronos Dimensional Rift",
+    odds: 100000, color: "#00ffcc", cssClass: "tier-very-secret",
+    buffType: "global", baseBuff: 250.00, desc: "+25,000% Global Mult & +25% Roll Speed"
+  },
+  {
+    index: 9, id: "nearly_impossible", tierName: "Nearly Impossible", auraName: "Omniversal Singularity Bean",
+    odds: 1000000, color: "#ffdd44", cssClass: "tier-impossible",
+    buffType: "global", baseBuff: 2500.00, desc: "+250,000% Global Mult & +100% Luck"
+  }
+];
+
+class RNGManager {
+  constructor(game) {
+    this.game = game;
+    this.totalRolls = 0;
+    this.counts = new Array(RNG_RARITIES.length).fill(0);
+    this.equippedIndex = -1;
+
+    this.isRolling = false;
+    this.rollTimer = 0.0;
+    this.rollDuration = 1.35;
+    this.lastTickStep = -1;
+    this.pendingResult = null;
+    this.batchResults = [];
+    this.autoRoll = false;
+    this.fastRoll = false;
+    this.cutsceneThreshold = 4;
+
+    // Tempered Luck & Speed Upgrades
+    this.upgrades = [
+      { id: "ru1", name: "Four-Leaf Clover Syrup", curr: "beans", baseCost: 500, scale: 1.65, level: 0, max: 50, desc: "+10% RNG Luck per level" },
+      { id: "ru2", name: "Turbo Steam Bearings", curr: "beans", baseCost: 2500, scale: 1.85, level: 0, max: 20, desc: "+8% Roll Animation Speed per level" },
+      { id: "ru3", name: "Golden Dice Infuser", curr: "golden", baseCost: 5, scale: 1.60, level: 0, max: 25, desc: "x1.20 Compounding RNG Luck per level" },
+      { id: "ru4", name: "Astral Quantum Dice", curr: "astral", baseCost: 3, scale: 2.25, level: 0, max: 5, desc: "+1 Simultaneous Roll per spin (Multi-Roll)" }
+    ];
+
+    this.cutsceneActive = false;
+    this.cutsceneTier = null;
+    this.cutsceneTime = 0.0;
+    this.cutsceneDuration = 4.0;
+    this.particles = [];
+  }
+
+  getUpgradeCost(u) {
+    return Math.max(1, Math.floor(u.baseCost * Math.pow(u.scale, u.level)));
+  }
+
+  getRollCost() {
+    return Math.max(10, Math.floor(this.game.bps * 0.5 + this.game.clickPower * 2.0));
+  }
+
+  getTotalLuck() {
+    let luck = 1.0 + this.upgrades[0].level * 0.10; // Up to 6.0x
+    luck *= Math.pow(1.20, Math.min(25, this.upgrades[2].level)); // Up to 95.4x
+    if (this.counts[4] > 0) luck *= 1.15;
+    if (this.counts[6] > 0) luck *= 1.35;
+    if (this.counts[9] > 0) luck *= 2.00;
+    luck *= 1.0 + this.game.talents[4].rank * 0.08;
+    return luck;
+  }
+
+  getRollDuration() {
+    let base = this.fastRoll ? 0.42 : 1.35;
+    base /= 1.0 + this.upgrades[1].level * 0.08;
+    if (this.counts[8] > 0) base *= 0.75;
+    return Math.max(0.15, base);
+  }
+
+  getMultiRollCount() {
+    return 1 + this.upgrades[3].level;
+  }
+
+  getTierMultiplier(idx) {
+    const r = RNG_RARITIES[idx];
+    const owned = this.counts[idx];
+    if (owned <= 0) return 0.0;
+    const dupBonus = 1.0 + Math.log10(owned) * 0.5 + Math.min(owned - 1, 50) * 0.05;
+    const equipMult = this.equippedIndex === idx ? 2.0 : 1.0; // Equipping doubles that aura's buff
+    return r.baseBuff * dupBonus * equipMult;
+  }
+
+  // Additive Compendium stacking so collecting all 10 tiers scales cleanly into the soft-cap
+  getCombinedBuffs() {
+    let globalBonus = 0.0;
+    let clickBonus = 0.0;
+    let bpsBonus = 0.0;
+    for (let i = 0; i < RNG_RARITIES.length; i++) {
+      if (this.counts[i] > 0) {
+        const val = this.getTierMultiplier(i);
+        const t = RNG_RARITIES[i].buffType;
+        if (t === "global") globalBonus += val;
+        else if (t === "click") clickBonus += val;
+        else if (t === "bps") bpsBonus += val;
+      }
+    }
+    return {
+      globalMult: 1.0 + globalBonus,
+      clickMult: 1.0 + clickBonus,
+      bpsMult: 1.0 + bpsBonus
+    };
+  }
+
+  pickRandomRarity() {
+    const luck = this.getTotalLuck();
+    for (let i = RNG_RARITIES.length - 1; i >= 1; i--) {
+      const r = RNG_RARITIES[i];
+      const chance = Math.min(0.45, luck / r.odds);
+      if (Math.random() < chance) {
+        return r;
+      }
+    }
+    return RNG_RARITIES[0];
+  }
+
+  startRoll(isAuto = false) {
+    if (this.isRolling || this.cutsceneActive) return;
+
+    const cost = this.getRollCost();
+    if (this.game.beans < cost) {
+      if (!isAuto) {
+        this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
+      }
+      return;
+    }
+
+    this.game.beans -= cost;
+    this.isRolling = true;
+    this.rollTimer = 0.0;
+    this.rollDuration = this.getRollDuration();
+    this.lastTickStep = -1;
+
+    const rolls = this.getMultiRollCount();
+    let best = RNG_RARITIES[0];
+    this.batchResults = [];
+    for (let c = 0; c < rolls; c++) {
+      const picked = this.pickRandomRarity();
+      this.batchResults.push(picked);
+      if (picked.index > best.index) best = picked;
+    }
+    this.pendingResult = best;
+  }
+
+  completeRoll() {
+    this.isRolling = false;
+    this.rollTimer = 0.0;
+
+    for (const res of this.batchResults) {
+      this.totalRolls += 1;
+      this.counts[res.index] += 1;
+      if (this.equippedIndex < res.index) {
+        this.equippedIndex = res.index;
+      }
+    }
+
+    const r = this.pendingResult;
+    this.setStageDisplay(r, false);
+    this.game.addXp(15 * (r.index + 1));
+    this.game.recalculateRates();
+
+    if (r.index >= this.cutsceneThreshold) {
+      this.triggerCutscene(r);
+    } else if (r.index >= 2) {
+      this.game.sfx.playBuy(this.game.sfxEnabled, this.game.sfxVolume);
+    } else {
+      this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.7);
+    }
+  }
+
+  setStageDisplay(r, isRollingPreview = false) {
+    const badge = document.getElementById("rng-current-tier-badge");
+    const nameEl = document.getElementById("rng-current-aura-name");
+    const oddsEl = document.getElementById("rng-current-odds");
+    const buffEl = document.getElementById("rng-current-buff");
+    const reelWin = document.getElementById("rng-reel-window");
+
+    badge.className = `rng-tier-badge ${r.cssClass}`;
+    badge.textContent = isRollingPreview ? `ROLLING... (${r.tierName})` : r.tierName;
+    nameEl.textContent = r.auraName;
+    nameEl.style.color = r.color;
+    oddsEl.textContent = `1 in ${formatNum(r.odds, this.game.notationMode)}`;
+    buffEl.textContent = r.desc;
+
+    if (isRollingPreview) {
+      reelWin.classList.remove("rolling-tick");
+      void reelWin.offsetWidth;
+      reelWin.classList.add("rolling-tick");
+    }
+  }
+
+  playRarityFanfare(tierIndex) {
+    if (!this.game.sfxEnabled) return;
+    this.game.sfx._ensureContext();
+    const ctx = this.game.sfx.ctx;
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const notesByTier = {
+      4: [523.25, 659.25, 783.99, 1046.50],
+      5: [220.0, 277.18, 329.63, 440.0, 659.25],
+      6: [440.0, 554.37, 659.25, 880.0, 1108.73, 1318.51],
+      7: [146.83, 155.56, 220.0, 293.66, 440.0],
+      8: [261.63, 392.0, 523.25, 783.99, 1046.5, 1567.98],
+      9: [130.81, 261.63, 329.63, 392.0, 523.25, 659.25, 783.99, 1046.5, 1318.5]
+    };
+    const notes = notesByTier[tierIndex] || notesByTier[4];
+    const dur = tierIndex >= 8 ? 3.8 : 2.4;
+
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = tierIndex >= 7 ? "sawtooth" : "triangle";
+      osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+
+      const peak = (0.14 / Math.sqrt(notes.length)) * this.game.sfxVolume;
+      gain.gain.setValueAtTime(0.0001, now + idx * 0.09);
+      gain.gain.exponentialRampToValueAtTime(peak, now + idx * 0.09 + 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + idx * 0.09);
+      osc.stop(now + dur + 0.05);
+    });
+  }
+
+  triggerCutscene(r) {
+    this.cutsceneActive = true;
+    this.cutsceneTier = r;
+    this.cutsceneTime = 0.0;
+    this.cutsceneDuration = r.index >= 9 ? 5.5 : r.index >= 7 ? 4.2 : 3.0;
+
+    const overlay = document.getElementById("rng-cutscene-overlay");
+    const tierEl = document.getElementById("rng-cutscene-tier");
+    const nameEl = document.getElementById("rng-cutscene-name");
+    const oddsEl = document.getElementById("rng-cutscene-odds");
+
+    tierEl.textContent = `★ ${r.tierName} ★`;
+    tierEl.style.color = r.color;
+    nameEl.textContent = r.auraName;
+    nameEl.style.color = r.color;
+    oddsEl.textContent = `1 in ${formatNum(r.odds, this.game.notationMode)}`;
+    overlay.classList.remove("hidden");
+
+    if (r.index >= 5) {
+      const gc = document.getElementById("game-container");
+      gc.classList.remove("screen-shake");
+      void gc.offsetWidth;
+      gc.classList.add("screen-shake");
+    }
+
+    this.particles = [];
+    const count = 40 + r.index * 15;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 60 + Math.random() * 280;
+      this.particles.push({
+        x: 530,
+        y: 340,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: 3 + Math.random() * 6,
+        hue: Math.random() * 360,
+        char: String.fromCharCode(0x30a0 + Math.floor(Math.random() * 96))
+      });
+    }
+
+    this.playRarityFanfare(r.index);
+  }
+
+  closeCutscene() {
+    this.cutsceneActive = false;
+    document.getElementById("rng-cutscene-overlay").classList.add("hidden");
+  }
+
+  drawCutscene(dt) {
+    if (!this.cutsceneActive || !this.cutsceneTier) return;
+    this.cutsceneTime += dt;
+    if (this.cutsceneTime >= this.cutsceneDuration) {
+      this.closeCutscene();
+      return;
+    }
+
+    const canvas = document.getElementById("rng-cutscene-canvas");
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H / 2;
+    const t = this.cutsceneTime;
+    const idx = this.cutsceneTier.index;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = idx >= 7 ? "rgba(5, 2, 12, 0.92)" : "rgba(18, 12, 10, 0.85)";
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    if (idx === 4) {
+      ctx.translate(cx, cy);
+      for (let i = 0; i < 12; i++) {
+        ctx.rotate(Math.PI / 6 + t * 0.05);
+        ctx.fillStyle = "rgba(243, 156, 18, 0.12)";
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-35, -500);
+        ctx.lineTo(35, -500);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+      for (const p of this.particles) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        drawGoldenSparkle(ctx, p.x, p.y, p.size * 1.4, "#f1c40f");
+      }
+      return;
+    }
+
+    if (idx === 5) {
+      for (let ring = 0; ring < 3; ring++) {
+        const rad = ((t * 320 + ring * 120) % 550);
+        ctx.strokeStyle = `rgba(231, 76, 60, ${Math.max(0, 1 - rad / 550)})`;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      for (const p of this.particles) {
+        p.x += p.vx * dt * 1.3;
+        p.y += p.vy * dt * 1.3;
+        drawStarlightShard(ctx, p.x, p.y, p.size * 1.3, "#ff4d4d");
+      }
+      ctx.restore();
+      return;
+    }
+
+    if (idx === 6) {
+      ctx.translate(cx, cy);
+      for (let i = 0; i < 24; i++) {
+        const hue = (i * 15 + t * 120) % 360;
+        ctx.strokeStyle = `hsla(${hue}, 95%, 60%, 0.65)`;
+        ctx.lineWidth = 3;
+        ctx.save();
+        ctx.rotate((i * Math.PI) / 12 + t * 0.8);
+        ctx.strokeRect(-160, -160, 320, 320);
+        ctx.restore();
+      }
+      ctx.restore();
+      return;
+    }
+
+    if (idx === 7) {
+      for (const p of this.particles) {
+        p.y += 140 * dt;
+        if (p.y > H) p.y = 0;
+        ctx.fillStyle = "rgba(194, 102, 255, 0.75)";
+        ctx.font = "bold 16px monospace";
+        ctx.fillText(p.char, p.x, p.y);
+      }
+      ctx.strokeStyle = "#b545ff";
+      ctx.lineWidth = 8;
+      ctx.shadowColor = "#b545ff";
+      ctx.shadowBlur = 25;
+      ctx.beginPath();
+      ctx.arc(cx + (Math.random() * 6 - 3), cy, 130 + Math.sin(t * 20) * 6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    if (idx === 8) {
+      ctx.strokeStyle = "rgba(0, 255, 204, 0.55)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 16; i++) {
+        const ang = (i / 16) * Math.PI * 2 + t * 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(ang) * 600, cy + Math.sin(ang) * 600);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 90 + Math.sin(t * 8) * 25, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    if (idx >= 9) {
+      const phase = t < 1.1 ? (1.1 - t) / 1.1 : (t - 1.1) * 1.8;
+      ctx.translate(cx, cy);
+      for (let ring = 1; ring <= 6; ring++) {
+        const hue = (ring * 60 + t * 180) % 360;
+        ctx.strokeStyle = `hsla(${hue}, 100%, 65%, 0.85)`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        const r = Math.max(8, phase * 95 * ring);
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      for (let b = 0; b < 20; b++) {
+        const a = (b / 20) * Math.PI * 2 - t * 1.2;
+        const hue = (b * 18 + t * 200) % 360;
+        ctx.fillStyle = `hsla(${hue}, 100%, 70%, 0.25)`;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(a - 0.08) * 650, Math.sin(a - 0.08) * 650);
+        ctx.lineTo(Math.cos(a + 0.08) * 650, Math.sin(a + 0.08) * 650);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  update(dt) {
+    if (this.cutsceneActive) {
+      this.drawCutscene(dt);
+      return;
+    }
+
+    if (this.isRolling) {
+      this.rollTimer += dt;
+      const pct = Math.min(1.0, this.rollTimer / this.rollDuration);
+      document.getElementById("rng-roll-bar").style.width = `${pct * 100}%`;
+
+      const tickStep = Math.floor(Math.pow(pct, 0.65) * 11);
+      if (tickStep !== this.lastTickStep && pct < 0.96) {
+        this.lastTickStep = tickStep;
+        const previewIdx = Math.floor(Math.random() * Math.min(RNG_RARITIES.length, 5 + Math.floor(pct * 5)));
+        this.setStageDisplay(RNG_RARITIES[previewIdx], true);
+        this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.35);
+      }
+
+      if (this.rollTimer >= this.rollDuration) {
+        document.getElementById("rng-roll-bar").style.width = "0%";
+        this.completeRoll();
+      }
+    } else if (this.autoRoll) {
+      this.startRoll(true);
+    }
+  }
+
+  buildDOM() {
+    const upgContainer = document.getElementById("rng-upgrades-list");
+    upgContainer.innerHTML = "";
+    this.upgrades.forEach((u) => {
+      const card = document.createElement("div");
+      card.className = "game-card";
+      card.style.minHeight = "54px";
+      card.innerHTML = `
+        <div class="card-accent accent-gold" id="acc-${u.id}"></div>
+        <div class="card-main">
+          <div class="card-top-line">
+            <span class="card-title">${u.name}</span>
+            <span class="card-count" id="lvl-${u.id}">Lv. 0/${u.max}</span>
+          </div>
+          <div class="card-desc">${u.desc}</div>
+        </div>
+        <button class="btn btn-sm" id="btn-${u.id}" type="button">Buy</button>
+      `;
+      card.querySelector(`#btn-${u.id}`).addEventListener("click", () => {
+        const cost = this.getUpgradeCost(u);
+        const bal = this.game.getCurrencyBalance(u.curr);
+        if (u.level < u.max && bal >= cost) {
+          this.game.deductCurrency(u.curr, cost);
+          u.level += 1;
+          this.game.recalculateRates();
+          this.game.sfx.playBuy(this.game.sfxEnabled, this.game.sfxVolume);
+        } else {
+          this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
+        }
+      });
+      upgContainer.appendChild(card);
+    });
+
+    const compContainer = document.getElementById("rng-compendium-list");
+    compContainer.innerHTML = "";
+    RNG_RARITIES.forEach((r) => {
+      const card = document.createElement("div");
+      card.className = "game-card";
+      card.id = `rng-comp-${r.index}`;
+      card.innerHTML = `
+        <div class="card-accent" style="background: ${r.color};"></div>
+        <div class="card-main">
+          <div class="card-top-line">
+            <span class="card-title" id="rng-cname-${r.index}">??? (${r.tierName})</span>
+            <span class="card-count" id="rng-ccount-${r.index}" style="color: ${r.color};">1 in ${formatNum(r.odds)}</span>
+          </div>
+          <div class="card-desc" id="rng-cdesc-${r.index}">${r.desc}</div>
+        </div>
+        <div class="sink-btn-group">
+          <button class="btn btn-sm btn-secondary" id="rng-equip-${r.index}" type="button">Locked</button>
+          ${r.index >= 4 ? `<button class="btn btn-sm btn-accent" id="rng-prev-${r.index}" type="button" title="Preview Cutscene">🎬</button>` : ""}
+        </div>
+      `;
+      card.querySelector(`#rng-equip-${r.index}`).addEventListener("click", () => {
+        if (this.counts[r.index] > 0) {
+          this.equippedIndex = r.index;
+          this.game.recalculateRates();
+          this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume);
+        }
+      });
+      const prevBtn = card.querySelector(`#rng-prev-${r.index}`);
+      if (prevBtn) {
+        prevBtn.addEventListener("click", () => this.triggerCutscene(r));
+      }
+      compContainer.appendChild(card);
+    });
+
+    document.getElementById("btn-rng-roll").addEventListener("click", () => this.startRoll(false));
+    document.getElementById("btn-rng-auto").addEventListener("click", (e) => {
+      this.autoRoll = !this.autoRoll;
+      e.currentTarget.textContent = `Auto-Roll: ${this.autoRoll ? "ON" : "OFF"}`;
+      e.currentTarget.classList.toggle("active", this.autoRoll);
+    });
+    document.getElementById("btn-rng-fast").addEventListener("click", (e) => {
+      this.fastRoll = !this.fastRoll;
+      e.currentTarget.textContent = `Fast Roll: ${this.fastRoll ? "ON" : "OFF"}`;
+      e.currentTarget.classList.toggle("active", this.fastRoll);
+    });
+    document.getElementById("rng-cutscene-threshold").addEventListener("change", (e) => {
+      this.cutsceneThreshold = parseInt(e.target.value, 10);
+    });
+    document.getElementById("btn-skip-cutscene").addEventListener("click", () => this.closeCutscene());
+  }
+
+  refreshDOM() {
+    if (this.game.activeTab !== "rng") return;
+    const nm = this.game.notationMode;
+    const luck = this.getTotalLuck();
+    const { globalMult } = this.getCombinedBuffs();
+    const rollCost = this.getRollCost();
+
+    document.getElementById("rng-stats-line").innerHTML =
+      `Total Rolls: ${formatNum(this.totalRolls, nm)} &nbsp;|&nbsp; Luck: ${luck.toFixed(2)}x &nbsp;|&nbsp; RNG Mult: ${formatNum(globalMult, nm)}x`;
+
+    const rollBtn = document.getElementById("btn-rng-roll");
+    rollBtn.textContent = `ROLL AURA (${formatNum(rollCost, nm)} Beans) [R]`;
+    rollBtn.disabled = this.isRolling || this.game.beans < rollCost;
+
+    for (const u of this.upgrades) {
+      const cost = this.getUpgradeCost(u);
+      const bal = this.game.getCurrencyBalance(u.curr);
+      const can = u.level < u.max && bal >= cost;
+      document.getElementById(`lvl-${u.id}`).textContent = `Lv. ${u.level}/${u.max}`;
+      const btn = document.getElementById(`btn-${u.id}`);
+      btn.textContent = u.level >= u.max ? "MAX" : `${formatNum(cost, nm)} ${u.curr}`;
+      btn.className = `btn btn-sm ${can ? "btn-gold" : "btn-disabled"}`;
+      btn.disabled = !can;
+    }
+
+    for (const r of RNG_RARITIES) {
+      const owned = this.counts[r.index];
+      const unlocked = owned > 0;
+      const isEq = this.equippedIndex === r.index;
+      document.getElementById(`rng-cname-${r.index}`).textContent = unlocked
+        ? `${r.auraName} [${r.tierName}]`
+        : `??? [${r.tierName}]`;
+      document.getElementById(`rng-ccount-${r.index}`).textContent = unlocked
+        ? `Owned: ${formatNum(owned, nm)} (+${formatNum(this.getTierMultiplier(r.index) * 100, nm)}%)`
+        : `1 in ${formatNum(r.odds, nm)}`;
+      const eqBtn = document.getElementById(`rng-equip-${r.index}`);
+      if (!unlocked) {
+        eqBtn.textContent = "Locked";
+        eqBtn.className = "btn btn-sm btn-disabled";
+        eqBtn.disabled = true;
+      } else if (isEq) {
+        eqBtn.textContent = "EQUIPPED ★";
+        eqBtn.className = "btn btn-sm btn-success";
+        eqBtn.disabled = false;
+      } else {
+        eqBtn.textContent = "Equip (2x)";
+        eqBtn.className = "btn btn-sm btn-secondary";
+        eqBtn.disabled = false;
+      }
+    }
+  }
+}
+
+// =============================================================================
+// 8. MASTER GAME ENGINE
 // =============================================================================
 
 class GameState {
@@ -821,7 +1476,7 @@ class GameState {
 
     this.sanctuaryUnlocked = false;
 
-    // Stats
+    // Stats & Perk Timers
     this.manualClicks = 0;
     this.rebirthCount = 0;
     this.dynastyCount = 0;
@@ -831,6 +1486,9 @@ class GameState {
     this.plinkoBallsDropped = 0;
     this.playTime = 0.0;
     this.lastAutoBuyTick = 0;
+    this.dynastySynthTimer = 0.0;
+    this.guildAutoBuyTimer = 0.0;
+    this.chronosWarpTimer = 0.0;
 
     // Multipliers
     this.bps = 0.0;
@@ -839,7 +1497,7 @@ class GameState {
     this.frenzyTimer = 0.0;
     this.frenzyMult = 1.0;
 
-    // Canvas Entities (Coordinates relative to 440x632 #scene-canvas)
+    // Canvas Entities
     this.catCenter = { x: 85, y: 576 };
     this.catScaleX = 1.0;
     this.catScaleY = 1.0;
@@ -853,13 +1511,15 @@ class GameState {
 
     this.activeTab = "menu";
     this.tabs = [
-      "menu", "staff", "decor", "brew", "orders", "plinko", "talents",
+      "menu", "staff", "decor", "brew", "orders", "plinko", "talents", "rng",
       "sinks", "cosmos", "roast", "dynasty", "pantheon", "quests", "config"
     ];
 
     this.sfx = new PureSoundEngine();
     this.weather = new WeatherEngine(440, 632);
     this.plinko = new MultiCurrencyPlinko(545, 420);
+    this.rng = new RNGManager(this);
+
     this.steamParticles = [];
     this.popups = [];
     this.steamTimer = 0.0;
@@ -875,32 +1535,18 @@ class GameState {
     this.loadGame();
     this.recalculateRates();
     this.buildStaticDOM();
-    this.bindEvents();
-    this.tabs.push("rng");
-    this.rng = new RNGManager(this);
     this.rng.buildDOM();
-    try {
-      const rngRaw = JSON.parse(localStorage.getItem("rainy_cafe_rng_save") || "null");
-      if (rngRaw) {
-        this.rng.totalRolls = rngRaw.totalRolls || 0;
-        if (Array.isArray(rngRaw.counts)) this.rng.counts = rngRaw.counts;
-        this.rng.equippedIndex = rngRaw.equippedIndex ?? -1;
-        if (Array.isArray(rngRaw.upgrades)) {
-          rngRaw.upgrades.forEach((lvl, i) => { if (this.rng.upgrades[i]) this.rng.upgrades[i].level = lvl; });
-        }
-      }
-    } catch (e) {}
-    this.recalculateRates();
+    this.bindEvents();
   }
-    
+
   initCatalogs() {
     this.upgrades = [
-      new RegularUpgrade("u01", "Cinnamon Dusting", 15, 0.4, 1, "+1 Click & +0.4 BPS"),
-      new RegularUpgrade("u02", "Vanilla Bean Syrup", 60, 1.2, 2, "+2 Click & +1.2 BPS"),
-      new RegularUpgrade("u03", "Stoneware Saucer", 180, 3.2, 3, "+3 Click & +3.2 BPS"),
-      new RegularUpgrade("u04", "French Press Carafe", 550, 8.5, 5, "+5 Click & +8.5 BPS"),
-      new RegularUpgrade("u05", "Barista Linen Apron", 1600, 22.0, 10, "+10 Click & +22 BPS"),
-      new RegularUpgrade("u06", "Ceramic Pour-Over Cone", 4800, 58.0, 20, "+20 Click & +58 BPS"),
+      new RegularUpgrade("u01", "Cinnamon Dusting", 15, 0.4, 1, "+1 Click & +0.4 BPS (2x at 25/50/100...)"),
+      new RegularUpgrade("u02", "Vanilla Bean Syrup", 60, 1.2, 2, "+2 Click & +1.2 BPS (2x at 25/50/100...)"),
+      new RegularUpgrade("u03", "Stoneware Saucer", 180, 3.2, 3, "+3 Click & +3.2 BPS (2x at 25/50/100...)"),
+      new RegularUpgrade("u04", "French Press Carafe", 550, 8.5, 5, "+5 Click & +8.5 BPS (2x at 25/50/100...)"),
+      new RegularUpgrade("u05", "Barista Linen Apron", 1600, 22.0, 10, "+10 Click & +22 BPS (2x at 25/50/100...)"),
+      new RegularUpgrade("u06", "Ceramic Pour-Over Cone", 4800, 58.0, 20, "+20 Click & +58 BPS (2x at 25/50/100...)"),
       new RegularUpgrade("u07", "Lo-Fi Vinyl Record Player", 14000, 150.0, 45, "+45 Click & +150 BPS"),
       new RegularUpgrade("u08", "Italian Espresso Machine", 42000, 380.0, 100, "+100 Click & +380 BPS"),
       new RegularUpgrade("u09", "Cold Brew Drip Tower", 125000, 960.0, 220, "+220 Click & +960 BPS"),
@@ -950,7 +1596,7 @@ class GameState {
       { uid: "b03", name: "Velvet Cappuccino", costBeans: 6000, brewTime: 12.0, buffDesc: "+5% cheaper Cafe Menu upgrades", buffType: "discount", buffVal: 0.95, crafted: false, brewing: false, progress: 0 },
       { uid: "b04", name: "Flat White", costBeans: 25000, brewTime: 18.0, buffDesc: "+15% Click Power permanently", buffType: "click_mult", buffVal: 1.15, crafted: false, brewing: false, progress: 0 },
       { uid: "b05", name: "Caramel Macchiato", costBeans: 120000, brewTime: 25.0, buffDesc: "+15% Passive BPS permanently", buffType: "bps_mult", buffVal: 1.15, crafted: false, brewing: false, progress: 0 },
-      { uid: "b06", name: "Spiced Dark Mocha", costBeans: 500000, brewTime: 35.0, buffDesc: "+10% spawn chance for Croissants", buffType: "lucky_rate", buffVal: 1.10, crafted: false, brewing: false, progress: 0 },
+      { uid: "b06", name: "Spiced Dark Mocha", costBeans: 500000, brewTime: 35.0, buffDesc: "+10% spawn rate for Croissants", buffType: "lucky_rate", buffVal: 1.10, crafted: false, brewing: false, progress: 0 },
       { uid: "b07", name: "Irish Cream Coffee", costBeans: 2.5e6, brewTime: 50.0, buffDesc: "+25% Click Power permanently", buffType: "click_mult", buffVal: 1.25, crafted: false, brewing: false, progress: 0 },
       { uid: "b08", name: "Nitro Cold Brew", costBeans: 12e6, brewTime: 75.0, buffDesc: "+25% Passive BPS permanently", buffType: "bps_mult", buffVal: 1.25, crafted: false, brewing: false, progress: 0 },
       { uid: "b09", name: "Gelato Affogato", costBeans: 65e6, brewTime: 100.0, buffDesc: "-8% cheaper Cafe Menu upgrades", buffType: "discount", buffVal: 0.92, crafted: false, brewing: false, progress: 0 },
@@ -964,7 +1610,7 @@ class GameState {
       { uid: "t02", name: "Rich Crema Strike", desc: "+1.5x Critical Sip bean multiplier per rank", maxRank: 10, rank: 0 },
       { uid: "t03", name: "Atmospheric Diffusion", desc: "+6% global passive BPS boost per rank", maxRank: 10, rank: 0 },
       { uid: "t04", name: "Customer Magnet", desc: "+15% Customer tips & faster customer order queue", maxRank: 10, rank: 0 },
-      { uid: "t05", name: "Fortune Bean Shaker", desc: "+8% Croissant spawns & -12% Plinko inward bias", maxRank: 10, rank: 0 },
+      { uid: "t05", name: "Fortune Bean Shaker", desc: "+8% Croissant spawns, +8% RNG Luck & -3% Plinko bias", maxRank: 10, rank: 0 },
       { uid: "t06", name: "Cosmic Roasting Lineage", desc: "-5% Rebirth & Dynasty cost requirements", maxRank: 10, rank: 0 }
     ];
 
@@ -988,9 +1634,9 @@ class GameState {
     this.cosmicPerks = [
       new EndlessMoneySink("cos1", "Abyssal Matter Infuser", 1, 1.25, "dark_matter", "+100% Global Multiplier per DMR", "total_mult", 1.00),
       new EndlessMoneySink("cos2", "Supernova Click Corona", 1, 1.30, "supernova", "+5.0x Crit Sip Multiplier per SNB", "click_mult", 5.00),
-      new EndlessMoneySink("cos3", "Chronos Warp Engine", 1, 1.35, "chronos", "Passively generates 1 hour of BPS every 5 mins", "bps_mult", 0.50),
-      new EndlessMoneySink("cos4", "Aetherial Horizon", 1, 1.40, "aether", "x3.0 Multiplier to all lower-tier currencies", "total_mult", 2.00),
-      new EndlessMoneySink("cos5", "Omega Singularity Void", 1, 1.50, "omega", "Transmutes all dimensions: +1000% Global Production", "total_mult", 10.00)
+      new EndlessMoneySink("cos3", "Chronos Warp Engine", 1, 1.35, "chronos", "+50% Global Mult & 1h BPS warp every 5m/lvl", "total_mult", 0.50),
+      new EndlessMoneySink("cos4", "Aetherial Horizon", 1, 1.40, "aether", "+200% Global Multiplier per AE", "total_mult", 2.00),
+      new EndlessMoneySink("cos5", "Omega Singularity Void", 1, 1.50, "omega", "+1,000% Global Production per OSB", "total_mult", 10.00)
     ];
 
     this.roasteryUpgrades = [
@@ -1006,18 +1652,18 @@ class GameState {
 
     this.dynastyPerks = [
       { uid: "d01", name: "Planetary Franchise License", cost: 1, maxLvl: 10, desc: "+100% total production multiplier per level", count: 0 },
-      { uid: "d02", name: "Astral Bean Synthesis", cost: 2, maxLvl: 8, desc: "Generates +1 free Golden Bean every 60 seconds", count: 0 },
-      { uid: "d03", name: "Infinite Crema Horizon", cost: 3, maxLvl: 5, desc: "Clicks have a 5% chance to award 10 seconds of full BPS", count: 0 },
-      { uid: "d04", name: "Cosmic Logistics Grid", cost: 4, maxLvl: 5, desc: "Halves the price scaling exponent of all regular upgrades", count: 0 },
-      { uid: "d05", name: "Celestial Barista Guild", cost: 6, maxLvl: 5, desc: "Automatically buys cheapest upgrade every 2s", count: 0 },
-      { uid: "d06", name: "The Eternal Rainy Cafe", cost: 25, maxLvl: 1, desc: "Permanently elevates the cafe into a transcendent legend", count: 0 }
+      { uid: "d02", name: "Astral Bean Synthesis", cost: 2, maxLvl: 8, desc: "Generates +1 free Golden Bean/lvl every 60 seconds", count: 0 },
+      { uid: "d03", name: "Infinite Crema Horizon", cost: 3, maxLvl: 5, desc: "Clicks have a 5%/lvl chance to award 10s of full BPS", count: 0 },
+      { uid: "d04", name: "Cosmic Logistics Grid", cost: 4, maxLvl: 5, desc: "Reduces upgrade cost scaling exponent (halved at Lv. 5)", count: 0 },
+      { uid: "d05", name: "Celestial Barista Guild", cost: 6, maxLvl: 5, desc: "Auto-buys cheapest upgrade every 2s (faster per level)", count: 0 },
+      { uid: "d06", name: "The Eternal Rainy Cafe", cost: 25, maxLvl: 1, desc: "Permanently grants a x5.0 transcendent multiplier", count: 0 }
     ];
 
     this.pantheonPerks = [
       { uid: "p01", name: "Constellation of Perpetual Warmth", cost: 1, maxLvl: 5, desc: "x3.0 total global multiplier per level", count: 0 },
-      { uid: "p02", name: "Infinite Croissant Galaxy", cost: 2, maxLvl: 5, desc: "Lucky Golden Croissants trigger permanent 30s frenzies", count: 0 },
+      { uid: "p02", name: "Infinite Croissant Galaxy", cost: 2, maxLvl: 5, desc: "+15s Croissant Frenzy per level (Permanent at Lv. 5)", count: 0 },
       { uid: "p03", name: "Starlight Instant Brewing", cost: 3, maxLvl: 3, desc: "Brew Lab craft times reduced by 50% per level", count: 0 },
-      { uid: "p04", name: "Cosmic Harmony Singularity", cost: 5, maxLvl: 1, desc: "Multipliers from Golden Beans and Crystals multiply each other", count: 0 }
+      { uid: "p04", name: "Cosmic Harmony Singularity", cost: 5, maxLvl: 1, desc: "Golden Beans and Astral Crystals multiply each other", count: 0 }
     ];
 
     this.quests = [
@@ -1059,11 +1705,76 @@ class GameState {
   }
 
   // --- Economy & Multiplier Calculations ---
+  renderMultiplierBreakdown() {
+    const pop = document.getElementById("multiplier-popover");
+    if (!pop || pop.classList.contains("hidden") || !this.multBreakdown) return;
 
+    const nm = this.notationMode;
+    const b = this.multBreakdown;
+    const body = document.getElementById("mult-pop-body");
+
+    const row = (label, valStr, color = "var(--color-text)") => `
+      <div class="mult-row">
+        <span class="mult-row-label">${label}</span>
+        <span class="mult-row-val" style="color: ${color};">${valStr}</span>
+      </div>
+    `;
+
+    let softCapHtml = "";
+    if (b.isSoftCapped) {
+      const retentionPct = (b.finalMult / b.rawMult) * 100;
+      const pctStr = retentionPct >= 0.01 ? `${retentionPct.toFixed(2)}%` : `${retentionPct.toExponential(2)}%`;
+      softCapHtml = `
+        <div class="mult-softcap-box mult-softcap-active">
+          <strong style="color: var(--color-danger);">Soft-Cap Active (Above ${formatNum(b.softCapStart, nm)}x)</strong><br/>
+          Raw Total: <strong>${formatNum(b.rawMult, nm)}x</strong> &rarr; Compressed: <strong>${formatNum(b.finalMult, nm)}x</strong><br/>
+          Formula: <code>Cap × (Raw / Cap)^0.65</code> (${pctStr} retained)
+        </div>
+      `;
+    } else {
+      softCapHtml = `
+        <div class="mult-softcap-box">
+          <strong style="color: var(--color-success);">Soft-Cap Inactive (100% Efficiency)</strong><br/>
+          Compression begins above <strong>${formatNum(b.softCapStart, nm)}x</strong>
+        </div>
+      `;
+    }
+
+    body.innerHTML = `
+      <div class="mult-section-label">Prestige &amp; Ascension</div>
+      ${row("Rebirth, Golden & Roastery", `${formatNum(b.rebirthAndGolden, nm)}x`, "var(--color-gold)")}
+      ${row("Dynasty & Pantheon Tiers", `${formatNum(b.dynastyAndPantheon, nm)}x`, "var(--color-pantheon)")}
+      ${row("Total Prestige Multiplier", `${formatNum(b.prestigeTotal, nm)}x`, "var(--color-astral)")}
+
+      <div class="mult-section-label">Cosmic &amp; Transcendent</div>
+      ${row("Cosmic Currencies & Sanctuary", `${formatNum(b.cosmicCurrencyMult, nm)}x`, "var(--color-omega)")}
+      ${row("God-Tier Cosmic Perks", `${formatNum(b.cosmicPerksMult, nm)}x`, "var(--color-aether)")}
+      ${row("Total Cosmic Multiplier", `${formatNum(b.cosmicTotal, nm)}x`, "var(--color-omega)")}
+
+      <div class="mult-section-label">RNG Compendium &amp; Cafe</div>
+      ${row("RNG Global Aura Mult", `${formatNum(b.rngGlobal, nm)}x`, "var(--color-supernova)")}
+      ${row("RNG Dedicated BPS / Click", `${formatNum(b.rngBps, nm)}x / ${formatNum(b.rngClick, nm)}x`, "var(--color-text-light)")}
+      ${row("Cafe Level, Stars, Decor & Sinks", `${formatNum(b.cafePermanent, nm)}x`, "var(--color-accent)")}
+      ${row("Boiler Temp, Frenzy & Mochi Purr", `${formatNum(b.activeTempAndEvents, nm)}x`, "var(--color-success)")}
+
+      <div class="mult-divider"></div>
+      <div class="mult-row mult-row-total">
+        <span class="mult-row-label">Effective Global Multiplier</span>
+        <span class="mult-row-val" style="color: var(--color-gold);">${formatNum(b.finalMult, nm)}x</span>
+      </div>
+      ${softCapHtml}
+    `;
+  }
   getMaxStorage() { return 50000.0 * Math.pow(4.5, this.siloLevel); }
   getSiloUpgradeCost() { return 12000.0 * Math.pow(4.0, this.siloLevel); }
   getStaffCost(st) { return Math.max(10.0, st.baseCost * Math.pow(1.30, st.level)); }
   getRoasteryCost(upg) { return Math.max(1, Math.floor(upg.baseCost * Math.pow(1.40, upg.count) * Math.pow(1.15, this.rebirthCount))); }
+
+  // Dynasty d04: Halves the 0.22 upgrade scaling exponent at Lv. 5 (1.22 -> 1.11)
+  getUpgradeExponent() {
+    const d04Count = this.dynastyPerks ? this.dynastyPerks[3].count : 0;
+    return 1.0 + 0.22 * (1.0 - 0.10 * d04Count);
+  }
 
   getTemperatureMultiplier() {
     if (this.overheatLockout) return 0.20;
@@ -1094,8 +1805,9 @@ class GameState {
   }
 
   getCritStats() {
+    const rngCritBonus = this.rng && this.rng.counts[7] > 0 ? 1.0 : 0.0;
     const chance = Math.min(0.60, 0.01 + this.level * 0.001 + this.talents[0].rank * 0.03);
-    const mult = 3.0 + this.talents[1].rank * 1.5 + this.cosmicPerks[1].level * 5.0;
+    const mult = 3.0 + this.talents[1].rank * 1.5 + this.cosmicPerks[1].level * 5.0 + rngCritBonus;
     return { chance, mult };
   }
 
@@ -1125,15 +1837,15 @@ class GameState {
       this.lifetimeBeansAll += amount;
     } else if (cType === "golden") { this.goldenBeans += amt; this.lifetimeGolden += amt; }
     else if (cType === "astral") { this.astralCrystals += amt; this.lifetimeCrystals += amt; }
-    else if (cType === "shards") this.starlightShards += amt;
-    else if (cType === "dark_matter") this.darkMatter += amt;
-    else if (cType === "supernova") this.supernovaBeans += amt;
-    else if (cType === "chronos") this.chronosCrystals += amt;
-    else if (cType === "aether") this.aetherEssence += amt;
-    else if (cType === "omega") this.omegaSingularity += amt;
-    else if (cType === "dew") this.celestialDew += amt;
-    else if (cType === "quasar") this.quasarNectar += amt;
-    else if (cType === "eternal") this.eternalBeans += amt;
+    else if (cType === "shards") { this.starlightShards += amt; }
+    else if (cType === "dark_matter") { this.darkMatter += amt; }
+    else if (cType === "supernova") { this.supernovaBeans += amt; }
+    else if (cType === "chronos") { this.chronosCrystals += amt; }
+    else if (cType === "aether") { this.aetherEssence += amt; }
+    else if (cType === "omega") { this.omegaSingularity += amt; }
+    else if (cType === "dew") { this.celestialDew += amt; }
+    else if (cType === "quasar") { this.quasarNectar += amt; }
+    else if (cType === "eternal") { this.eternalBeans += amt; }
     this.recalculateRates();
   }
 
@@ -1213,18 +1925,27 @@ class GameState {
     let baseClicks = 1.0;
 
     for (const upg of this.upgrades) {
-      baseBps += upg.count * upg.bps;
-      baseClicks += upg.count * upg.clickBoost;
+      const mMult = upg.getMilestoneMult();
+      baseBps += upg.count * upg.bps * mMult;
+      baseClicks += upg.count * upg.clickBoost * mMult;
     }
 
     baseClicks += this.roasteryUpgrades[2].count * 15.0;
     baseBps += this.roasteryUpgrades[3].count * 0.05 * baseClicks;
 
+    // 1. Prestige Tiers (Rebirth, Golden, Roastery, Dynasty, Pantheon)
     const rMult = 1.0 + this.rebirthCount * (0.10 + this.roasteryUpgrades[5].count * 0.06);
     const gMult = 1.0 + this.goldenBeans * (0.05 + this.roasteryUpgrades[4].count * 0.02);
     const mMult = 1.0 + this.roasteryUpgrades[0].count * 0.25;
     const dMult = 1.0 + this.dynastyPerks[0].count * 1.0;
+    const d06Mult = this.dynastyPerks[5].count > 0 ? 5.0 : 1.0;
     const pMult = Math.pow(3.0, this.pantheonPerks[0].count);
+    const harmonyMult = this.pantheonPerks[3].count > 0
+      ? 1.0 + this.goldenBeans * this.astralCrystals * 0.01
+      : 1.0;
+    const prestigeTotal = rMult * gMult * mMult * dMult * d06Mult * pMult * harmonyMult;
+
+    // 2. Cafe, Staff, Crucible Sinks & Active Buffs
     const starMult = 1.0 + this.customerStars * 0.02;
     const frenzy = this.frenzyTimer > 0 ? this.frenzyMult : 1.0;
     const catBliss = this.purrBlissTimer > 0 ? 1.0 + this.purrCombo * 0.10 : 1.0;
@@ -1233,22 +1954,10 @@ class GameState {
     const talentBpsMult = 1.0 + this.talents[2].rank * 0.06;
     const altarMult = 1.0 + this.altarBlessings * 0.02;
 
-    let cosmicBaseMult =
-      (1.0 + this.darkMatter * 1.0) *
-      (1.0 + this.supernovaBeans * 2.0) *
-      (1.0 + this.chronosCrystals * 5.0) *
-      (1.0 + this.aetherEssence * 10.0) *
-      (1.0 + this.omegaSingularity * 50.0) *
-      (1.0 + this.celestialDew * 150.0) *
-      (1.0 + this.quasarNectar * 500.0) *
-      (1.0 + this.eternalBeans * 2500.0);
-
-    if (this.sanctuaryUnlocked) cosmicBaseMult *= 10.0;
-
-    let sinkTotalMult = 1.0;
+    let crucibleMult = 1.0;
     let sinkClickMult = 1.0;
-    for (const snk of [...this.sinks, ...this.cosmicPerks]) {
-      if (snk.buffType === "total_mult") sinkTotalMult *= 1.0 + snk.level * snk.buffPerLvl;
+    for (const snk of this.sinks) {
+      if (snk.buffType === "total_mult") crucibleMult *= 1.0 + snk.level * snk.buffPerLvl;
       else if (snk.buffType === "click_mult") sinkClickMult *= 1.0 + snk.level * snk.buffPerLvl;
     }
 
@@ -1260,18 +1969,67 @@ class GameState {
         else if (dec.buffType === "total_mult") decorTot *= dec.buffVal;
       }
     }
+    const cafeActiveTotal = starMult * frenzy * catBliss * tempMult * levelMult * altarMult * crucibleMult * decorTot;
 
-    const rawMult =
-      rMult * gMult * mMult * dMult * pMult *
-      starMult * frenzy * catBliss * decorTot * levelMult *
-      altarMult * sinkTotalMult * tempMult * cosmicBaseMult;
+    // 3. Cosmic & Transcendent Currencies + God-Tier Perks
+    let cosmicCurrencyMult =
+      (1.0 + this.darkMatter * 1.0) *
+      (1.0 + this.supernovaBeans * 2.5) *
+      (1.0 + this.chronosCrystals * 6.0) *
+      (1.0 + this.aetherEssence * 15.0) *
+      (1.0 + this.omegaSingularity * 75.0) *
+      (1.0 + this.celestialDew * 250.0) *
+      (1.0 + this.quasarNectar * 1000.0) *
+      (1.0 + this.eternalBeans * 5000.0);
 
-    if (rawMult > 1e12) {
-      const excess = rawMult / 1e12;
-      this.totalMultiplier = 1e12 * (1.0 + Math.log10(excess) * 1.5);
+    if (this.sanctuaryUnlocked) cosmicCurrencyMult *= 25.0;
+
+    let cosmicPerksMult = 1.0;
+    for (const cp of this.cosmicPerks) {
+      if (cp.buffType === "total_mult") cosmicPerksMult *= 1.0 + cp.level * cp.buffPerLvl;
+      else if (cp.buffType === "click_mult") sinkClickMult *= 1.0 + cp.level * cp.buffPerLvl;
+    }
+    const cosmicTotal = cosmicCurrencyMult * cosmicPerksMult;
+
+    // 4. RNG Compendium & Equipped Aura
+    let rngGlobal = 1.0, rngClick = 1.0, rngBps = 1.0;
+    if (this.rng) {
+      const buffs = this.rng.getCombinedBuffs();
+      rngGlobal = buffs.globalMult;
+      rngClick = buffs.clickMult;
+      rngBps = buffs.bpsMult;
+      if (this.rng.counts[5] > 0) rngClick *= 1.50;
+    }
+
+    // 5. Raw Total & Soft-Cap Compression
+    const rawMult = prestigeTotal * cafeActiveTotal * cosmicTotal * rngGlobal;
+    const softCapStart = this.sanctuaryUnlocked ? 1e22 : 1e18;
+    const isSoftCapped = rawMult > softCapStart;
+
+    if (isSoftCapped) {
+      this.totalMultiplier = softCapStart * Math.pow(rawMult / softCapStart, 0.65);
     } else {
       this.totalMultiplier = rawMult;
     }
+
+    // Store snapshot for the HUD Multiplier Breakdown popover
+    this.multBreakdown = {
+      rebirthAndGolden: rMult * gMult * mMult,
+      dynastyAndPantheon: dMult * d06Mult * pMult * harmonyMult,
+      prestigeTotal,
+      cafePermanent: levelMult * starMult * altarMult * decorTot * crucibleMult,
+      activeTempAndEvents: tempMult * frenzy * catBliss,
+      cosmicCurrencyMult,
+      cosmicPerksMult,
+      cosmicTotal,
+      rngGlobal,
+      rngBps,
+      rngClick,
+      rawMult,
+      softCapStart,
+      isSoftCapped,
+      finalMult: this.totalMultiplier
+    };
 
     let rBps = 1.0, rClick = 1.0;
     for (const r of this.recipes) {
@@ -1281,10 +2039,10 @@ class GameState {
       }
     }
 
-    this.bps = baseBps * this.totalMultiplier * rBps * decorBps * talentBpsMult;
+    this.bps = baseBps * this.totalMultiplier * rBps * decorBps * talentBpsMult * rngBps;
     this.clickPower =
       baseClicks * this.totalMultiplier * rClick * decorClick *
-      sinkClickMult * Math.pow(1.40, this.roasteryUpgrades[6].count);
+      sinkClickMult * rngClick * Math.pow(1.40, this.roasteryUpgrades[6].count);
 
     if (this.lifetimeBeansAll >= 1e15) this.latteStage = 5;
     else if (this.lifetimeBeansAll >= 1e11) this.latteStage = 4;
@@ -1295,6 +2053,16 @@ class GameState {
   }
 
   // --- Gameplay Actions ---
+
+  triggerCroissantFrenzy(popupX = 240, popupY = 255, label = "CAFFEINE FRENZY! (7x)") {
+    const p02Count = this.pantheonPerks[1].count;
+    this.frenzyMult = 7.0;
+    this.frenzyTimer = p02Count >= 5 ? 999999.0 : 20.0 + p02Count * 15.0;
+    this.addXp(150);
+    this.recalculateRates();
+    this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
+    this.popups.push(new FloatingPopup(label, popupX, popupY, COLORS.gold));
+  }
 
   upgradeSilo() {
     const cost = this.getSiloUpgradeCost();
@@ -1349,10 +2117,11 @@ class GameState {
 
   buyMaxAllUpgrades() {
     const disc = this.getDiscountFactor();
+    const exp = this.getUpgradeExponent();
     let purchased = false;
-    const sorted = [...this.upgrades].sort((a, b) => a.getCostSingle(disc) - b.getCostSingle(disc));
+    const sorted = [...this.upgrades].sort((a, b) => a.getCostSingle(disc, exp) - b.getCostSingle(disc, exp));
     for (const upg of sorted) {
-      const { qty, cost } = upg.getBulkInfo("max", this.beans, disc);
+      const { qty, cost } = upg.getBulkInfo("max", this.beans, disc, exp);
       if (this.beans >= cost) {
         this.beans -= cost;
         upg.count += qty;
@@ -1532,11 +2301,12 @@ class GameState {
     this.popups.push(new FloatingPopup(`+${earned} STARLIGHT SHARDS!`, 240, 235, COLORS.pantheon));
   }
 
+  // Updated to Silo Lv. 45 so storage physically holds the 10 Dc Eternal Bean requirement
   checkGoalCompletion() {
     return (
       this.level >= 100 &&
       this.recipes.every((r) => r.crafted) &&
-      this.siloLevel >= 10 &&
+      this.siloLevel >= 45 &&
       this.omegaSingularity >= 10 &&
       this.eternalBeans >= 1
     );
@@ -1547,7 +2317,7 @@ class GameState {
       this.sanctuaryUnlocked = true;
       this.recalculateRates();
       this.sfx.playLevelup(this.sfxEnabled, this.sfxVolume);
-      this.popups.push(new FloatingPopup("★ OMNIVERSAL SANCTUARY AWAKENED! (x10 Production) ★", 240, 215, COLORS.gold));
+      this.popups.push(new FloatingPopup("★ OMNIVERSAL SANCTUARY AWAKENED! (x25 Production) ★", 240, 215, COLORS.gold));
     } else {
       this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     }
@@ -1609,7 +2379,13 @@ class GameState {
       roastery: Object.fromEntries(this.roasteryUpgrades.map((r) => [r.uid, r.count])),
       dynasty: Object.fromEntries(this.dynastyPerks.map((d) => [d.uid, d.count])),
       pantheon: Object.fromEntries(this.pantheonPerks.map((p) => [p.uid, p.count])),
-      recipes: Object.fromEntries(this.recipes.map((r) => [r.uid, r.crafted]))
+      recipes: Object.fromEntries(this.recipes.map((r) => [r.uid, r.crafted])),
+      rng: {
+        totalRolls: this.rng.totalRolls,
+        counts: this.rng.counts,
+        equippedIndex: this.rng.equippedIndex,
+        upgrades: this.rng.upgrades.map((u) => u.level)
+      }
     };
     try {
       localStorage.setItem("rainy_cafe_grand_master_save", JSON.stringify(data));
@@ -1696,6 +2472,17 @@ class GameState {
       for (const p of this.pantheonPerks) p.count = data.pantheon?.[p.uid] ?? 0;
       for (const rec of this.recipes) rec.crafted = data.recipes?.[rec.uid] ?? false;
 
+      if (data.rng) {
+        this.rng.totalRolls = data.rng.totalRolls ?? 0;
+        if (Array.isArray(data.rng.counts)) this.rng.counts = data.rng.counts;
+        this.rng.equippedIndex = data.rng.equippedIndex ?? -1;
+        if (Array.isArray(data.rng.upgrades)) {
+          data.rng.upgrades.forEach((lvl, i) => {
+            if (this.rng.upgrades[i]) this.rng.upgrades[i].level = lvl;
+          });
+        }
+      }
+
       const lastTs = data.lastSaveTimestamp ?? 0;
       if (lastTs > 0) {
         const elapsed = Date.now() / 1000 - lastTs;
@@ -1717,6 +2504,7 @@ class GameState {
 
   wipeAllData() {
     localStorage.removeItem("rainy_cafe_grand_master_save");
+    localStorage.removeItem("rainy_cafe_rng_save");
     this.level = 1;
     this.xp = 0.0;
     this.siloLevel = 0;
@@ -1749,6 +2537,9 @@ class GameState {
     this.pantheonCount = 0;
     this.croissantsCaught = 0;
     this.ordersCompleted = 0;
+    this.dynastySynthTimer = 0.0;
+    this.guildAutoBuyTimer = 0.0;
+    this.chronosWarpTimer = 0.0;
 
     for (const s of [...this.sinks, ...this.cosmicPerks]) s.level = 0;
     for (const t of this.talents) t.rank = 0;
@@ -1763,6 +2554,11 @@ class GameState {
     for (const q of this.quests) { q.currentVal = 0; q.completed = false; }
     for (const a of this.achievements) a.unlocked = false;
 
+    this.rng.totalRolls = 0;
+    this.rng.counts.fill(0);
+    this.rng.equippedIndex = -1;
+    for (const ru of this.rng.upgrades) ru.level = 0;
+
     this.wipeConfirmActive = false;
     this.recalculateRates();
     this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
@@ -1770,11 +2566,10 @@ class GameState {
   }
 
   // ===========================================================================
-  // 8. STATIC DOM INITIALIZATION & IN-PLACE UI UPDATERS
+  // 9. STATIC DOM INITIALIZATION & IN-PLACE UI UPDATERS
   // ===========================================================================
 
   buildStaticDOM() {
-    // 1. Menu Upgrades
     const upgList = document.getElementById("upgrades-list");
     upgList.innerHTML = "";
     this.upgrades.forEach((upg) => {
@@ -1794,7 +2589,8 @@ class GameState {
       `;
       card.addEventListener("click", () => {
         const disc = this.getDiscountFactor();
-        const { qty, cost } = upg.getBulkInfo(this.buyMode, this.beans, disc);
+        const exp = this.getUpgradeExponent();
+        const { qty, cost } = upg.getBulkInfo(this.buyMode, this.beans, disc, exp);
         if (this.beans >= cost) {
           this.beans -= cost;
           upg.count += qty;
@@ -1808,7 +2604,6 @@ class GameState {
       upgList.appendChild(card);
     });
 
-    // 2. Staff List
     const staffList = document.getElementById("staff-list");
     staffList.innerHTML = "";
     this.staff.forEach((st) => {
@@ -1839,7 +2634,6 @@ class GameState {
       staffList.appendChild(card);
     });
 
-    // 3. Decor List
     const decorList = document.getElementById("decor-list");
     decorList.innerHTML = "";
     this.decor.forEach((dec, idx) => {
@@ -1868,7 +2662,6 @@ class GameState {
       decorList.appendChild(card);
     });
 
-    // 4. Brew Recipes List
     const brewList = document.getElementById("brew-list");
     brewList.innerHTML = "";
     this.recipes.forEach((rec) => {
@@ -1898,7 +2691,6 @@ class GameState {
       brewList.appendChild(card);
     });
 
-    // 5. Plinko Currency Selector Buttons
     const plinkoGrid = document.getElementById("plinko-currency-grid");
     plinkoGrid.innerHTML = "";
     const plinkoCurrs = [
@@ -1923,7 +2715,6 @@ class GameState {
       plinkoGrid.appendChild(btn);
     });
 
-    // 6. Talents & Milestones
     const talentsList = document.getElementById("talents-list");
     talentsList.innerHTML = "";
     this.talents.forEach((t) => {
@@ -1984,23 +2775,22 @@ class GameState {
       msList.appendChild(card);
     });
 
-    // 7. Sinks Tab (Transmute + Endless Sinks)
     const transList = document.getElementById("transmute-list");
     transList.innerHTML = "";
     const transmutes = [
-      { id: "tr1", title: "Beans -> Golden Bean", sub: "500M Beans -> +1 Golden Bean", col: COLORS.gold, fn: () => {
+      { id: "tr1", title: "Beans -> Golden Bean", sub: "500M Beans -> +1 Golden Bean", fn: () => {
         if (this.beans >= 500e6) {
           this.beans -= 500e6; this.goldenBeans += 1; this.lifetimeGolden += 1;
           this.recalculateRates(); this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
         } else this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
       }},
-      { id: "tr2", title: "Golden -> Astral Crystal", sub: "250 Golden -> +1 Astral Crystal", col: COLORS.astral, fn: () => {
+      { id: "tr2", title: "Golden -> Astral Crystal", sub: "250 Golden -> +1 Astral Crystal", fn: () => {
         if (this.goldenBeans >= 250) {
           this.goldenBeans -= 250; this.astralCrystals += 1; this.lifetimeCrystals += 1;
           this.recalculateRates(); this.sfx.playAstral(this.sfxEnabled, this.sfxVolume);
         } else this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
       }},
-      { id: "tr3", title: "Crystal -> Starlight Shard", sub: "100 Crystals -> +1 Starlight Shard", col: COLORS.pantheon, fn: () => {
+      { id: "tr3", title: "Crystal -> Starlight Shard", sub: "100 Crystals -> +1 Starlight Shard", fn: () => {
         if (this.astralCrystals >= 100) {
           this.astralCrystals -= 100; this.starlightShards += 1;
           this.recalculateRates(); this.sfx.playPantheon(this.sfxEnabled, this.sfxVolume);
@@ -2071,7 +2861,6 @@ class GameState {
       sinksList.appendChild(card);
     });
 
-    // 8. Cosmos Tab (8 Forges + 5 Cosmic Perks)
     const cForgeList = document.getElementById("cosmic-forges-list");
     cForgeList.innerHTML = "";
     this.cosmicForgeDefs = [
@@ -2155,7 +2944,6 @@ class GameState {
       cPerksList.appendChild(card);
     });
 
-    // 9. Roastery, Dynasty, Pantheon Lists
     const roastList = document.getElementById("roastery-list");
     roastList.innerHTML = "";
     this.roasteryUpgrades.forEach((upg) => {
@@ -2250,7 +3038,6 @@ class GameState {
       panList.appendChild(card);
     });
 
-    // 10. Quests List
     const questsList = document.getElementById("quests-list");
     questsList.innerHTML = "";
     this.quests.forEach((q) => {
@@ -2283,7 +3070,6 @@ class GameState {
   // --- Event Listeners & Hotkeys ---
 
   bindEvents() {
-    // Scene Canvas Click (Mug, Cat, Croissant)
     const sceneCanvas = document.getElementById("scene-canvas");
     sceneCanvas.addEventListener("mousedown", (e) => {
       const rect = sceneCanvas.getBoundingClientRect();
@@ -2293,8 +3079,38 @@ class GameState {
       const y = (e.clientY - rect.top) * scaleY;
       this.handleSceneClick(x, y);
     });
+    // Multiplier Breakdown Popover Toggle & Close
+    const multDisplay = document.getElementById("multiplier-display");
+    const multPopover = document.getElementById("multiplier-popover");
 
-    // Stabilizer Buttons
+    const toggleMultPopover = () => {
+      const opening = multPopover.classList.contains("hidden");
+      multPopover.classList.toggle("hidden", !opening);
+      this.sfx.playTap(this.sfxEnabled, this.sfxVolume * 0.8);
+      if (opening) this.renderMultiplierBreakdown();
+    };
+
+    multDisplay.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleMultPopover();
+    });
+    multDisplay.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggleMultPopover();
+      }
+    });
+    document.getElementById("btn-close-mult-pop").addEventListener("click", (e) => {
+      e.stopPropagation();
+      multPopover.classList.add("hidden");
+      this.sfx.playTap(this.sfxEnabled, this.sfxVolume * 0.7);
+    });
+    multPopover.addEventListener("mousedown", (e) => e.stopPropagation());
+    sceneCanvas.addEventListener("mousedown", () => {
+      if (!multPopover.classList.contains("hidden")) {
+        multPopover.classList.add("hidden");
+      }
+    });
     document.getElementById("btn-silo-upgrade").addEventListener("click", () => this.upgradeSilo());
     document.getElementById("btn-vent").addEventListener("click", () => this.ventBoiler());
     document.getElementById("btn-auto-vent").addEventListener("click", () => {
@@ -2302,7 +3118,6 @@ class GameState {
       this.sfx.playTap(this.sfxEnabled, this.sfxVolume);
     });
 
-    // Tab Navigation
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         this.switchTab(btn.dataset.tab);
@@ -2310,7 +3125,6 @@ class GameState {
       });
     });
 
-    // Buy Mode Buttons
     document.querySelectorAll(".mode-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         this.buyMode = btn.dataset.mode;
@@ -2319,14 +3133,12 @@ class GameState {
       });
     });
 
-    // Bulk Buy Max All Buttons
     document.getElementById("btn-buy-max-menu").addEventListener("click", () => this.buyMaxAllUpgrades());
     document.getElementById("btn-buy-max-staff").addEventListener("click", () => this.buyMaxAllStaff());
     document.getElementById("btn-buy-max-roast").addEventListener("click", () => this.buyMaxAllRoastery());
     document.getElementById("btn-buy-max-dynasty").addEventListener("click", () => this.buyMaxAllDynasty());
     document.getElementById("btn-buy-max-pantheon").addEventListener("click", () => this.buyMaxAllPantheon());
 
-    // Orders Counter
     document.getElementById("btn-auto-serve").addEventListener("click", () => {
       this.autoServe = !this.autoServe;
       this.sfx.playTap(this.sfxEnabled, this.sfxVolume);
@@ -2335,16 +3147,17 @@ class GameState {
       if (!this.serveCurrentOrder()) this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     });
 
-    // Plinko Controls
+    // Plinko Controls (with 10% Max Bet Cap)
     const betInput = document.getElementById("plinko-bet-input");
     document.querySelectorAll(".chip-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const bal = this.getCurrencyBalance(this.plinko.currencyType);
+        const maxCap = this.plinko.getMaxBet(bal);
         const mode = btn.dataset.chip;
         if (mode === "min") betInput.value = "1";
-        else if (mode === "10") betInput.value = String(Math.max(1, Math.floor(bal * 0.10)));
-        else if (mode === "50") betInput.value = String(Math.max(1, Math.floor(bal * 0.50)));
-        else if (mode === "max") betInput.value = String(Math.max(1, Math.floor(bal)));
+        else if (mode === "10") betInput.value = String(Math.max(1, Math.min(maxCap, Math.floor(bal * 0.02))));
+        else if (mode === "50") betInput.value = String(Math.max(1, Math.min(maxCap, Math.floor(bal * 0.05))));
+        else if (mode === "max") betInput.value = String(Math.max(1, maxCap));
         this.sfx.playTap(this.sfxEnabled, this.sfxVolume * 0.7);
       });
     });
@@ -2375,14 +3188,12 @@ class GameState {
       triggerPlinkoDrop(x);
     });
 
-    // Talents Reset
     document.getElementById("btn-reset-talents").addEventListener("click", () => {
       this.talents.forEach((t) => (t.rank = 0));
       this.recalculateRates();
       this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     });
 
-    // Sinks Altar & Sanctuary Banner
     document.getElementById("btn-altar-sacrifice").addEventListener("click", () => {
       if (this.beans < 1e6) {
         this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
@@ -2399,13 +3210,10 @@ class GameState {
     });
 
     document.getElementById("sanctuary-goal-banner").addEventListener("click", () => this.activateSanctuary());
-
-    // Prestige Triggers
     document.getElementById("btn-trigger-rebirth").addEventListener("click", () => this.triggerRebirth());
     document.getElementById("btn-trigger-dynasty").addEventListener("click", () => this.triggerDynasty());
     document.getElementById("btn-trigger-pantheon").addEventListener("click", () => this.triggerPantheon());
 
-    // Config Buttons
     document.getElementById("btn-cfg-sfx").addEventListener("click", () => {
       this.sfxEnabled = !this.sfxEnabled;
       this.sfx.playTap(this.sfxEnabled, this.sfxVolume);
@@ -2445,13 +3253,22 @@ class GameState {
     // Global Keyboard Hotkeys
     window.addEventListener("keydown", (e) => {
       if (document.activeElement === betInput) return;
+      if (this.rng && this.rng.cutsceneActive && e.code === "Space") {
+        e.preventDefault();
+        this.rng.closeCutscene();
+        return;
+      }
       if (e.code === "Space") {
         e.preventDefault();
         if (this.activeTab === "plinko") {
           triggerPlinkoDrop(this.plinko.xCenter);
+        } else if (this.activeTab === "rng") {
+          this.rng.startRoll(false);
         } else {
           this.handleSceneClick(this.mugCenter.x, this.mugCenter.y);
         }
+      } else if (e.key === "r" || e.key === "R") {
+        if (this.rng) this.rng.startRoll(false);
       } else if (e.key === "b" || e.key === "B") {
         if (this.activeTab === "roast") this.buyMaxAllRoastery();
         else if (this.activeTab === "dynasty") this.buyMaxAllDynasty();
@@ -2484,12 +3301,7 @@ class GameState {
     // 1. Flying Lucky Croissant
     if (this.croissant.checkClick(x, y)) {
       this.croissantsCaught += 1;
-      this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
-      this.frenzyTimer = 20.0;
-      this.frenzyMult = 7.0;
-      this.addXp(150);
-      this.recalculateRates();
-      this.popups.push(new FloatingPopup("CAFFEINE FRENZY! (7x)", x, y - 20, COLORS.gold));
+      this.triggerCroissantFrenzy(x, y - 20, "CAFFEINE FRENZY! (7x)");
       return;
     }
 
@@ -2512,7 +3324,14 @@ class GameState {
     if (x >= cx - 95 && x <= cx + 95 && y >= cy - 80 && y <= cy + 80) {
       const { chance, mult } = this.getCritStats();
       const isCrit = Math.random() < chance;
-      const gained = this.clickPower * (isCrit ? mult : 1.0);
+      let gained = this.clickPower * (isCrit ? mult : 1.0);
+
+      // Dynasty d03: 5%/rank chance on click to award 10 seconds of full BPS
+      const d03Chance = this.dynastyPerks[2].count * 0.05;
+      const isCremaSurge = d03Chance > 0 && this.bps > 0 && Math.random() < d03Chance;
+      if (isCremaSurge) {
+        gained += this.bps * 10.0;
+      }
 
       this.beans = Math.min(this.getMaxStorage(), this.beans + gained);
       this.lifetimeBeansRun += gained;
@@ -2530,7 +3349,11 @@ class GameState {
         this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
       }
 
-      if (isCrit) {
+      if (isCremaSurge) {
+        this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
+        this.popups.push(new FloatingPopup(`CREMA SURGE! +${formatNum(gained, this.notationMode)}`, x, y - 42, COLORS.astral));
+        this.addXp(85);
+      } else if (isCrit) {
         this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
         this.popups.push(new FloatingPopup(`CRIT SIP! +${formatNum(gained, this.notationMode)}`, x, y - 35, COLORS.gold));
         this.addXp(60 + Math.floor(Math.log10(Math.max(1.0, this.clickPower)) * 8));
@@ -2550,7 +3373,7 @@ class GameState {
   }
 
   // ===========================================================================
-  // 9. MAIN GAME LOOP (UPDATE, SCENE RENDER & DOM SYNC)
+  // 10. MAIN GAME LOOP (UPDATE, SCENE RENDER & DOM SYNC)
   // ===========================================================================
 
   update(dt) {
@@ -2570,7 +3393,11 @@ class GameState {
 
     const maxCap = this.getMaxStorage();
     if (this.beans < maxCap) {
-      const gained = this.bps * dt;
+      let gained = this.bps * dt;
+      // Roastery r08: Perpetual Steam Generator (+0.06%/lvl of current balance/sec)
+      if (this.roasteryUpgrades[7].count > 0) {
+        gained += this.beans * (this.roasteryUpgrades[7].count * 0.0006) * dt;
+      }
       this.beans = Math.min(maxCap, this.beans + gained);
       this.lifetimeBeansRun += gained;
       this.lifetimeBeansAll += gained;
@@ -2581,16 +3408,63 @@ class GameState {
       this.addXp(xpTrickle);
     }
 
+    // Dynasty d02: Astral Bean Synthesis (+1 Golden Bean/lvl every 60s)
+    if (this.dynastyPerks[1].count > 0) {
+      this.dynastySynthTimer += dt;
+      if (this.dynastySynthTimer >= 60.0) {
+        this.dynastySynthTimer -= 60.0;
+        const synthAmt = this.dynastyPerks[1].count;
+        this.goldenBeans += synthAmt;
+        this.lifetimeGolden += synthAmt;
+        this.recalculateRates();
+        this.popups.push(new FloatingPopup(`+${synthAmt} Synthesized Golden Bean!`, 240, 235, COLORS.gold));
+      }
+    }
+
+    // Dynasty d05: Celestial Barista Guild (Auto-buys cheapest upgrade every 2s / level)
+    if (this.dynastyPerks[4].count > 0) {
+      this.guildAutoBuyTimer += dt;
+      const interval = 2.0 / this.dynastyPerks[4].count;
+      if (this.guildAutoBuyTimer >= interval) {
+        this.guildAutoBuyTimer = 0.0;
+        const disc = this.getDiscountFactor();
+        const exp = this.getUpgradeExponent();
+        const affordable = this.upgrades.filter((u) => this.beans >= u.getCostSingle(disc, exp));
+        if (affordable.length > 0) {
+          affordable.sort((a, b) => a.getCostSingle(disc, exp) - b.getCostSingle(disc, exp));
+          const cheapest = affordable[0];
+          this.beans -= cheapest.getCostSingle(disc, exp);
+          cheapest.count += 1;
+          this.recalculateRates();
+        }
+      }
+    }
+
+    // Cosmic cos3: Chronos Warp Engine (Grants 1 hour of BPS every 300s / level)
+    if (this.cosmicPerks[2].level > 0 && this.bps > 0) {
+      this.chronosWarpTimer += dt;
+      const warpInterval = 300.0 / this.cosmicPerks[2].level;
+      if (this.chronosWarpTimer >= warpInterval) {
+        this.chronosWarpTimer = 0.0;
+        const warpGain = this.bps * 3600.0;
+        this.beans = Math.min(maxCap, this.beans + warpGain);
+        this.lifetimeBeansRun += warpGain;
+        this.lifetimeBeansAll += warpGain;
+        this.sfx.playCosmic(this.sfxEnabled, this.sfxVolume);
+        this.popups.push(new FloatingPopup(`CHRONOS WARP! +${formatNum(warpGain, this.notationMode)}`, 240, 220, COLORS.chronos));
+      }
+    }
+
     // Plinko Update
     const payouts = this.plinko.update(dt, this.sfx, this.sfxEnabled, this.sfxVolume);
     for (const p of payouts) {
       this.addCurrency(p.currency, p.payout);
       const cName = p.currency.replace("_", " ").toUpperCase();
-      if (p.mult >= 25.0) {
+      if (p.mult >= 10.0) {
         this.addXp(600);
         this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
-        this.plinko.popups.push(new FloatingPopup(`+${formatNum(p.payout, this.notationMode)} ${cName} (25x)!`, p.x, p.y - 25, COLORS.gold));
-      } else if (p.mult >= 2.0) {
+        this.plinko.popups.push(new FloatingPopup(`+${formatNum(p.payout, this.notationMode)} ${cName} (10x JACKPOT)!`, p.x, p.y - 25, COLORS.gold));
+      } else if (p.mult >= 1.8) {
         this.addXp(75);
         this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
         this.plinko.popups.push(new FloatingPopup(`+${formatNum(p.payout, this.notationMode)} (${p.mult}x)`, p.x, p.y - 20, COLORS.success));
@@ -2624,11 +3498,12 @@ class GameState {
     if (this.staff[2].level > 0 && autoTick > this.lastAutoBuyTick) {
       this.lastAutoBuyTick = autoTick;
       const disc = this.getDiscountFactor();
-      const affordable = this.upgrades.filter((u) => this.beans >= u.getCostSingle(disc));
+      const exp = this.getUpgradeExponent();
+      const affordable = this.upgrades.filter((u) => this.beans >= u.getCostSingle(disc, exp));
       if (affordable.length > 0) {
-        affordable.sort((a, b) => a.getCostSingle(disc) - b.getCostSingle(disc));
+        affordable.sort((a, b) => a.getCostSingle(disc, exp) - b.getCostSingle(disc, exp));
         const cheapest = affordable[0];
-        this.beans -= cheapest.getCostSingle(disc);
+        this.beans -= cheapest.getCostSingle(disc, exp);
         cheapest.count += 1;
         this.addXp(35);
         this.recalculateRates();
@@ -2640,16 +3515,11 @@ class GameState {
       if (Math.random() < this.staff[1].level * 0.15 * dt) {
         this.croissant.active = false;
         this.croissantsCaught += 1;
-        this.frenzyTimer = 20.0;
-        this.frenzyMult = 7.0;
-        this.addXp(150);
-        this.recalculateRates();
-        this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
-        this.popups.push(new FloatingPopup("Pip caught a Croissant!", 240, 255, COLORS.gold));
+        this.triggerCroissantFrenzy(240, 255, "Pip caught a Croissant!");
       }
     }
 
-    if (this.frenzyTimer > 0) {
+    if (this.frenzyTimer > 0 && this.pantheonPerks[1].count < 5) {
       this.frenzyTimer -= dt;
       if (this.frenzyTimer <= 0) {
         this.frenzyTimer = 0.0;
@@ -2659,7 +3529,7 @@ class GameState {
     }
 
     // Brew Lab Progress
-    const speedMult = this.pantheonPerks[2].count > 0 ? 2.0 : 1.0;
+    const speedMult = Math.pow(2.0, this.pantheonPerks[2].count);
     for (const r of this.recipes) {
       if (r.brewing) {
         r.progress += dt * speedMult;
@@ -2696,7 +3566,6 @@ class GameState {
       }
     }
 
-    // QoL Auto-Vent & Auto-Serve
     if (this.autoVent && this.boilerTemp >= 95.0 && !this.overheatLockout) {
       this.ventBoiler();
     }
@@ -2711,7 +3580,12 @@ class GameState {
     this.catScaleY += (1.0 - this.catScaleY) * Math.min(12.0 * dt, 1.0);
 
     if (this.rainEnabled) this.weather.update(dt);
-    this.croissant.update(dt, 440, 632);
+
+    // Croissant Spawn Rate Buffs (dec3, b06, t05)
+    let cRate = 1.0 + this.talents[4].rank * 0.08;
+    if (this.decor[2].bought) cRate *= this.decor[2].buffVal;
+    if (this.recipes[5].crafted) cRate *= this.recipes[5].buffVal;
+    this.croissant.update(dt, 440, 632, cRate);
 
     if (this.particlesEnabled) {
       this.steamTimer += dt;
@@ -2730,7 +3604,8 @@ class GameState {
       if (this.popups[i].life <= 0) this.popups.splice(i, 1);
     }
 
-    // Achievements Check
+    if (this.rng) this.rng.update(dt);
+
     for (const ach of this.achievements) {
       if (!ach.unlocked && ach.check(this)) {
         ach.unlocked = true;
@@ -2759,13 +3634,11 @@ class GameState {
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Sky Window Fill
     ctx.fillStyle = this.weather.getWindowColor();
     ctx.beginPath();
     ctx.roundRect(0, 0, canvas.width, canvas.height, 16);
     ctx.fill();
 
-    // Decor 1: Fairy String Lights
     if (this.decor[0].bought) {
       for (let lx = 15; lx < 425; lx += 36) {
         ctx.strokeStyle = "rgb(180, 160, 140)";
@@ -2782,7 +3655,6 @@ class GameState {
       }
     }
 
-    // Decor 2: Hanging Pothos Vine
     if (this.decor[1].bought) {
       ctx.fillStyle = "rgb(140, 100, 70)";
       ctx.beginPath();
@@ -2796,7 +3668,6 @@ class GameState {
       }
     }
 
-    // Decor 3: Brass Wind Chimes
     if (this.decor[2].bought) {
       ctx.strokeStyle = COLORS.gold;
       ctx.lineWidth = 2;
@@ -2815,7 +3686,6 @@ class GameState {
 
     if (this.rainEnabled) this.weather.drawRain(ctx);
 
-    // Window Sill Line
     ctx.strokeStyle = "rgb(200, 190, 180)";
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -2837,7 +3707,6 @@ class GameState {
     ctx.ellipse(catX, catY, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Cat Ears
     ctx.beginPath();
     ctx.moveTo(catX - rx + 4, catY - ry + 6);
     ctx.lineTo(catX - rx + 12, catY - ry - 10);
@@ -2851,7 +3720,6 @@ class GameState {
     ctx.lineTo(catX - rx + 17, catY - ry + 4);
     ctx.fill();
 
-    // Closed sleeping eyes
     ctx.strokeStyle = COLORS.text;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -2861,24 +3729,35 @@ class GameState {
     ctx.arc(catX + 9, catY, 5, 0.1, Math.PI - 0.1);
     ctx.stroke();
 
-    // Croissant & Steam
     this.croissant.draw(ctx);
     if (this.particlesEnabled) {
       for (const s of this.steamParticles) s.draw(ctx);
     }
 
-    // Coffee Mug
+    // Equipped RNG Aura Halo behind the Mug
     const { x: cx, y: cy } = this.mugCenter;
+    if (this.rng && this.rng.equippedIndex >= 0) {
+      const eqRarity = RNG_RARITIES[this.rng.equippedIndex];
+      const pulse = 92 + Math.sin(performance.now() * 0.004) * 6;
+      ctx.save();
+      ctx.strokeStyle = eqRarity.color;
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = 3 + this.rng.equippedIndex * 0.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, pulse, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Coffee Mug
     const w = 75 * this.scaleX;
     const h = 65 * this.scaleY;
 
-    // Saucer
     ctx.fillStyle = COLORS.saucer;
     ctx.beginPath();
     ctx.ellipse(cx, cy + h + 3, w * 1.55, 15 * this.scaleY, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Mug Handle
     ctx.fillStyle = COLORS.mug;
     ctx.beginPath();
     ctx.ellipse(cx + w + 13 * this.scaleX, cy - h * 0.4 + 26 * this.scaleY, 21 * this.scaleX, 26 * this.scaleY, 0, 0, Math.PI * 2);
@@ -2889,19 +3768,16 @@ class GameState {
     ctx.ellipse(cx + w + 14 * this.scaleX, cy - h * 0.25 + 17 * this.scaleY, 12 * this.scaleX, 17 * this.scaleY, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Mug Body
     ctx.fillStyle = COLORS.mug;
     ctx.beginPath();
     ctx.roundRect(cx - w, cy - h, w * 2, h * 2, [0, 0, 32 * this.scaleX, 32 * this.scaleX]);
     ctx.fill();
 
-    // Bottom Shadow
     ctx.fillStyle = COLORS.mugShadow;
     ctx.beginPath();
     ctx.roundRect(cx - w + 6, cy + h - 14, (w - 6) * 2, 10, [0, 0, 20, 20]);
     ctx.fill();
 
-    // Top Rim & Coffee Liquid
     ctx.fillStyle = COLORS.mug;
     ctx.beginPath();
     ctx.ellipse(cx, cy - h, w, 13 * this.scaleY, 0, 0, Math.PI * 2);
@@ -2912,7 +3788,6 @@ class GameState {
     ctx.ellipse(cx, cy - h + 2, w - 6, 10 * this.scaleY, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Latte Art Crema
     const foamY = cy - h - 2 * this.scaleY;
     ctx.fillStyle = COLORS.crema;
     if (this.latteStage === 0) {
@@ -2932,27 +3807,27 @@ class GameState {
       ctx.fill();
     }
 
-    // Popups
     for (const p of this.popups) p.draw(ctx);
   }
 
   refreshDOM() {
     const nm = this.notationMode;
 
-    // Top HUD
     document.getElementById("beans-display").textContent = `${formatNum(this.beans, nm)} Beans`;
     document.getElementById("rates-display").innerHTML = `${formatNum(this.bps, nm)}/s &nbsp;|&nbsp; +${formatNum(this.clickPower, nm)}/sip`;
 
     let mStr = `Multiplier: ${formatNum(this.totalMultiplier, nm)}x`;
-    if (this.frenzyTimer > 0) mStr += ` (FRENZY: ${this.frenzyTimer.toFixed(1)}s)`;
+    if (this.frenzyTimer > 0) {
+      mStr += this.pantheonPerks[1].count >= 5 ? " (ETERNAL FRENZY)" : ` (FRENZY: ${this.frenzyTimer.toFixed(1)}s)`;
+    }
     if (this.purrBlissTimer > 0) mStr += ` (Purr: +${this.purrCombo * 10}%)`;
     if (this.altarBlessings > 0) mStr += ` (Altar: +${this.altarBlessings * 2}%)`;
     if (this.sanctuaryUnlocked) mStr += " ★ SANCTUARY";
     const mEl = document.getElementById("multiplier-display");
-    mEl.textContent = mStr;
+    mEl.textContent = `${mStr} ▾`;
     mEl.classList.toggle("frenzy-active", this.frenzyTimer > 0 || this.sanctuaryUnlocked);
+    this.renderMultiplierBreakdown();
 
-    // Level & XP
     const neededXp = this.getXpNeeded(this.level);
     const xpPct = Math.max(0, Math.min(100, (this.xp / neededXp) * 100));
     document.getElementById("level-title").textContent = `Lv. ${this.level} - ${this.getBaristaTitle(this.level)}`;
@@ -2965,7 +3840,6 @@ class GameState {
     xpTextEl.textContent = xpStr;
     xpTextEl.classList.toggle("has-points", availPts > 0);
 
-    // Dynamic 2-Column Currency Grid
     const currs = [
       [this.goldenBeans, "Golden", COLORS.gold],
       [this.astralCrystals, "Crystals", COLORS.astral],
@@ -2985,10 +3859,9 @@ class GameState {
       .map(([amt, name, col]) => `<div class="curr-badge" style="color:${col}"><span class="curr-dot" style="background:${col}"></span>${formatNum(amt, nm)} ${name}</div>`)
       .join("");
 
-    // Stabilizer Meters
     const maxCap = this.getMaxStorage();
     const siloPct = Math.max(0, Math.min(100, (this.beans / maxCap) * 100));
-    document.getElementById("silo-text").textContent = `Silo Storage: ${formatNum(this.beans, nm)} / ${formatNum(maxCap, nm)}`;
+    document.getElementById("silo-text").textContent = `Silo Storage (Lv.${this.siloLevel}): ${formatNum(this.beans, nm)} / ${formatNum(maxCap, nm)}`;
     const siloFill = document.getElementById("silo-bar-fill");
     siloFill.style.width = `${siloPct}%`;
     siloFill.classList.toggle("silo-full", siloPct >= 98);
@@ -3018,15 +3891,17 @@ class GameState {
 
     document.getElementById("btn-auto-vent").classList.toggle("active", this.autoVent);
 
-    // Update Active Tab Contents Only for Peak 60FPS Performance
     const disc = this.getDiscountFactor();
+    const exp = this.getUpgradeExponent();
+
     if (this.activeTab === "menu") {
       for (const upg of this.upgrades) {
-        const { qty, cost } = upg.getBulkInfo(this.buyMode, this.beans, disc);
+        const { qty, cost } = upg.getBulkInfo(this.buyMode, this.beans, disc, exp);
         const afford = this.beans >= cost;
+        const mMult = upg.getMilestoneMult();
         document.getElementById(`card-${upg.uid}`).classList.toggle("locked", !afford);
         document.getElementById(`acc-${upg.uid}`).className = `card-accent ${afford ? "" : "accent-muted"}`;
-        document.getElementById(`cnt-${upg.uid}`).textContent = `x${upg.count} (+${qty})`;
+        document.getElementById(`cnt-${upg.uid}`).textContent = `x${upg.count} (+${qty})${mMult > 1 ? ` [${formatNum(mMult, nm)}x]` : ""}`;
         const costEl = document.getElementById(`cost-${upg.uid}`);
         costEl.textContent = `Cost: ${formatNum(cost, nm)} beans`;
         costEl.className = `card-cost ${afford ? "cost-afford" : "cost-locked"}`;
@@ -3110,7 +3985,8 @@ class GameState {
       document.getElementById("plinko-risk-label").textContent = `${this.plinko.currencyType.replace("_", " ").toUpperCase()}: Bias Handicap ${Math.round(bias * 100)}%`;
 
       const bal = this.getCurrencyBalance(this.plinko.currencyType);
-      document.getElementById("plinko-bal-label").textContent = `Bal: ${formatNum(bal, nm)}`;
+      const maxBet = this.plinko.getMaxBet(bal);
+      document.getElementById("plinko-bal-label").textContent = `Bal: ${formatNum(bal, nm)} (Max: ${formatNum(maxBet, nm)})`;
       const betVal = this.plinko.parseBetAmount(document.getElementById("plinko-bet-input").value, bal);
       const dropBtn = document.getElementById("btn-plinko-drop");
       dropBtn.textContent = `DROP (${formatNum(betVal, nm)})`;
@@ -3141,6 +4017,8 @@ class GameState {
           btn.textContent = `Lv. ${m.targetLvl}`; btn.className = "btn btn-disabled"; btn.disabled = true;
         }
       }
+    } else if (this.activeTab === "rng") {
+      this.rng.refreshDOM();
     } else if (this.activeTab === "sinks") {
       document.getElementById("altar-title").textContent = `Altar of the Roast (Blessings: ${this.altarBlessings} ★)`;
       document.getElementById("btn-altar-sacrifice").disabled = this.beans < 1e6;
@@ -3174,11 +4052,11 @@ class GameState {
       banner.classList.toggle("ready", ready);
       banner.classList.toggle("unlocked", this.sanctuaryUnlocked);
       if (this.sanctuaryUnlocked) {
-        banner.textContent = "★ OMNIVERSAL SANCTUARY ACTIVE: +1000% PRODUCTION AURA ★";
+        banner.textContent = "★ OMNIVERSAL SANCTUARY ACTIVE: +2500% PRODUCTION AURA ★";
       } else if (ready) {
-        banner.textContent = "★ CLICK TO AWAKEN THE OMNIVERSAL SANCTUARY (+1000% MULT) ★";
+        banner.textContent = "★ CLICK TO AWAKEN THE OMNIVERSAL SANCTUARY (+2500% MULT) ★";
       } else {
-        banner.textContent = "GOAL: Lv.100, 12 Recipes, Silo 10, 10 OSB, 1 Eternal Bean";
+        banner.textContent = "GOAL: Lv.100, 12 Recipes, Silo 45, 10 OSB, 1 Eternal Bean";
       }
 
       for (const cp of this.cosmicPerks) {
@@ -3282,7 +4160,7 @@ class GameState {
 }
 
 // =============================================================================
-// 10. BOOTSTRAP & 60FPS REQUESTANIMATIONFRAME LOOP
+// 11. BOOTSTRAP & 60FPS REQUESTANIMATIONFRAME LOOP
 // =============================================================================
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -3309,685 +4187,4 @@ window.addEventListener("DOMContentLoaded", () => {
 
   window.addEventListener("beforeunload", () => game.saveGame());
   requestAnimationFrame(loop);
-});
-// =============================================================================
-// 11. 10-TIER RNG AURA SYSTEM & PROCEDURAL CUTSCENE ENGINE
-// =============================================================================
-
-const RNG_RARITIES = [
-  {
-    index: 0, id: "common", tierName: "Common", auraName: "House Blend Steam",
-    odds: 2, color: "#9e8c80", cssClass: "tier-common",
-    buffType: "bps", baseBuff: 0.05, desc: "+5% Passive BPS (+1% per dup)"
-  },
-  {
-    index: 1, id: "uncommon", tierName: "Uncommon", auraName: "Velvet Crema Glow",
-    odds: 5, color: "#3e8e57", cssClass: "tier-uncommon",
-    buffType: "click", baseBuff: 0.12, desc: "+12% Click Power (+2.5% per dup)"
-  },
-  {
-    index: 2, id: "rare", tierName: "Rare", auraName: "Raindrop Lo-Fi Pulse",
-    odds: 15, color: "#3670c7", cssClass: "tier-rare",
-    buffType: "global", baseBuff: 0.25, desc: "+25% Global Multiplier (+5% per dup)"
-  },
-  {
-    index: 3, id: "epic", tierName: "Epic", auraName: "Midnight Roast Vortex",
-    odds: 50, color: "#9b59b6", cssClass: "tier-epic",
-    buffType: "global", baseBuff: 0.60, desc: "+60% Global Multiplier (+12% per dup)"
-  },
-  {
-    index: 4, id: "legendary", tierName: "Legendary", auraName: "Golden Sovereign Crown",
-    odds: 250, color: "#f39c12", cssClass: "tier-legendary",
-    buffType: "global", baseBuff: 1.25, desc: "+125% Global Mult & +15% Luck"
-  },
-  {
-    index: 5, id: "mythic", tierName: "Mythic", auraName: "Crimson Supernova Core",
-    odds: 1250, color: "#e74c3c", cssClass: "tier-mythic",
-    buffType: "global", baseBuff: 4.00, desc: "+400% Global Mult & +50% Click Power"
-  },
-  {
-    index: 6, id: "exotic", tierName: "Exotic", auraName: "Prismatic Nebula Brew",
-    odds: 6000, color: "#00d2ff", cssClass: "tier-exotic",
-    buffType: "global", baseBuff: 14.00, desc: "+1,400% Global Mult & +50% Luck"
-  },
-  {
-    index: 7, id: "secret", tierName: "Secret", auraName: "Abyssal Cipher Espresso",
-    odds: 25000, color: "#c266ff", cssClass: "tier-secret",
-    buffType: "global", baseBuff: 49.00, desc: "+4,900% Global Mult & +100% Crit Power"
-  },
-  {
-    index: 8, id: "very_secret", tierName: "Very Secret", auraName: "Chronos Dimensional Rift",
-    odds: 100000, color: "#00ffcc", cssClass: "tier-very-secret",
-    buffType: "global", baseBuff: 249.00, desc: "+24,900% Global Mult & +25% Roll Speed"
-  },
-  {
-    index: 9, id: "nearly_impossible", tierName: "Nearly Impossible", auraName: "Omniversal Singularity Bean",
-    odds: 1000000, color: "#ffdd44", cssClass: "tier-impossible",
-    buffType: "global", baseBuff: 2499.00, desc: "+249,900% Global Mult & +200% Luck"
-  }
-];
-
-class RNGManager {
-  constructor(game) {
-    this.game = game;
-    this.totalRolls = 0;
-    this.counts = new Array(RNG_RARITIES.length).fill(0);
-    this.equippedIndex = -1;
-
-    // Rolling State
-    this.isRolling = false;
-    this.rollTimer = 0.0;
-    this.rollDuration = 1.4;
-    this.lastTickStep = -1;
-    this.pendingResult = null;
-    this.autoRoll = false;
-    this.fastRoll = false;
-    this.cutsceneThreshold = 4; // Default: Legendary+
-
-    // Upgrades: Luck (Beans), Speed (Beans), Cosmic Luck (Golden Beans), Multi-Roll (Crystals)
-    this.upgrades = [
-      { id: "ru1", name: "Four-Leaf Clover Syrup", curr: "beans", baseCost: 500, scale: 1.65, level: 0, max: 50, desc: "+25% RNG Luck per level" },
-      { id: "ru2", name: "Turbo Steam Bearings", curr: "beans", baseCost: 2500, scale: 1.85, level: 0, max: 20, desc: "Increases roll animation speed by +8% per level" },
-      { id: "ru3", name: "Golden Dice Infuser", curr: "golden", baseCost: 3, scale: 1.55, level: 0, max: 30, desc: "x1.35 Compounding RNG Luck per level" },
-      { id: "ru4", name: "Astral Quantum Dice", curr: "astral", baseCost: 2, scale: 2.20, level: 0, max: 5, desc: "+1 Simultaneous Roll per spin (Multi-Roll)" }
-    ];
-
-    // Cutscene State
-    this.cutsceneActive = false;
-    this.cutsceneTier = null;
-    this.cutsceneTime = 0.0;
-    this.cutsceneDuration = 4.0;
-    this.particles = [];
-  }
-
-  getUpgradeCost(u) {
-    return Math.max(1, Math.floor(u.baseCost * Math.pow(u.scale, u.level)));
-  }
-
-  getTotalLuck() {
-    let luck = 1.0 + this.upgrades[0].level * 0.25;
-    luck *= Math.pow(1.35, this.upgrades[2].level);
-    if (this.counts[4] > 0) luck *= 1.15;
-    if (this.counts[6] > 0) luck *= 1.50;
-    if (this.counts[9] > 0) luck *= 3.00;
-    luck *= 1.0 + this.game.talents[4].rank * 0.10;
-    return luck;
-  }
-
-  getRollDuration() {
-    let base = this.fastRoll ? 0.42 : 1.35;
-    base /= 1.0 + this.upgrades[1].level * 0.08;
-    if (this.counts[8] > 0) base *= 0.75;
-    return Math.max(0.15, base);
-  }
-
-  getMultiRollCount() {
-    return 1 + this.upgrades[3].level;
-  }
-
-  getTierMultiplier(idx) {
-    const r = RNG_RARITIES[idx];
-    const owned = this.counts[idx];
-    if (owned <= 0) return 0.0;
-    // Scales logarithmically with duplicates so grinding duplicates always rewards
-    const dupBonus = 1.0 + Math.log10(owned) * 0.5 + Math.min(owned - 1, 50) * 0.05;
-    const equipMult = this.equippedIndex === idx ? 1.5 : 1.0;
-    return r.baseBuff * dupBonus * equipMult;
-  }
-
-  getCombinedBuffs() {
-    let globalMult = 1.0;
-    let clickMult = 1.0;
-    let bpsMult = 1.0;
-    for (let i = 0; i < RNG_RARITIES.length; i++) {
-      if (this.counts[i] > 0) {
-        const val = this.getTierMultiplier(i);
-        const t = RNG_RARITIES[i].buffType;
-        if (t === "global") globalMult *= 1.0 + val;
-        else if (t === "click") clickMult *= 1.0 + val;
-        else if (t === "bps") bpsMult *= 1.0 + val;
-      }
-    }
-    return { globalMult, clickMult, bpsMult };
-  }
-
-  pickRandomRarity() {
-    const luck = this.getTotalLuck();
-    // Roll from highest rarity down to Common
-    for (let i = RNG_RARITIES.length - 1; i >= 1; i--) {
-      const r = RNG_RARITIES[i];
-      const chance = Math.min(0.45, luck / r.odds);
-      if (Math.random() < chance) {
-        return r;
-      }
-    }
-    return RNG_RARITIES[0];
-  }
-
-  startRoll() {
-    if (this.isRolling || this.cutsceneActive) return;
-    this.isRolling = true;
-    this.rollTimer = 0.0;
-    this.rollDuration = this.getRollDuration();
-    this.lastTickStep = -1;
-
-    // Roll N times based on Multi-Roll upgrade and pick the rarest outcome for display
-    const rolls = this.getMultiRollCount();
-    let best = RNG_RARITIES[0];
-    this.batchResults = [];
-    for (let c = 0; c < rolls; c++) {
-      const picked = this.pickRandomRarity();
-      this.batchResults.push(picked);
-      if (picked.index > best.index) best = picked;
-    }
-    this.pendingResult = best;
-  }
-
-  completeRoll() {
-    this.isRolling = false;
-    this.rollTimer = 0.0;
-
-    for (const res of this.batchResults) {
-      this.totalRolls += 1;
-      this.counts[res.index] += 1;
-      if (this.equippedIndex < res.index) {
-        this.equippedIndex = res.index;
-      }
-    }
-
-    const r = this.pendingResult;
-    this.setStageDisplay(r, false);
-    this.game.addXp(15 * (r.index + 1));
-    this.game.recalculateRates();
-
-    // Trigger special animation if rarity meets threshold
-    if (r.index >= this.cutsceneThreshold) {
-      this.triggerCutscene(r);
-    } else if (r.index >= 2) {
-      this.game.sfx.playBuy(this.game.sfxEnabled, this.game.sfxVolume);
-    } else {
-      this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.7);
-    }
-  }
-
-  setStageDisplay(r, isRollingPreview = false) {
-    const badge = document.getElementById("rng-current-tier-badge");
-    const nameEl = document.getElementById("rng-current-aura-name");
-    const oddsEl = document.getElementById("rng-current-odds");
-    const buffEl = document.getElementById("rng-current-buff");
-    const reelWin = document.getElementById("rng-reel-window");
-
-    badge.className = `rng-tier-badge ${r.cssClass}`;
-    badge.textContent = isRollingPreview ? `ROLLING... (${r.tierName})` : r.tierName;
-    nameEl.textContent = r.auraName;
-    nameEl.style.color = r.color;
-    oddsEl.textContent = `1 in ${formatNum(r.odds, this.game.notationMode)}`;
-    buffEl.textContent = r.desc;
-
-    if (isRollingPreview) {
-      reelWin.classList.remove("rolling-tick");
-      void reelWin.offsetWidth;
-      reelWin.classList.add("rolling-tick");
-    }
-  }
-
-  // --- Tier-Specific Procedural Cutscenes & Synth Fanfare ---
-
-  playRarityFanfare(tierIndex) {
-    if (!this.game.sfxEnabled) return;
-    this.game.sfx._ensureContext();
-    const ctx = this.game.sfx.ctx;
-    if (!ctx) return;
-
-    const now = ctx.currentTime;
-    const notesByTier = {
-      4: [523.25, 659.25, 783.99, 1046.50], // Legendary: C Major bright arpeggio
-      5: [220.0, 277.18, 329.63, 440.0, 659.25], // Mythic: Dramatic A-major power swell
-      6: [440.0, 554.37, 659.25, 880.0, 1108.73, 1318.51], // Exotic: Prismatic shimmer
-      7: [146.83, 155.56, 220.0, 293.66, 440.0], // Secret: Dark Phrygian cipher chord
-      8: [261.63, 392.0, 523.25, 783.99, 1046.5, 1567.98], // Very Secret: Dimensional fifths
-      9: [130.81, 261.63, 329.63, 392.0, 523.25, 659.25, 783.99, 1046.5, 1318.5] // Nearly Impossible: Grand Singularity Choir
-    };
-    const notes = notesByTier[tierIndex] || notesByTier[4];
-    const dur = tierIndex >= 8 ? 3.8 : 2.4;
-
-    notes.forEach((freq, idx) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = tierIndex >= 7 ? "sawtooth" : "triangle";
-      osc.frequency.setValueAtTime(freq, now + idx * 0.09);
-
-      const peak = (0.14 / Math.sqrt(notes.length)) * this.game.sfxVolume;
-      gain.gain.setValueAtTime(0.0001, now + idx * 0.09);
-      gain.gain.exponentialRampToValueAtTime(peak, now + idx * 0.09 + 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now + idx * 0.09);
-      osc.stop(now + dur + 0.05);
-    });
-  }
-
-  triggerCutscene(r) {
-    this.cutsceneActive = true;
-    this.cutsceneTier = r;
-    this.cutsceneTime = 0.0;
-    this.cutsceneDuration = r.index >= 9 ? 5.5 : r.index >= 7 ? 4.2 : 3.0;
-
-    const overlay = document.getElementById("rng-cutscene-overlay");
-    const tierEl = document.getElementById("rng-cutscene-tier");
-    const nameEl = document.getElementById("rng-cutscene-name");
-    const oddsEl = document.getElementById("rng-cutscene-odds");
-
-    tierEl.textContent = `★ ${r.tierName} ★`;
-    tierEl.style.color = r.color;
-    nameEl.textContent = r.auraName;
-    nameEl.style.color = r.color;
-    oddsEl.textContent = `1 in ${formatNum(r.odds, this.game.notationMode)}`;
-    overlay.classList.remove("hidden");
-
-    if (r.index >= 5) {
-      const gc = document.getElementById("game-container");
-      gc.classList.remove("screen-shake");
-      void gc.offsetWidth;
-      gc.classList.add("screen-shake");
-    }
-
-    // Spawn procedural particles for cutscene canvas
-    this.particles = [];
-    const count = 40 + r.index * 15;
-    for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 60 + Math.random() * 280;
-      this.particles.push({
-        x: 530,
-        y: 340,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        size: 3 + Math.random() * 6,
-        hue: Math.random() * 360,
-        char: String.fromCharCode(0x30a0 + Math.floor(Math.random() * 96))
-      });
-    }
-
-    this.playRarityFanfare(r.index);
-  }
-
-  closeCutscene() {
-    this.cutsceneActive = false;
-    document.getElementById("rng-cutscene-overlay").classList.add("hidden");
-  }
-
-  drawCutscene(dt) {
-    if (!this.cutsceneActive || !this.cutsceneTier) return;
-    this.cutsceneTime += dt;
-    if (this.cutsceneTime >= this.cutsceneDuration) {
-      this.closeCutscene();
-      return;
-    }
-
-    const canvas = document.getElementById("rng-cutscene-canvas");
-    const ctx = canvas.getContext("2d");
-    const W = canvas.width, H = canvas.height;
-    const cx = W / 2, cy = H / 2;
-    const t = this.cutsceneTime;
-    const idx = this.cutsceneTier.index;
-
-    ctx.clearRect(0, 0, W, H);
-
-    // Background backdrop per rarity
-    ctx.fillStyle = idx >= 7 ? "rgba(5, 2, 12, 0.92)" : "rgba(18, 12, 10, 0.85)";
-    ctx.fillRect(0, 0, W, H);
-
-    ctx.save();
-    // 1. LEGENDARY (Idx 4): Golden Sunburst + Star Fountain
-    if (idx === 4) {
-      ctx.translate(cx, cy);
-      for (let i = 0; i < 12; i++) {
-        ctx.rotate(Math.PI / 6 + t * 0.05);
-        ctx.fillStyle = "rgba(243, 156, 18, 0.12)";
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-35, -500);
-        ctx.lineTo(35, -500);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-      for (const p of this.particles) {
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        drawGoldenSparkle(ctx, p.x, p.y, p.size * 1.4, "#f1c40f");
-      }
-      return;
-    }
-
-    // 2. MYTHIC (Idx 5): Crimson Supernova Shockwaves
-    if (idx === 5) {
-      for (let ring = 0; ring < 3; ring++) {
-        const rad = ((t * 320 + ring * 120) % 550);
-        ctx.strokeStyle = `rgba(231, 76, 60, ${Math.max(0, 1 - rad / 550)})`;
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      for (const p of this.particles) {
-        p.x += p.vx * dt * 1.3;
-        p.y += p.vy * dt * 1.3;
-        drawStarlightShard(ctx, p.x, p.y, p.size * 1.3, "#ff4d4d");
-      }
-      ctx.restore();
-      return;
-    }
-
-    // 3. EXOTIC (Idx 6): Rotating Prismatic Sacred Geometry
-    if (idx === 6) {
-      ctx.translate(cx, cy);
-      for (let i = 0; i < 24; i++) {
-        const hue = (i * 15 + t * 120) % 360;
-        ctx.strokeStyle = `hsla(${hue}, 95%, 60%, 0.65)`;
-        ctx.lineWidth = 3;
-        ctx.save();
-        ctx.rotate((i * Math.PI) / 12 + t * 0.8);
-        ctx.strokeRect(-160, -160, 320, 320);
-        ctx.restore();
-      }
-      ctx.restore();
-      return;
-    }
-
-    // 4. SECRET (Idx 7): Pitch-Black Void Eclipse + Glitching Cipher Runes
-    if (idx === 7) {
-      for (const p of this.particles) {
-        p.y += 140 * dt;
-        if (p.y > H) p.y = 0;
-        ctx.fillStyle = "rgba(194, 102, 255, 0.75)";
-        ctx.font = "bold 16px monospace";
-        ctx.fillText(p.char, p.x, p.y);
-      }
-      // Eclipse Ring
-      ctx.strokeStyle = "#b545ff";
-      ctx.lineWidth = 8;
-      ctx.shadowColor = "#b545ff";
-      ctx.shadowBlur = 25;
-      ctx.beginPath();
-      ctx.arc(cx + (Math.random() * 6 - 3), cy, 130 + Math.sin(t * 20) * 6, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-      return;
-    }
-
-    // 5. VERY SECRET (Idx 8): Chronos Dimensional Rift & Laser Constellation
-    if (idx === 8) {
-      ctx.strokeStyle = "rgba(0, 255, 204, 0.55)";
-      ctx.lineWidth = 2;
-      for (let i = 0; i < 16; i++) {
-        const ang = (i / 16) * Math.PI * 2 + t * 1.5;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(ang) * 600, cy + Math.sin(ang) * 600);
-        ctx.stroke();
-      }
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 90 + Math.sin(t * 8) * 25, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-      return;
-    }
-
-    // 6. NEARLY IMPOSSIBLE (Idx 9): 3-Phase Omniversal Singularity
-    if (idx >= 9) {
-      // Phase 1 (0 - 1.2s): Implosion toward center
-      const phase = t < 1.1 ? (1.1 - t) / 1.1 : (t - 1.1) * 1.8;
-      ctx.translate(cx, cy);
-      for (let ring = 1; ring <= 6; ring++) {
-        const hue = (ring * 60 + t * 180) % 360;
-        ctx.strokeStyle = `hsla(${hue}, 100%, 65%, 0.85)`;
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        const r = Math.max(8, phase * 95 * ring);
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      for (let b = 0; b < 20; b++) {
-        const a = (b / 20) * Math.PI * 2 - t * 1.2;
-        const hue = (b * 18 + t * 200) % 360;
-        ctx.fillStyle = `hsla(${hue}, 100%, 70%, 0.25)`;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(a - 0.08) * 650, Math.sin(a - 0.08) * 650);
-        ctx.lineTo(Math.cos(a + 0.08) * 650, Math.sin(a + 0.08) * 650);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-  }
-
-  update(dt) {
-    if (this.cutsceneActive) {
-      this.drawCutscene(dt);
-      return;
-    }
-
-    if (this.isRolling) {
-      this.rollTimer += dt;
-      const pct = Math.min(1.0, this.rollTimer / this.rollDuration);
-      document.getElementById("rng-roll-bar").style.width = `${pct * 100}%`;
-
-      // Slot reel tick preview
-      const tickStep = Math.floor(Math.pow(pct, 0.65) * 11);
-      if (tickStep !== this.lastTickStep && pct < 0.96) {
-        this.lastTickStep = tickStep;
-        const previewIdx = Math.floor(Math.random() * Math.min(RNG_RARITIES.length, 5 + Math.floor(pct * 5)));
-        this.setStageDisplay(RNG_RARITIES[previewIdx], true);
-        this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.35);
-      }
-
-      if (this.rollTimer >= this.rollDuration) {
-        document.getElementById("rng-roll-bar").style.width = "0%";
-        this.completeRoll();
-      }
-    } else if (this.autoRoll) {
-      this.startRoll();
-    }
-  }
-
-  buildDOM() {
-    // 1. RNG Upgrades
-    const upgContainer = document.getElementById("rng-upgrades-list");
-    upgContainer.innerHTML = "";
-    this.upgrades.forEach((u) => {
-      const card = document.createElement("div");
-      card.className = "game-card";
-      card.style.minHeight = "54px";
-      card.innerHTML = `
-        <div class="card-accent accent-gold" id="acc-${u.id}"></div>
-        <div class="card-main">
-          <div class="card-top-line">
-            <span class="card-title">${u.name}</span>
-            <span class="card-count" id="lvl-${u.id}">Lv. 0/${u.max}</span>
-          </div>
-          <div class="card-desc">${u.desc}</div>
-        </div>
-        <button class="btn btn-sm" id="btn-${u.id}" type="button">Buy</button>
-      `;
-      card.querySelector(`#btn-${u.id}`).addEventListener("click", () => {
-        const cost = this.getUpgradeCost(u);
-        const bal = this.game.getCurrencyBalance(u.curr);
-        if (u.level < u.max && bal >= cost) {
-          this.game.deductCurrency(u.curr, cost);
-          u.level += 1;
-          this.game.recalculateRates();
-          this.game.sfx.playBuy(this.game.sfxEnabled, this.game.sfxVolume);
-        } else {
-          this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
-        }
-      });
-      upgContainer.appendChild(card);
-    });
-
-    // 2. 10-Rarity Compendium
-    const compContainer = document.getElementById("rng-compendium-list");
-    compContainer.innerHTML = "";
-    RNG_RARITIES.forEach((r) => {
-      const card = document.createElement("div");
-      card.className = "game-card";
-      card.id = `rng-comp-${r.index}`;
-      card.innerHTML = `
-        <div class="card-accent" style="background: ${r.color};"></div>
-        <div class="card-main">
-          <div class="card-top-line">
-            <span class="card-title" id="rng-cname-${r.index}">??? (${r.tierName})</span>
-            <span class="card-count" id="rng-ccount-${r.index}" style="color: ${r.color};">1 in ${formatNum(r.odds)}</span>
-          </div>
-          <div class="card-desc" id="rng-cdesc-${r.index}">${r.desc}</div>
-        </div>
-        <div class="sink-btn-group">
-          <button class="btn btn-sm btn-secondary" id="rng-equip-${r.index}" type="button">Locked</button>
-          ${r.index >= 4 ? `<button class="btn btn-sm btn-accent" id="rng-prev-${r.index}" type="button" title="Preview Cutscene">🎬</button>` : ""}
-        </div>
-      `;
-      card.querySelector(`#rng-equip-${r.index}`).addEventListener("click", () => {
-        if (this.counts[r.index] > 0) {
-          this.equippedIndex = r.index;
-          this.game.recalculateRates();
-          this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume);
-        }
-      });
-      const prevBtn = card.querySelector(`#rng-prev-${r.index}`);
-      if (prevBtn) {
-        prevBtn.addEventListener("click", () => this.triggerCutscene(r));
-      }
-      compContainer.appendChild(card);
-    });
-
-    // 3. Stage Controls
-    document.getElementById("btn-rng-roll").addEventListener("click", () => this.startRoll());
-    document.getElementById("btn-rng-auto").addEventListener("click", (e) => {
-      this.autoRoll = !this.autoRoll;
-      e.currentTarget.textContent = `Auto-Roll: ${this.autoRoll ? "ON" : "OFF"}`;
-      e.currentTarget.classList.toggle("active", this.autoRoll);
-    });
-    document.getElementById("btn-rng-fast").addEventListener("click", (e) => {
-      this.fastRoll = !this.fastRoll;
-      e.currentTarget.textContent = `Fast Roll: ${this.fastRoll ? "ON" : "OFF"}`;
-      e.currentTarget.classList.toggle("active", this.fastRoll);
-    });
-    document.getElementById("rng-cutscene-threshold").addEventListener("change", (e) => {
-      this.cutsceneThreshold = parseInt(e.target.value, 10);
-    });
-    document.getElementById("btn-skip-cutscene").addEventListener("click", () => this.closeCutscene());
-
-    window.addEventListener("keydown", (e) => {
-      if (this.cutsceneActive && e.code === "Space") {
-        e.preventDefault();
-        this.closeCutscene();
-      } else if ((e.key === "r" || e.key === "R") && document.activeElement.tagName !== "INPUT") {
-        this.startRoll();
-      }
-    });
-  }
-
-  refreshDOM() {
-    if (this.game.activeTab !== "rng") return;
-    const nm = this.game.notationMode;
-    const luck = this.getTotalLuck();
-    const { globalMult } = this.getCombinedBuffs();
-
-    document.getElementById("rng-stats-line").innerHTML =
-      `Total Rolls: ${formatNum(this.totalRolls, nm)} &nbsp;|&nbsp; Luck: ${luck.toFixed(2)}x &nbsp;|&nbsp; RNG Global Mult: ${formatNum(globalMult, nm)}x`;
-
-    document.getElementById("btn-rng-roll").disabled = this.isRolling;
-
-    // Refresh Upgrades
-    for (const u of this.upgrades) {
-      const cost = this.getUpgradeCost(u);
-      const bal = this.game.getCurrencyBalance(u.curr);
-      const can = u.level < u.max && bal >= cost;
-      document.getElementById(`lvl-${u.id}`).textContent = `Lv. ${u.level}/${u.max}`;
-      const btn = document.getElementById(`btn-${u.id}`);
-      btn.textContent = u.level >= u.max ? "MAX" : `${formatNum(cost, nm)} ${u.curr}`;
-      btn.className = `btn btn-sm ${can ? "btn-gold" : "btn-disabled"}`;
-      btn.disabled = !can;
-    }
-
-    // Refresh Compendium
-    for (const r of RNG_RARITIES) {
-      const owned = this.counts[r.index];
-      const unlocked = owned > 0;
-      const isEq = this.equippedIndex === r.index;
-      document.getElementById(`rng-cname-${r.index}`).textContent = unlocked
-        ? `${r.auraName} [${r.tierName}]`
-        : `??? [${r.tierName}]`;
-      document.getElementById(`rng-ccount-${r.index}`).textContent = unlocked
-        ? `Owned: ${formatNum(owned, nm)} (+${formatNum(this.getTierMultiplier(r.index) * 100, nm)}%)`
-        : `1 in ${formatNum(r.odds, nm)}`;
-      const eqBtn = document.getElementById(`rng-equip-${r.index}`);
-      if (!unlocked) {
-        eqBtn.textContent = "Locked";
-        eqBtn.className = "btn btn-sm btn-disabled";
-        eqBtn.disabled = true;
-      } else if (isEq) {
-        eqBtn.textContent = "EQUIPPED ★";
-        eqBtn.className = "btn btn-sm btn-success";
-        eqBtn.disabled = false;
-      } else {
-        eqBtn.textContent = "Equip (1.5x)";
-        eqBtn.className = "btn btn-sm btn-secondary";
-        eqBtn.disabled = false;
-      }
-    }
-  }
-}
-
-// --- Hook RNGManager into GameState Prototype ---
-const _origRecalc = GameState.prototype.recalculateRates;
-GameState.prototype.recalculateRates = function () {
-  _origRecalc.call(this);
-  if (this.rng) {
-    const { globalMult, clickMult, bpsMult } = this.rng.getCombinedBuffs();
-    this.totalMultiplier *= globalMult;
-    this.bps *= globalMult * bpsMult;
-    this.clickPower *= globalMult * clickMult;
-  }
-};
-
-const _origUpdate = GameState.prototype.update;
-GameState.prototype.update = function (dt) {
-  _origUpdate.call(this, dt);
-  if (this.rng) this.rng.update(dt);
-};
-
-const _origRefresh = GameState.prototype.refreshDOM;
-GameState.prototype.refreshDOM = function () {
-  _origRefresh.call(this);
-  if (this.rng) this.rng.refreshDOM();
-};
-
-const _origSave = GameState.prototype.saveGame;
-GameState.prototype.saveGame = function () {
-  _origSave.call(this);
-  if (this.rng) {
-    try {
-      localStorage.setItem("rainy_cafe_rng_save", JSON.stringify({
-        totalRolls: this.rng.totalRolls,
-        counts: this.rng.counts,
-        equippedIndex: this.rng.equippedIndex,
-        upgrades: this.rng.upgrades.map((u) => u.level)
-      }));
-    } catch (e) {}
-  }
-};
-
-window.addEventListener("DOMContentLoaded", () => {
-  // Attach RNG after main game initializes
-  setTimeout(() => {
-    const tabBtn = document.querySelector('[data-tab="rng"]');
-    if (!tabBtn) return;
-  }, 50);
 });
