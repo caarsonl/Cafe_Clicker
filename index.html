@@ -90,6 +90,7 @@
             <button class="tab-btn" data-tab="orders" type="button">Orders</button>
             <button class="tab-btn" data-tab="plinko" type="button">Plinko</button>
             <button class="tab-btn" data-tab="talents" type="button">Talents</button>
+            <button class="tab-btn" data-tab="rng" type="button">RNG ★</button>
           </div>
           <div class="tab-row" id="tab-row-1">
             <button class="tab-btn" data-tab="sinks" type="button">Sinks</button>
@@ -189,7 +190,63 @@
               </button>
             </div>
           </div>
+          <!-- RNG TAB (10-Tier Aura Roller & Compendium) -->
+          <div id="tab-rng" class="tab-pane">
+            <div class="pane-header-row">
+              <div>
+                <h2 class="pane-title">Celestial Aura RNG Roller</h2>
+                <div id="rng-stats-line" class="sub-stat-muted">
+                  Total Rolls: 0 &nbsp;|&nbsp; Luck: 1.00x &nbsp;|&nbsp; RNG Mult: 1.00x
+                </div>
+              </div>
+              <div class="rng-top-controls">
+                <label class="rng-cutscene-select-wrap" title="Minimum rarity to play full-screen cutscene">
+                  <span>Cutscene:</span>
+                  <select id="rng-cutscene-threshold">
+                    <option value="4">Legendary+</option>
+                    <option value="5">Mythic+</option>
+                    <option value="6">Exotic+</option>
+                    <option value="7">Secret+</option>
+                    <option value="99">Off</option>
+                  </select>
+                </label>
+              </div>
+            </div>
 
+            <!-- Slot Reel / Rolling Stage -->
+            <div id="rng-stage-box" class="rng-stage">
+              <div id="rng-reel-window" class="rng-reel-window">
+                <div id="rng-current-tier-badge" class="rng-tier-badge tier-common">READY TO ROLL</div>
+                <div id="rng-current-aura-name" class="rng-aura-name">Click Roll to Test Your Fate</div>
+                <div id="rng-current-odds" class="rng-aura-odds">10 Rarities Available</div>
+                <div id="rng-current-buff" class="rng-aura-buff">Every roll levels up your Compendium permanently!</div>
+              </div>
+
+              <div class="rng-progress-wrap">
+                <div id="rng-roll-bar" class="rng-roll-bar" style="width: 0%;"></div>
+              </div>
+
+              <div class="rng-action-row">
+                <button id="btn-rng-roll" class="btn btn-gold btn-rng-main" type="button">
+                  ROLL AURA (R)
+                </button>
+                <button id="btn-rng-auto" class="btn btn-secondary btn-rng-toggle" type="button">
+                  Auto-Roll: OFF
+                </button>
+                <button id="btn-rng-fast" class="btn btn-secondary btn-rng-toggle" type="button">
+                  Fast Roll: OFF
+                </button>
+              </div>
+            </div>
+
+            <!-- Grindy RNG Upgrades (Luck, Speed, Multi-Roll) -->
+            <h3 class="pane-subtitle section-spacer">Fortune &amp; Roll Enhancers</h3>
+            <div id="rng-upgrades-list" class="card-list compact-list"></div>
+
+            <!-- 10-Rarity Compendium & Aura Equipper -->
+            <h3 class="pane-subtitle section-spacer">10-Rarity Aura Compendium (Click to Equip / Preview)</h3>
+            <div id="rng-compendium-list" class="card-list"></div>
+          </div>
           <!-- 7. TALENTS TAB (Barista Mastery & Level Crates) -->
           <div id="tab-talents" class="tab-pane">
             <div class="pane-header-row">
@@ -371,7 +428,18 @@
 
         </div>
       </section>
-
+    <!-- FULL-SCREEN HIGH-RARITY RNG CUTSCENE OVERLAY -->
+      <div id="rng-cutscene-overlay" class="rng-cutscene hidden">
+        <canvas id="rng-cutscene-canvas" width="1060" height="680"></canvas>
+        <div id="rng-cutscene-text-wrap" class="rng-cutscene-hud">
+          <div id="rng-cutscene-tier" class="cutscene-tier">LEGENDARY</div>
+          <div id="rng-cutscene-name" class="cutscene-name">Golden Sovereign Crown</div>
+          <div id="rng-cutscene-odds" class="cutscene-odds">1 in 250</div>
+        </div>
+        <button id="btn-skip-cutscene" class="btn btn-secondary cutscene-skip" type="button">
+          Skip (Space)
+        </button>
+      </div>
     </main>
   </div>
 

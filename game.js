@@ -876,8 +876,23 @@ class GameState {
     this.recalculateRates();
     this.buildStaticDOM();
     this.bindEvents();
+    this.tabs.push("rng");
+    this.rng = new RNGManager(this);
+    this.rng.buildDOM();
+    try {
+      const rngRaw = JSON.parse(localStorage.getItem("rainy_cafe_rng_save") || "null");
+      if (rngRaw) {
+        this.rng.totalRolls = rngRaw.totalRolls || 0;
+        if (Array.isArray(rngRaw.counts)) this.rng.counts = rngRaw.counts;
+        this.rng.equippedIndex = rngRaw.equippedIndex ?? -1;
+        if (Array.isArray(rngRaw.upgrades)) {
+          rngRaw.upgrades.forEach((lvl, i) => { if (this.rng.upgrades[i]) this.rng.upgrades[i].level = lvl; });
+        }
+      }
+    } catch (e) {}
+    this.recalculateRates();
   }
-
+    
   initCatalogs() {
     this.upgrades = [
       new RegularUpgrade("u01", "Cinnamon Dusting", 15, 0.4, 1, "+1 Click & +0.4 BPS"),
@@ -3294,4 +3309,685 @@ window.addEventListener("DOMContentLoaded", () => {
 
   window.addEventListener("beforeunload", () => game.saveGame());
   requestAnimationFrame(loop);
+});
+// =============================================================================
+// 11. 10-TIER RNG AURA SYSTEM & PROCEDURAL CUTSCENE ENGINE
+// =============================================================================
+
+const RNG_RARITIES = [
+  {
+    index: 0, id: "common", tierName: "Common", auraName: "House Blend Steam",
+    odds: 2, color: "#9e8c80", cssClass: "tier-common",
+    buffType: "bps", baseBuff: 0.05, desc: "+5% Passive BPS (+1% per dup)"
+  },
+  {
+    index: 1, id: "uncommon", tierName: "Uncommon", auraName: "Velvet Crema Glow",
+    odds: 5, color: "#3e8e57", cssClass: "tier-uncommon",
+    buffType: "click", baseBuff: 0.12, desc: "+12% Click Power (+2.5% per dup)"
+  },
+  {
+    index: 2, id: "rare", tierName: "Rare", auraName: "Raindrop Lo-Fi Pulse",
+    odds: 15, color: "#3670c7", cssClass: "tier-rare",
+    buffType: "global", baseBuff: 0.25, desc: "+25% Global Multiplier (+5% per dup)"
+  },
+  {
+    index: 3, id: "epic", tierName: "Epic", auraName: "Midnight Roast Vortex",
+    odds: 50, color: "#9b59b6", cssClass: "tier-epic",
+    buffType: "global", baseBuff: 0.60, desc: "+60% Global Multiplier (+12% per dup)"
+  },
+  {
+    index: 4, id: "legendary", tierName: "Legendary", auraName: "Golden Sovereign Crown",
+    odds: 250, color: "#f39c12", cssClass: "tier-legendary",
+    buffType: "global", baseBuff: 1.25, desc: "+125% Global Mult & +15% Luck"
+  },
+  {
+    index: 5, id: "mythic", tierName: "Mythic", auraName: "Crimson Supernova Core",
+    odds: 1250, color: "#e74c3c", cssClass: "tier-mythic",
+    buffType: "global", baseBuff: 4.00, desc: "+400% Global Mult & +50% Click Power"
+  },
+  {
+    index: 6, id: "exotic", tierName: "Exotic", auraName: "Prismatic Nebula Brew",
+    odds: 6000, color: "#00d2ff", cssClass: "tier-exotic",
+    buffType: "global", baseBuff: 14.00, desc: "+1,400% Global Mult & +50% Luck"
+  },
+  {
+    index: 7, id: "secret", tierName: "Secret", auraName: "Abyssal Cipher Espresso",
+    odds: 25000, color: "#c266ff", cssClass: "tier-secret",
+    buffType: "global", baseBuff: 49.00, desc: "+4,900% Global Mult & +100% Crit Power"
+  },
+  {
+    index: 8, id: "very_secret", tierName: "Very Secret", auraName: "Chronos Dimensional Rift",
+    odds: 100000, color: "#00ffcc", cssClass: "tier-very-secret",
+    buffType: "global", baseBuff: 249.00, desc: "+24,900% Global Mult & +25% Roll Speed"
+  },
+  {
+    index: 9, id: "nearly_impossible", tierName: "Nearly Impossible", auraName: "Omniversal Singularity Bean",
+    odds: 1000000, color: "#ffdd44", cssClass: "tier-impossible",
+    buffType: "global", baseBuff: 2499.00, desc: "+249,900% Global Mult & +200% Luck"
+  }
+];
+
+class RNGManager {
+  constructor(game) {
+    this.game = game;
+    this.totalRolls = 0;
+    this.counts = new Array(RNG_RARITIES.length).fill(0);
+    this.equippedIndex = -1;
+
+    // Rolling State
+    this.isRolling = false;
+    this.rollTimer = 0.0;
+    this.rollDuration = 1.4;
+    this.lastTickStep = -1;
+    this.pendingResult = null;
+    this.autoRoll = false;
+    this.fastRoll = false;
+    this.cutsceneThreshold = 4; // Default: Legendary+
+
+    // Upgrades: Luck (Beans), Speed (Beans), Cosmic Luck (Golden Beans), Multi-Roll (Crystals)
+    this.upgrades = [
+      { id: "ru1", name: "Four-Leaf Clover Syrup", curr: "beans", baseCost: 500, scale: 1.65, level: 0, max: 50, desc: "+25% RNG Luck per level" },
+      { id: "ru2", name: "Turbo Steam Bearings", curr: "beans", baseCost: 2500, scale: 1.85, level: 0, max: 20, desc: "Increases roll animation speed by +8% per level" },
+      { id: "ru3", name: "Golden Dice Infuser", curr: "golden", baseCost: 3, scale: 1.55, level: 0, max: 30, desc: "x1.35 Compounding RNG Luck per level" },
+      { id: "ru4", name: "Astral Quantum Dice", curr: "astral", baseCost: 2, scale: 2.20, level: 0, max: 5, desc: "+1 Simultaneous Roll per spin (Multi-Roll)" }
+    ];
+
+    // Cutscene State
+    this.cutsceneActive = false;
+    this.cutsceneTier = null;
+    this.cutsceneTime = 0.0;
+    this.cutsceneDuration = 4.0;
+    this.particles = [];
+  }
+
+  getUpgradeCost(u) {
+    return Math.max(1, Math.floor(u.baseCost * Math.pow(u.scale, u.level)));
+  }
+
+  getTotalLuck() {
+    let luck = 1.0 + this.upgrades[0].level * 0.25;
+    luck *= Math.pow(1.35, this.upgrades[2].level);
+    if (this.counts[4] > 0) luck *= 1.15;
+    if (this.counts[6] > 0) luck *= 1.50;
+    if (this.counts[9] > 0) luck *= 3.00;
+    luck *= 1.0 + this.game.talents[4].rank * 0.10;
+    return luck;
+  }
+
+  getRollDuration() {
+    let base = this.fastRoll ? 0.42 : 1.35;
+    base /= 1.0 + this.upgrades[1].level * 0.08;
+    if (this.counts[8] > 0) base *= 0.75;
+    return Math.max(0.15, base);
+  }
+
+  getMultiRollCount() {
+    return 1 + this.upgrades[3].level;
+  }
+
+  getTierMultiplier(idx) {
+    const r = RNG_RARITIES[idx];
+    const owned = this.counts[idx];
+    if (owned <= 0) return 0.0;
+    // Scales logarithmically with duplicates so grinding duplicates always rewards
+    const dupBonus = 1.0 + Math.log10(owned) * 0.5 + Math.min(owned - 1, 50) * 0.05;
+    const equipMult = this.equippedIndex === idx ? 1.5 : 1.0;
+    return r.baseBuff * dupBonus * equipMult;
+  }
+
+  getCombinedBuffs() {
+    let globalMult = 1.0;
+    let clickMult = 1.0;
+    let bpsMult = 1.0;
+    for (let i = 0; i < RNG_RARITIES.length; i++) {
+      if (this.counts[i] > 0) {
+        const val = this.getTierMultiplier(i);
+        const t = RNG_RARITIES[i].buffType;
+        if (t === "global") globalMult *= 1.0 + val;
+        else if (t === "click") clickMult *= 1.0 + val;
+        else if (t === "bps") bpsMult *= 1.0 + val;
+      }
+    }
+    return { globalMult, clickMult, bpsMult };
+  }
+
+  pickRandomRarity() {
+    const luck = this.getTotalLuck();
+    // Roll from highest rarity down to Common
+    for (let i = RNG_RARITIES.length - 1; i >= 1; i--) {
+      const r = RNG_RARITIES[i];
+      const chance = Math.min(0.45, luck / r.odds);
+      if (Math.random() < chance) {
+        return r;
+      }
+    }
+    return RNG_RARITIES[0];
+  }
+
+  startRoll() {
+    if (this.isRolling || this.cutsceneActive) return;
+    this.isRolling = true;
+    this.rollTimer = 0.0;
+    this.rollDuration = this.getRollDuration();
+    this.lastTickStep = -1;
+
+    // Roll N times based on Multi-Roll upgrade and pick the rarest outcome for display
+    const rolls = this.getMultiRollCount();
+    let best = RNG_RARITIES[0];
+    this.batchResults = [];
+    for (let c = 0; c < rolls; c++) {
+      const picked = this.pickRandomRarity();
+      this.batchResults.push(picked);
+      if (picked.index > best.index) best = picked;
+    }
+    this.pendingResult = best;
+  }
+
+  completeRoll() {
+    this.isRolling = false;
+    this.rollTimer = 0.0;
+
+    for (const res of this.batchResults) {
+      this.totalRolls += 1;
+      this.counts[res.index] += 1;
+      if (this.equippedIndex < res.index) {
+        this.equippedIndex = res.index;
+      }
+    }
+
+    const r = this.pendingResult;
+    this.setStageDisplay(r, false);
+    this.game.addXp(15 * (r.index + 1));
+    this.game.recalculateRates();
+
+    // Trigger special animation if rarity meets threshold
+    if (r.index >= this.cutsceneThreshold) {
+      this.triggerCutscene(r);
+    } else if (r.index >= 2) {
+      this.game.sfx.playBuy(this.game.sfxEnabled, this.game.sfxVolume);
+    } else {
+      this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.7);
+    }
+  }
+
+  setStageDisplay(r, isRollingPreview = false) {
+    const badge = document.getElementById("rng-current-tier-badge");
+    const nameEl = document.getElementById("rng-current-aura-name");
+    const oddsEl = document.getElementById("rng-current-odds");
+    const buffEl = document.getElementById("rng-current-buff");
+    const reelWin = document.getElementById("rng-reel-window");
+
+    badge.className = `rng-tier-badge ${r.cssClass}`;
+    badge.textContent = isRollingPreview ? `ROLLING... (${r.tierName})` : r.tierName;
+    nameEl.textContent = r.auraName;
+    nameEl.style.color = r.color;
+    oddsEl.textContent = `1 in ${formatNum(r.odds, this.game.notationMode)}`;
+    buffEl.textContent = r.desc;
+
+    if (isRollingPreview) {
+      reelWin.classList.remove("rolling-tick");
+      void reelWin.offsetWidth;
+      reelWin.classList.add("rolling-tick");
+    }
+  }
+
+  // --- Tier-Specific Procedural Cutscenes & Synth Fanfare ---
+
+  playRarityFanfare(tierIndex) {
+    if (!this.game.sfxEnabled) return;
+    this.game.sfx._ensureContext();
+    const ctx = this.game.sfx.ctx;
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const notesByTier = {
+      4: [523.25, 659.25, 783.99, 1046.50], // Legendary: C Major bright arpeggio
+      5: [220.0, 277.18, 329.63, 440.0, 659.25], // Mythic: Dramatic A-major power swell
+      6: [440.0, 554.37, 659.25, 880.0, 1108.73, 1318.51], // Exotic: Prismatic shimmer
+      7: [146.83, 155.56, 220.0, 293.66, 440.0], // Secret: Dark Phrygian cipher chord
+      8: [261.63, 392.0, 523.25, 783.99, 1046.5, 1567.98], // Very Secret: Dimensional fifths
+      9: [130.81, 261.63, 329.63, 392.0, 523.25, 659.25, 783.99, 1046.5, 1318.5] // Nearly Impossible: Grand Singularity Choir
+    };
+    const notes = notesByTier[tierIndex] || notesByTier[4];
+    const dur = tierIndex >= 8 ? 3.8 : 2.4;
+
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = tierIndex >= 7 ? "sawtooth" : "triangle";
+      osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+
+      const peak = (0.14 / Math.sqrt(notes.length)) * this.game.sfxVolume;
+      gain.gain.setValueAtTime(0.0001, now + idx * 0.09);
+      gain.gain.exponentialRampToValueAtTime(peak, now + idx * 0.09 + 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + idx * 0.09);
+      osc.stop(now + dur + 0.05);
+    });
+  }
+
+  triggerCutscene(r) {
+    this.cutsceneActive = true;
+    this.cutsceneTier = r;
+    this.cutsceneTime = 0.0;
+    this.cutsceneDuration = r.index >= 9 ? 5.5 : r.index >= 7 ? 4.2 : 3.0;
+
+    const overlay = document.getElementById("rng-cutscene-overlay");
+    const tierEl = document.getElementById("rng-cutscene-tier");
+    const nameEl = document.getElementById("rng-cutscene-name");
+    const oddsEl = document.getElementById("rng-cutscene-odds");
+
+    tierEl.textContent = `★ ${r.tierName} ★`;
+    tierEl.style.color = r.color;
+    nameEl.textContent = r.auraName;
+    nameEl.style.color = r.color;
+    oddsEl.textContent = `1 in ${formatNum(r.odds, this.game.notationMode)}`;
+    overlay.classList.remove("hidden");
+
+    if (r.index >= 5) {
+      const gc = document.getElementById("game-container");
+      gc.classList.remove("screen-shake");
+      void gc.offsetWidth;
+      gc.classList.add("screen-shake");
+    }
+
+    // Spawn procedural particles for cutscene canvas
+    this.particles = [];
+    const count = 40 + r.index * 15;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 60 + Math.random() * 280;
+      this.particles.push({
+        x: 530,
+        y: 340,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: 3 + Math.random() * 6,
+        hue: Math.random() * 360,
+        char: String.fromCharCode(0x30a0 + Math.floor(Math.random() * 96))
+      });
+    }
+
+    this.playRarityFanfare(r.index);
+  }
+
+  closeCutscene() {
+    this.cutsceneActive = false;
+    document.getElementById("rng-cutscene-overlay").classList.add("hidden");
+  }
+
+  drawCutscene(dt) {
+    if (!this.cutsceneActive || !this.cutsceneTier) return;
+    this.cutsceneTime += dt;
+    if (this.cutsceneTime >= this.cutsceneDuration) {
+      this.closeCutscene();
+      return;
+    }
+
+    const canvas = document.getElementById("rng-cutscene-canvas");
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H / 2;
+    const t = this.cutsceneTime;
+    const idx = this.cutsceneTier.index;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Background backdrop per rarity
+    ctx.fillStyle = idx >= 7 ? "rgba(5, 2, 12, 0.92)" : "rgba(18, 12, 10, 0.85)";
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    // 1. LEGENDARY (Idx 4): Golden Sunburst + Star Fountain
+    if (idx === 4) {
+      ctx.translate(cx, cy);
+      for (let i = 0; i < 12; i++) {
+        ctx.rotate(Math.PI / 6 + t * 0.05);
+        ctx.fillStyle = "rgba(243, 156, 18, 0.12)";
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-35, -500);
+        ctx.lineTo(35, -500);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+      for (const p of this.particles) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        drawGoldenSparkle(ctx, p.x, p.y, p.size * 1.4, "#f1c40f");
+      }
+      return;
+    }
+
+    // 2. MYTHIC (Idx 5): Crimson Supernova Shockwaves
+    if (idx === 5) {
+      for (let ring = 0; ring < 3; ring++) {
+        const rad = ((t * 320 + ring * 120) % 550);
+        ctx.strokeStyle = `rgba(231, 76, 60, ${Math.max(0, 1 - rad / 550)})`;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      for (const p of this.particles) {
+        p.x += p.vx * dt * 1.3;
+        p.y += p.vy * dt * 1.3;
+        drawStarlightShard(ctx, p.x, p.y, p.size * 1.3, "#ff4d4d");
+      }
+      ctx.restore();
+      return;
+    }
+
+    // 3. EXOTIC (Idx 6): Rotating Prismatic Sacred Geometry
+    if (idx === 6) {
+      ctx.translate(cx, cy);
+      for (let i = 0; i < 24; i++) {
+        const hue = (i * 15 + t * 120) % 360;
+        ctx.strokeStyle = `hsla(${hue}, 95%, 60%, 0.65)`;
+        ctx.lineWidth = 3;
+        ctx.save();
+        ctx.rotate((i * Math.PI) / 12 + t * 0.8);
+        ctx.strokeRect(-160, -160, 320, 320);
+        ctx.restore();
+      }
+      ctx.restore();
+      return;
+    }
+
+    // 4. SECRET (Idx 7): Pitch-Black Void Eclipse + Glitching Cipher Runes
+    if (idx === 7) {
+      for (const p of this.particles) {
+        p.y += 140 * dt;
+        if (p.y > H) p.y = 0;
+        ctx.fillStyle = "rgba(194, 102, 255, 0.75)";
+        ctx.font = "bold 16px monospace";
+        ctx.fillText(p.char, p.x, p.y);
+      }
+      // Eclipse Ring
+      ctx.strokeStyle = "#b545ff";
+      ctx.lineWidth = 8;
+      ctx.shadowColor = "#b545ff";
+      ctx.shadowBlur = 25;
+      ctx.beginPath();
+      ctx.arc(cx + (Math.random() * 6 - 3), cy, 130 + Math.sin(t * 20) * 6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    // 5. VERY SECRET (Idx 8): Chronos Dimensional Rift & Laser Constellation
+    if (idx === 8) {
+      ctx.strokeStyle = "rgba(0, 255, 204, 0.55)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 16; i++) {
+        const ang = (i / 16) * Math.PI * 2 + t * 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(ang) * 600, cy + Math.sin(ang) * 600);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 90 + Math.sin(t * 8) * 25, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    // 6. NEARLY IMPOSSIBLE (Idx 9): 3-Phase Omniversal Singularity
+    if (idx >= 9) {
+      // Phase 1 (0 - 1.2s): Implosion toward center
+      const phase = t < 1.1 ? (1.1 - t) / 1.1 : (t - 1.1) * 1.8;
+      ctx.translate(cx, cy);
+      for (let ring = 1; ring <= 6; ring++) {
+        const hue = (ring * 60 + t * 180) % 360;
+        ctx.strokeStyle = `hsla(${hue}, 100%, 65%, 0.85)`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        const r = Math.max(8, phase * 95 * ring);
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      for (let b = 0; b < 20; b++) {
+        const a = (b / 20) * Math.PI * 2 - t * 1.2;
+        const hue = (b * 18 + t * 200) % 360;
+        ctx.fillStyle = `hsla(${hue}, 100%, 70%, 0.25)`;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(a - 0.08) * 650, Math.sin(a - 0.08) * 650);
+        ctx.lineTo(Math.cos(a + 0.08) * 650, Math.sin(a + 0.08) * 650);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  update(dt) {
+    if (this.cutsceneActive) {
+      this.drawCutscene(dt);
+      return;
+    }
+
+    if (this.isRolling) {
+      this.rollTimer += dt;
+      const pct = Math.min(1.0, this.rollTimer / this.rollDuration);
+      document.getElementById("rng-roll-bar").style.width = `${pct * 100}%`;
+
+      // Slot reel tick preview
+      const tickStep = Math.floor(Math.pow(pct, 0.65) * 11);
+      if (tickStep !== this.lastTickStep && pct < 0.96) {
+        this.lastTickStep = tickStep;
+        const previewIdx = Math.floor(Math.random() * Math.min(RNG_RARITIES.length, 5 + Math.floor(pct * 5)));
+        this.setStageDisplay(RNG_RARITIES[previewIdx], true);
+        this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.35);
+      }
+
+      if (this.rollTimer >= this.rollDuration) {
+        document.getElementById("rng-roll-bar").style.width = "0%";
+        this.completeRoll();
+      }
+    } else if (this.autoRoll) {
+      this.startRoll();
+    }
+  }
+
+  buildDOM() {
+    // 1. RNG Upgrades
+    const upgContainer = document.getElementById("rng-upgrades-list");
+    upgContainer.innerHTML = "";
+    this.upgrades.forEach((u) => {
+      const card = document.createElement("div");
+      card.className = "game-card";
+      card.style.minHeight = "54px";
+      card.innerHTML = `
+        <div class="card-accent accent-gold" id="acc-${u.id}"></div>
+        <div class="card-main">
+          <div class="card-top-line">
+            <span class="card-title">${u.name}</span>
+            <span class="card-count" id="lvl-${u.id}">Lv. 0/${u.max}</span>
+          </div>
+          <div class="card-desc">${u.desc}</div>
+        </div>
+        <button class="btn btn-sm" id="btn-${u.id}" type="button">Buy</button>
+      `;
+      card.querySelector(`#btn-${u.id}`).addEventListener("click", () => {
+        const cost = this.getUpgradeCost(u);
+        const bal = this.game.getCurrencyBalance(u.curr);
+        if (u.level < u.max && bal >= cost) {
+          this.game.deductCurrency(u.curr, cost);
+          u.level += 1;
+          this.game.recalculateRates();
+          this.game.sfx.playBuy(this.game.sfxEnabled, this.game.sfxVolume);
+        } else {
+          this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
+        }
+      });
+      upgContainer.appendChild(card);
+    });
+
+    // 2. 10-Rarity Compendium
+    const compContainer = document.getElementById("rng-compendium-list");
+    compContainer.innerHTML = "";
+    RNG_RARITIES.forEach((r) => {
+      const card = document.createElement("div");
+      card.className = "game-card";
+      card.id = `rng-comp-${r.index}`;
+      card.innerHTML = `
+        <div class="card-accent" style="background: ${r.color};"></div>
+        <div class="card-main">
+          <div class="card-top-line">
+            <span class="card-title" id="rng-cname-${r.index}">??? (${r.tierName})</span>
+            <span class="card-count" id="rng-ccount-${r.index}" style="color: ${r.color};">1 in ${formatNum(r.odds)}</span>
+          </div>
+          <div class="card-desc" id="rng-cdesc-${r.index}">${r.desc}</div>
+        </div>
+        <div class="sink-btn-group">
+          <button class="btn btn-sm btn-secondary" id="rng-equip-${r.index}" type="button">Locked</button>
+          ${r.index >= 4 ? `<button class="btn btn-sm btn-accent" id="rng-prev-${r.index}" type="button" title="Preview Cutscene">🎬</button>` : ""}
+        </div>
+      `;
+      card.querySelector(`#rng-equip-${r.index}`).addEventListener("click", () => {
+        if (this.counts[r.index] > 0) {
+          this.equippedIndex = r.index;
+          this.game.recalculateRates();
+          this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume);
+        }
+      });
+      const prevBtn = card.querySelector(`#rng-prev-${r.index}`);
+      if (prevBtn) {
+        prevBtn.addEventListener("click", () => this.triggerCutscene(r));
+      }
+      compContainer.appendChild(card);
+    });
+
+    // 3. Stage Controls
+    document.getElementById("btn-rng-roll").addEventListener("click", () => this.startRoll());
+    document.getElementById("btn-rng-auto").addEventListener("click", (e) => {
+      this.autoRoll = !this.autoRoll;
+      e.currentTarget.textContent = `Auto-Roll: ${this.autoRoll ? "ON" : "OFF"}`;
+      e.currentTarget.classList.toggle("active", this.autoRoll);
+    });
+    document.getElementById("btn-rng-fast").addEventListener("click", (e) => {
+      this.fastRoll = !this.fastRoll;
+      e.currentTarget.textContent = `Fast Roll: ${this.fastRoll ? "ON" : "OFF"}`;
+      e.currentTarget.classList.toggle("active", this.fastRoll);
+    });
+    document.getElementById("rng-cutscene-threshold").addEventListener("change", (e) => {
+      this.cutsceneThreshold = parseInt(e.target.value, 10);
+    });
+    document.getElementById("btn-skip-cutscene").addEventListener("click", () => this.closeCutscene());
+
+    window.addEventListener("keydown", (e) => {
+      if (this.cutsceneActive && e.code === "Space") {
+        e.preventDefault();
+        this.closeCutscene();
+      } else if ((e.key === "r" || e.key === "R") && document.activeElement.tagName !== "INPUT") {
+        this.startRoll();
+      }
+    });
+  }
+
+  refreshDOM() {
+    if (this.game.activeTab !== "rng") return;
+    const nm = this.game.notationMode;
+    const luck = this.getTotalLuck();
+    const { globalMult } = this.getCombinedBuffs();
+
+    document.getElementById("rng-stats-line").innerHTML =
+      `Total Rolls: ${formatNum(this.totalRolls, nm)} &nbsp;|&nbsp; Luck: ${luck.toFixed(2)}x &nbsp;|&nbsp; RNG Global Mult: ${formatNum(globalMult, nm)}x`;
+
+    document.getElementById("btn-rng-roll").disabled = this.isRolling;
+
+    // Refresh Upgrades
+    for (const u of this.upgrades) {
+      const cost = this.getUpgradeCost(u);
+      const bal = this.game.getCurrencyBalance(u.curr);
+      const can = u.level < u.max && bal >= cost;
+      document.getElementById(`lvl-${u.id}`).textContent = `Lv. ${u.level}/${u.max}`;
+      const btn = document.getElementById(`btn-${u.id}`);
+      btn.textContent = u.level >= u.max ? "MAX" : `${formatNum(cost, nm)} ${u.curr}`;
+      btn.className = `btn btn-sm ${can ? "btn-gold" : "btn-disabled"}`;
+      btn.disabled = !can;
+    }
+
+    // Refresh Compendium
+    for (const r of RNG_RARITIES) {
+      const owned = this.counts[r.index];
+      const unlocked = owned > 0;
+      const isEq = this.equippedIndex === r.index;
+      document.getElementById(`rng-cname-${r.index}`).textContent = unlocked
+        ? `${r.auraName} [${r.tierName}]`
+        : `??? [${r.tierName}]`;
+      document.getElementById(`rng-ccount-${r.index}`).textContent = unlocked
+        ? `Owned: ${formatNum(owned, nm)} (+${formatNum(this.getTierMultiplier(r.index) * 100, nm)}%)`
+        : `1 in ${formatNum(r.odds, nm)}`;
+      const eqBtn = document.getElementById(`rng-equip-${r.index}`);
+      if (!unlocked) {
+        eqBtn.textContent = "Locked";
+        eqBtn.className = "btn btn-sm btn-disabled";
+        eqBtn.disabled = true;
+      } else if (isEq) {
+        eqBtn.textContent = "EQUIPPED ★";
+        eqBtn.className = "btn btn-sm btn-success";
+        eqBtn.disabled = false;
+      } else {
+        eqBtn.textContent = "Equip (1.5x)";
+        eqBtn.className = "btn btn-sm btn-secondary";
+        eqBtn.disabled = false;
+      }
+    }
+  }
+}
+
+// --- Hook RNGManager into GameState Prototype ---
+const _origRecalc = GameState.prototype.recalculateRates;
+GameState.prototype.recalculateRates = function () {
+  _origRecalc.call(this);
+  if (this.rng) {
+    const { globalMult, clickMult, bpsMult } = this.rng.getCombinedBuffs();
+    this.totalMultiplier *= globalMult;
+    this.bps *= globalMult * bpsMult;
+    this.clickPower *= globalMult * clickMult;
+  }
+};
+
+const _origUpdate = GameState.prototype.update;
+GameState.prototype.update = function (dt) {
+  _origUpdate.call(this, dt);
+  if (this.rng) this.rng.update(dt);
+};
+
+const _origRefresh = GameState.prototype.refreshDOM;
+GameState.prototype.refreshDOM = function () {
+  _origRefresh.call(this);
+  if (this.rng) this.rng.refreshDOM();
+};
+
+const _origSave = GameState.prototype.saveGame;
+GameState.prototype.saveGame = function () {
+  _origSave.call(this);
+  if (this.rng) {
+    try {
+      localStorage.setItem("rainy_cafe_rng_save", JSON.stringify({
+        totalRolls: this.rng.totalRolls,
+        counts: this.rng.counts,
+        equippedIndex: this.rng.equippedIndex,
+        upgrades: this.rng.upgrades.map((u) => u.level)
+      }));
+    } catch (e) {}
+  }
+};
+
+window.addEventListener("DOMContentLoaded", () => {
+  // Attach RNG after main game initializes
+  setTimeout(() => {
+    const tabBtn = document.querySelector('[data-tab="rng"]');
+    if (!tabBtn) return;
+  }, 50);
 });

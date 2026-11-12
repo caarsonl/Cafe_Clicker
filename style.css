@@ -1,5 +1,5 @@
 /* =============================================================================
-   1. COLOR PALETTES & THEME VARIABLES (Exact Match to Pygame RGB Constants)
+   1. COLOR PALETTES & THEME VARIABLES
    ============================================================================= */
 :root {
   --color-bg: rgb(238, 232, 224);
@@ -339,7 +339,7 @@ body {
 }
 
 /* =============================================================================
-   4. RIGHT PANEL: DUAL-ROW 14-TAB NAVIGATION & SCROLLABLE VIEWPORT
+   4. RIGHT PANEL: DUAL-ROW 15-TAB NAVIGATION & SCROLLABLE VIEWPORT
    ============================================================================= */
 #right-panel {
   width: 580px;
@@ -361,8 +361,12 @@ body {
 
 .tab-row {
   display: grid;
-  grid-template-columns: repeat(7, 75px);
+  grid-template-columns: repeat(7, 1fr);
   gap: 4px;
+}
+
+#tab-row-0 {
+  grid-template-columns: repeat(8, 1fr);
 }
 
 .tab-btn {
@@ -393,7 +397,8 @@ body {
 .tab-btn.active[data-tab="roast"] { color: var(--color-gold); }
 .tab-btn.active[data-tab="plinko"],
 .tab-btn.active[data-tab="sinks"] { color: var(--color-accent); }
-.tab-btn.active[data-tab="cosmos"] { color: var(--color-omega); }
+.tab-btn.active[data-tab="cosmos"],
+.tab-btn.active[data-tab="rng"] { color: var(--color-omega); }
 .tab-btn.active[data-tab="dynasty"] { color: var(--color-astral); }
 .tab-btn.active[data-tab="pantheon"] { color: var(--color-pantheon); }
 
@@ -904,4 +909,257 @@ body {
 .btn-wipe {
   width: 210px;
   height: 42px;
+}
+
+/* =============================================================================
+   8. RNG ROLLER, 10 RARITY THEMES & FULL-SCREEN CUTSCENE OVERLAY
+   ============================================================================= */
+.rng-top-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rng-cutscene-select-wrap {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-light);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#rng-cutscene-threshold {
+  background: var(--color-card);
+  border: 1px solid var(--color-text-muted);
+  border-radius: 5px;
+  padding: 3px 6px;
+  font-family: var(--font-main);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text);
+  outline: none;
+}
+
+/* Rolling Stage Box */
+.rng-stage {
+  background: linear-gradient(180deg, rgb(42, 32, 28) 0%, rgb(28, 20, 18) 100%);
+  border-radius: 12px;
+  padding: 14px;
+  color: #fff;
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(212, 154, 42, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.rng-reel-window {
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  transition: transform 0.08s ease-out, box-shadow 0.2s ease;
+}
+
+.rng-reel-window.rolling-tick {
+  transform: scale(0.985) translateY(2px);
+}
+
+.rng-tier-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 3px 12px;
+  border-radius: 20px;
+  margin-bottom: 6px;
+  display: inline-block;
+}
+
+.rng-aura-name {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+.rng-aura-odds {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+
+.rng-aura-buff {
+  font-size: 11px;
+  color: rgb(225, 210, 195);
+  margin-top: 5px;
+}
+
+.rng-progress-wrap {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  margin: 10px 0;
+  overflow: hidden;
+}
+
+.rng-roll-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-gold), var(--color-omega), var(--color-aether));
+  transition: width 0.04s linear;
+}
+
+.rng-action-row {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-rng-main {
+  flex: 1.4;
+  height: 38px;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.btn-rng-toggle {
+  flex: 1;
+  height: 38px;
+  font-size: 11px;
+}
+
+.btn-rng-toggle.active {
+  background-color: var(--color-success);
+  color: #fff;
+}
+
+/* 10 Rarity Color Themes */
+.tier-common { background: #8c7b70; color: #fff; }
+.tier-uncommon { background: #3e8e57; color: #fff; }
+.tier-rare { background: #3670c7; color: #fff; }
+.tier-epic { background: #8e44ad; color: #fff; }
+.tier-legendary {
+  background: linear-gradient(90deg, #d49a2a, #f39c12);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(243, 156, 18, 0.6);
+}
+.tier-mythic {
+  background: linear-gradient(90deg, #c0392b, #8e44ad);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(192, 57, 43, 0.7);
+}
+.tier-exotic {
+  background: linear-gradient(90deg, #ff007f, #00d2ff, #7a00ff);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(0, 210, 255, 0.75);
+}
+.tier-secret {
+  background: #110b18;
+  color: #d28eff;
+  border: 1px solid #b545ff;
+  box-shadow: 0 0 16px rgba(181, 69, 255, 0.8);
+}
+.tier-very-secret {
+  background: #051824;
+  color: #00ffcc;
+  border: 1px solid #00ffcc;
+  box-shadow: 0 0 18px rgba(0, 255, 204, 0.85);
+}
+.tier-impossible {
+  background: linear-gradient(90deg, #ff0055, #ffcc00, #00ffcc, #9900ff);
+  background-size: 200% 200%;
+  animation: rainbowShift 2s linear infinite;
+  color: #fff;
+  box-shadow: 0 0 22px rgba(255, 204, 0, 0.95);
+}
+
+@keyframes rainbowShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Full-Screen Cutscene Overlay */
+.rng-cutscene {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+#rng-cutscene-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.rng-cutscene-hud {
+  position: relative;
+  z-index: 102;
+  text-align: center;
+  pointer-events: none;
+  animation: cutscenePop 0.45s cubic-bezier(0.17, 0.89, 0.32, 1.28);
+}
+
+@keyframes cutscenePop {
+  0% { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.cutscene-tier {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 18px currentColor;
+  margin-bottom: 8px;
+}
+
+.cutscene-name {
+  font-size: 38px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.9), 0 0 25px currentColor;
+}
+
+.cutscene-odds {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.88);
+  margin-top: 8px;
+  letter-spacing: 2px;
+}
+
+.cutscene-skip {
+  position: absolute;
+  right: 24px;
+  bottom: 20px;
+  z-index: 103;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+/* Screen Shake for Mythic+ Pulls */
+.screen-shake {
+  animation: shakeAnim 0.45s ease-in-out;
+}
+
+@keyframes shakeAnim {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-7px, 5px); }
+  40% { transform: translate(7px, -6px); }
+  60% { transform: translate(-5px, -4px); }
+  80% { transform: translate(5px, 6px); }
 }
