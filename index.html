@@ -1,1306 +1,464 @@
-/* =============================================================================
-   1. COLOR PALETTES & THEME VARIABLES
-   ============================================================================= */
-:root {
-  --color-bg: rgb(238, 232, 224);
-  --color-window: rgb(220, 224, 228);
-  --color-window-rain: rgb(175, 188, 198);
-  --color-panel: rgb(230, 222, 212);
-  --color-panel-alt: rgb(220, 210, 198);
-  --color-text: rgb(58, 42, 34);
-  --color-text-light: rgb(145, 125, 115);
-  --color-text-muted: rgb(180, 165, 155);
-  --color-accent: rgb(198, 108, 68);
-  --color-accent-hover: rgb(218, 128, 88);
-  --color-card: rgb(252, 249, 246);
-  --color-card-hover: rgb(255, 253, 250);
-  --color-card-locked: rgb(238, 234, 230);
-
-  /* Prestige Tiers */
-  --color-gold: rgb(212, 154, 42);
-  --color-gold-hover: rgb(235, 178, 65);
-  --color-gold-bg: rgb(255, 249, 235);
-  --color-astral: rgb(90, 130, 210);
-  --color-astral-hover: rgb(120, 160, 240);
-  --color-astral-bg: rgb(238, 244, 255);
-  --color-pantheon: rgb(165, 95, 215);
-  --color-pantheon-hover: rgb(195, 125, 245);
-  --color-pantheon-bg: rgb(250, 240, 255);
-
-  /* Cosmic & Transcendent Currencies */
-  --color-dark-matter: rgb(75, 45, 110);
-  --color-supernova: rgb(245, 110, 35);
-  --color-chronos: rgb(40, 170, 105);
-  --color-aether: rgb(50, 195, 215);
-  --color-omega: rgb(240, 70, 150);
-  --color-celestial-dew: rgb(120, 210, 255);
-  --color-quasar-nectar: rgb(255, 190, 50);
-  --color-eternal-bean: rgb(255, 105, 180);
-
-  /* Status & Meters */
-  --color-success: rgb(65, 125, 80);
-  --color-success-hover: rgb(85, 150, 100);
-  --color-danger: rgb(175, 75, 75);
-  --color-danger-hover: rgb(205, 85, 85);
-  --color-star: rgb(225, 165, 45);
-  --color-xp-bar: rgb(218, 145, 60);
-  --color-xp-bg: rgb(210, 200, 190);
-
-  --color-heat-cold: rgb(70, 130, 180);
-  --color-heat-optimal: rgb(65, 160, 95);
-  --color-heat-warn: rgb(215, 140, 40);
-  --color-heat-over: rgb(200, 50, 50);
-
-  --font-main: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
-}
-
-/* =============================================================================
-   2. GLOBAL RESET & VIEWPORT SHELL
-   ============================================================================= */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-body {
-  background-color: #261f1b;
-  color: var(--color-text);
-  font-family: var(--font-main);
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: auto;
-}
-
-#app-wrapper {
-  padding: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 100vh;
-}
-
-#game-container {
-  width: 1060px;
-  height: 680px;
-  background-color: var(--color-bg);
-  border-radius: 14px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
-  display: grid;
-  grid-template-columns: 480px 580px;
-  position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.hidden {
-  display: none !important;
-}
-
-/* =============================================================================
-   3. LEFT STAGE: WINDOW CANVAS, HUD OVERLAY & STABILIZERS
-   ============================================================================= */
-#left-stage {
-  position: relative;
-  width: 480px;
-  height: 680px;
-  background-color: var(--color-bg);
-}
-
-#scene-canvas {
-  position: absolute;
-  left: 30px;
-  top: 24px;
-  width: 440px;
-  height: 632px;
-  border-radius: 16px;
-  cursor: pointer;
-  z-index: 1;
-}
-
-/* Top HUD Overlay (Frosted Pill Backdrop Prevents Decor Collision) */
-#hud-overlay {
-  position: absolute;
-  left: 48px;
-  top: 32px;
-  width: 404px;
-  padding: 8px 12px;
-  border-radius: 14px;
-  background-color: rgba(238, 232, 224, 0.72);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-  text-align: center;
-  pointer-events: none;
-  z-index: 2;
-}
-
-#beans-display {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--color-text);
-  line-height: 1.15;
-}
-
-#rates-display {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--color-text-light);
-  margin-top: 2px;
-}
-
-/* Clickable Multiplier Pill */
-#multiplier-display {
-  pointer-events: auto;
-  cursor: pointer;
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-accent);
-  margin-top: 4px;
-  padding: 2px 10px;
-  border-radius: 12px;
-  background-color: rgba(252, 249, 246, 0.85);
-  border: 1px solid rgba(198, 108, 68, 0.38);
-  transition: background-color 0.12s, transform 0.08s;
-}
-
-#multiplier-display:hover {
-  background-color: var(--color-card);
-  transform: translateY(-1px);
-}
-
-#multiplier-display.frenzy-active {
-  color: var(--color-gold);
-  border-color: var(--color-gold);
-}
-
-/* Level & XP Bar */
-#level-dashboard {
-  width: 250px;
-  margin: 6px auto 0;
-}
-
-#level-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--color-text);
-  margin-bottom: 2px;
-}
-
-.progress-track {
-  width: 100%;
-  background-color: var(--color-xp-bg);
-  border-radius: 7px;
-  overflow: hidden;
-  position: relative;
-}
-
-.xp-track {
-  height: 11px;
-  border: 1px solid var(--color-accent);
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 6px;
-  transition: width 0.12s ease-out;
-}
-
-.xp-fill {
-  background-color: var(--color-xp-bar);
-}
-
-#xp-text {
-  font-size: 11px;
-  color: var(--color-text-light);
-  margin-top: 2px;
-}
-
-#xp-text.has-points {
-  color: var(--color-gold);
-  font-weight: 700;
-}
-
-/* Compact 3-Column Currency Grid (Never Overflows Into Coffee Mug) */
-#currency-grid {
-  width: 100%;
-  max-height: 54px;
-  margin: 5px auto 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  column-gap: 6px;
-  row-gap: 2px;
-  text-align: left;
-  padding: 0 4px;
-  overflow: hidden;
-}
-
-.curr-badge {
-  font-size: 10.5px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.curr-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 2px;
-  display: inline-block;
-  transform: rotate(45deg);
-  flex-shrink: 0;
-}
-
-/* Stabilizer Meters (Positioned Below Saucer Hitbox) */
-#stabilizer-panel {
-  position: absolute;
-  left: 45px;
-  top: 484px;
-  width: 395px;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.stabilizer-row {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.meter-column {
-  width: 260px;
-}
-
-.meter-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 3px;
-}
-
-.stabilizer-track {
-  height: 14px;
-  border: 1px solid var(--color-text);
-}
-
-.silo-fill {
-  background-color: var(--color-accent);
-}
-
-.silo-fill.silo-full {
-  background-color: var(--color-danger);
-}
-
-.heat-cold { color: var(--color-heat-cold); }
-.heat-optimal { color: var(--color-heat-optimal); }
-.heat-warn { color: var(--color-heat-warn); }
-.heat-over { color: var(--color-heat-over); }
-
-.heat-cold-fill { background-color: var(--color-heat-cold); }
-.heat-optimal-fill { background-color: var(--color-heat-optimal); }
-.heat-warn-fill { background-color: var(--color-heat-warn); }
-.heat-over-fill { background-color: var(--color-heat-over); }
-
-.boiler-btn-group {
-  display: flex;
-  gap: 4px;
-}
-
-/* Achievement Slide-In Toast (pointer-events: none so it NEVER blocks Mochi the Cat) */
-.toast {
-  position: absolute;
-  right: 22px;
-  bottom: 18px;
-  width: 285px;
-  height: 56px;
-  background-color: var(--color-card);
-  border-radius: 10px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-  display: flex;
-  overflow: hidden;
-  z-index: 10;
-  pointer-events: none;
-  animation: toastSlideIn 0.25s ease-out;
-}
-
-@keyframes toastSlideIn {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.toast-accent {
-  width: 6px;
-  background-color: var(--color-success);
-}
-
-.toast-body {
-  padding: 6px 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.toast-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.toast-desc {
-  font-size: 11px;
-  color: var(--color-text-light);
-  margin-top: 2px;
-}
-
-/* =============================================================================
-   4. RIGHT PANEL: DUAL-ROW 15-TAB NAVIGATION & SCROLLABLE VIEWPORT
-   ============================================================================= */
-#right-panel {
-  width: 580px;
-  height: 680px;
-  background-color: var(--color-panel);
-  display: flex;
-  flex-direction: column;
-}
-
-#tab-shelf {
-  height: 56px;
-  padding: 3px 15px;
-  background-color: var(--color-panel);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  border-bottom: 1px solid rgba(58, 42, 34, 0.08);
-}
-
-.tab-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-#tab-row-0 {
-  grid-template-columns: repeat(8, 1fr);
-}
-
-.tab-btn {
-  height: 24px;
-  background-color: var(--color-panel-alt);
-  color: var(--color-text-light);
-  border: none;
-  border-radius: 4px;
-  font-family: var(--font-main);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.12s, color 0.12s;
-}
-
-.tab-btn:hover {
-  background-color: var(--color-card-hover);
-  color: var(--color-text);
-}
-
-.tab-btn.active {
-  background-color: var(--color-card);
-  color: var(--color-text);
-  font-weight: 700;
-}
-
-.tab-btn.active[data-tab="talents"],
-.tab-btn.active[data-tab="roast"] { color: var(--color-gold); }
-.tab-btn.active[data-tab="plinko"],
-.tab-btn.active[data-tab="sinks"] { color: var(--color-accent); }
-.tab-btn.active[data-tab="cosmos"],
-.tab-btn.active[data-tab="rng"] { color: var(--color-omega); }
-.tab-btn.active[data-tab="dynasty"] { color: var(--color-astral); }
-.tab-btn.active[data-tab="pantheon"] { color: var(--color-pantheon); }
-
-/* Tab Viewport & Custom Scrollbar */
-#tab-viewport {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px 15px 20px 15px;
-}
-
-#tab-viewport::-webkit-scrollbar {
-  width: 6px;
-}
-
-#tab-viewport::-webkit-scrollbar-track {
-  background: var(--color-panel-alt);
-  border-radius: 3px;
-}
-
-#tab-viewport::-webkit-scrollbar-thumb {
-  background: var(--color-accent);
-  border-radius: 3px;
-}
-
-.tab-pane {
-  display: none;
-}
-
-.tab-pane.active {
-  display: block;
-}
-
-/* =============================================================================
-   5. CARDS, HEADERS, BUTTONS & SUB-COMPONENTS
-   ============================================================================= */
-.pane-toolbar,
-.pane-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.toolbar-label,
-.pane-subtitle {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.pane-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--color-text);
-  margin-bottom: 8px;
-}
-
-.section-spacer {
-  margin-top: 16px;
-}
-
-.sub-stat-star {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-star);
-  margin-bottom: 10px;
-}
-
-.sub-stat-muted {
-  font-size: 13px;
-  color: var(--color-text-light);
-}
-
-/* Buy Mode Selector Group */
-.buy-mode-group {
-  display: flex;
-  gap: 5px;
-}
-
-.mode-btn {
-  width: 50px;
-  height: 28px;
-  background-color: var(--color-panel-alt);
-  color: var(--color-text);
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.mode-btn.active {
-  background-color: var(--color-accent);
-  color: #fff;
-}
-
-/* Standard Card List */
-.card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.compact-list {
-  gap: 6px;
-}
-
-.game-card {
-  position: relative;
-  background-color: var(--color-card);
-  border-radius: 8px;
-  padding: 8px 14px 8px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 70px;
-  transition: background-color 0.12s, transform 0.08s;
-}
-
-.game-card.clickable {
-  cursor: pointer;
-}
-
-.game-card.clickable:hover {
-  background-color: var(--color-card-hover);
-}
-
-.game-card.locked {
-  background-color: var(--color-card-locked);
-}
-
-.card-accent {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
-  background-color: var(--color-accent);
-}
-
-.accent-muted { background-color: var(--color-text-muted); }
-.accent-gold { background-color: var(--color-gold); }
-.accent-astral { background-color: var(--color-astral); }
-.accent-pantheon { background-color: var(--color-pantheon); }
-.accent-success { background-color: var(--color-success); }
-.accent-danger { background-color: var(--color-danger); }
-.accent-star { background-color: var(--color-star); }
-.accent-omega { background-color: var(--color-omega); }
-
-.card-main {
-  flex: 1;
-  padding-right: 12px;
-}
-
-.card-top-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.card-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.game-card.locked .card-title {
-  color: var(--color-text-light);
-}
-
-.card-count {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-accent);
-}
-
-.card-desc {
-  font-size: 11px;
-  color: var(--color-text-light);
-  margin-top: 3px;
-}
-
-.card-cost {
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 4px;
-}
-
-.cost-afford { color: var(--color-success); }
-.cost-locked { color: var(--color-danger); }
-
-/* Buttons */
-.btn {
-  border: none;
-  border-radius: 6px;
-  font-family: var(--font-main);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  padding: 6px 12px;
-  transition: filter 0.12s, background-color 0.12s;
-  color: #fff;
-}
-
-.btn:hover:not(:disabled) {
-  filter: brightness(1.07);
-}
-
-.btn:disabled,
-.btn.btn-disabled {
-  background-color: var(--color-panel-alt) !important;
-  color: var(--color-text-muted) !important;
-  cursor: not-allowed;
-}
-
-.btn-sm {
-  height: 28px;
-  font-size: 11px;
-  padding: 0 12px;
-}
-
-.btn-silo {
-  width: 115px;
-  height: 30px;
-  font-size: 11px;
-  background-color: var(--color-success);
-}
-
-.btn-vent {
-  width: 66px;
-  height: 30px;
-  font-size: 11px;
-  background-color: var(--color-heat-cold);
-}
-
-.btn-toggle {
-  width: 45px;
-  height: 30px;
-  font-size: 11px;
-  background-color: var(--color-panel-alt);
-  color: var(--color-text-light);
-}
-
-.btn-toggle.active {
-  background-color: var(--color-success);
-  color: #fff;
-}
-
-.btn-accent { background-color: var(--color-accent); }
-.btn-gold { background-color: var(--color-gold); }
-.btn-astral { background-color: var(--color-astral); }
-.btn-pantheon { background-color: var(--color-pantheon); }
-.btn-success { background-color: var(--color-success); }
-.btn-danger { background-color: var(--color-danger); }
-.btn-secondary {
-  background-color: var(--color-panel-alt);
-  color: var(--color-text);
-}
-
-.sink-btn-group {
-  display: flex;
-  gap: 5px;
-}
-
-/* Prestige Banners (Roast, Dynasty, Pantheon) */
-.prestige-bal {
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.text-gold { color: var(--color-gold); }
-.text-astral { color: var(--color-astral); }
-.text-pantheon { color: var(--color-pantheon); }
-.text-danger { color: var(--color-danger); }
-
-.prestige-banner {
-  width: 100%;
-  height: 70px;
-  border: none;
-  border-radius: 10px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: 12px 16px 12px 20px;
-  text-align: left;
-  cursor: pointer;
-  background-color: var(--color-card-locked);
-}
-
-.prestige-banner.ready.banner-gold { background-color: var(--color-gold-bg); }
-.prestige-banner.ready.banner-astral { background-color: var(--color-astral-bg); }
-.prestige-banner.ready.banner-pantheon { background-color: var(--color-pantheon-bg); }
-
-.banner-accent {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  border-top-left-radius: 10px;
-  border-bottom-left-radius: 10px;
-}
-
-.banner-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.banner-title {
-  font-size: 14px;
-  color: var(--color-text);
-}
-
-.banner-sub {
-  font-size: 12px;
-  color: var(--color-text-light);
-}
-
-/* Pinnacle Sanctuary Banner */
-.sanctuary-banner {
-  width: 100%;
-  height: 52px;
-  margin-top: 10px;
-  background-color: var(--color-card);
-  border: 2px solid var(--color-accent);
-  border-radius: 8px;
-  font-family: var(--font-main);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text-light);
-  cursor: pointer;
-}
-
-.sanctuary-banner.ready,
-.sanctuary-banner.unlocked {
-  background-color: rgb(255, 245, 220);
-  border-color: var(--color-gold);
-  color: var(--color-gold);
-}
-
-/* =============================================================================
-   6. PLINKO SIMULATOR STYLES
-   ============================================================================= */
-.plinko-curr-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 4px;
-  margin-bottom: 6px;
-}
-
-.plinko-curr-btn {
-  height: 24px;
-  border: none;
-  border-radius: 6px;
-  background-color: var(--color-panel-alt);
-  color: var(--color-text);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.plinko-curr-btn.active {
-  color: #fff;
-  font-weight: 700;
-}
-
-.plinko-risk-text {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-accent);
-  margin-bottom: 4px;
-}
-
-#plinko-canvas {
-  background-color: rgba(252, 249, 246, 0.45);
-  border-radius: 8px;
-  display: block;
-  cursor: crosshair;
-}
-
-.plinko-controls {
-  margin-top: 8px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.plinko-bal-text {
-  font-size: 11px;
-  color: var(--color-text-light);
-  margin-bottom: 3px;
-}
-
-.plinko-input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background-color: var(--color-card);
-  border: 1px solid var(--color-text-muted);
-  border-radius: 6px;
-  padding: 0 8px;
-  height: 34px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-#plinko-bet-input {
-  width: 90px;
-  border: none;
-  background: transparent;
-  font-family: var(--font-main);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text);
-  outline: none;
-}
-
-.plinko-chips {
-  display: flex;
-  gap: 4px;
-}
-
-.chip-btn {
-  min-width: 44px;
-  padding: 0 6px;
-  height: 34px;
-  border: none;
-  border-radius: 6px;
-  background-color: var(--color-panel-alt);
-  color: var(--color-text);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.chip-btn:hover {
-  background-color: var(--color-card);
-}
-
-.btn-drop {
-  height: 38px;
-  min-width: 108px;
-}
-
-/* =============================================================================
-   7. ORDERS & CONFIG STYLES
-   ============================================================================= */
-.order-box {
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 8px;
-  min-height: 120px;
-}
-
-.btn-serve {
-  width: 200px;
-  height: 38px;
-  background-color: var(--color-success);
-}
-
-.config-row {
-  min-height: 48px;
-  padding-left: 14px;
-}
-
-.btn-cfg {
-  width: 110px;
-  height: 34px;
-}
-
-.btn-cfg-wide {
-  width: 150px;
-  height: 34px;
-}
-
-.vol-group {
-  display: flex;
-  gap: 6px;
-}
-
-.vol-btn {
-  width: 50px;
-  height: 34px;
-  border: none;
-  border-radius: 6px;
-  background-color: var(--color-panel-alt);
-  color: var(--color-text);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.vol-btn.active {
-  background-color: var(--color-accent-hover);
-  color: #fff;
-}
-
-.config-danger {
-  background-color: rgb(255, 240, 240);
-  min-height: 74px;
-}
-
-.btn-wipe {
-  width: 210px;
-  height: 42px;
-}
-
-/* =============================================================================
-   8. RNG ROLLER, 10 RARITY THEMES & FULL-SCREEN CUTSCENE OVERLAY
-   ============================================================================= */
-.rng-top-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.rng-cutscene-select-wrap {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--color-text-light);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-#rng-cutscene-threshold {
-  background: var(--color-card);
-  border: 1px solid var(--color-text-muted);
-  border-radius: 5px;
-  padding: 3px 6px;
-  font-family: var(--font-main);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--color-text);
-  outline: none;
-}
-
-.rng-stage {
-  background: linear-gradient(180deg, rgb(42, 32, 28) 0%, rgb(28, 20, 18) 100%);
-  border-radius: 12px;
-  padding: 14px;
-  color: #fff;
-  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.55);
-  border: 2px solid rgba(212, 154, 42, 0.35);
-  position: relative;
-  overflow: hidden;
-}
-
-.rng-reel-window {
-  min-height: 112px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 8px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  transition: transform 0.08s ease-out, box-shadow 0.2s ease;
-}
-
-.rng-reel-window.rolling-tick {
-  transform: scale(0.985) translateY(2px);
-}
-
-.rng-tier-badge {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  padding: 3px 12px;
-  border-radius: 20px;
-  margin-bottom: 6px;
-  display: inline-block;
-}
-
-.rng-aura-name {
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 0.4px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
-}
-
-.rng-aura-odds {
-  font-size: 12px;
-  font-weight: 700;
-  opacity: 0.85;
-  margin-top: 2px;
-}
-
-.rng-aura-buff {
-  font-size: 11px;
-  color: rgb(225, 210, 195);
-  margin-top: 5px;
-}
-
-.rng-progress-wrap {
-  width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 3px;
-  margin: 10px 0;
-  overflow: hidden;
-}
-
-.rng-roll-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--color-gold), var(--color-omega), var(--color-aether));
-  transition: width 0.04s linear;
-}
-
-.rng-action-row {
-  display: flex;
-  gap: 8px;
-}
-
-.btn-rng-main {
-  flex: 1.4;
-  height: 38px;
-  font-size: 12px;
-  letter-spacing: 0.4px;
-}
-
-.btn-rng-toggle {
-  flex: 1;
-  height: 38px;
-  font-size: 11px;
-}
-
-.btn-rng-toggle.active {
-  background-color: var(--color-success);
-  color: #fff;
-}
-
-/* 10 Rarity Color Themes */
-.tier-common { background: #8c7b70; color: #fff; }
-.tier-uncommon { background: #3e8e57; color: #fff; }
-.tier-rare { background: #3670c7; color: #fff; }
-.tier-epic { background: #8e44ad; color: #fff; }
-.tier-legendary {
-  background: linear-gradient(90deg, #d49a2a, #f39c12);
-  color: #fff;
-  box-shadow: 0 0 12px rgba(243, 156, 18, 0.6);
-}
-.tier-mythic {
-  background: linear-gradient(90deg, #c0392b, #8e44ad);
-  color: #fff;
-  box-shadow: 0 0 14px rgba(192, 57, 43, 0.7);
-}
-.tier-exotic {
-  background: linear-gradient(90deg, #ff007f, #00d2ff, #7a00ff);
-  color: #fff;
-  box-shadow: 0 0 16px rgba(0, 210, 255, 0.75);
-}
-.tier-secret {
-  background: #110b18;
-  color: #d28eff;
-  border: 1px solid #b545ff;
-  box-shadow: 0 0 16px rgba(181, 69, 255, 0.8);
-}
-.tier-very-secret {
-  background: #051824;
-  color: #00ffcc;
-  border: 1px solid #00ffcc;
-  box-shadow: 0 0 18px rgba(0, 255, 204, 0.85);
-}
-.tier-impossible {
-  background: linear-gradient(90deg, #ff0055, #ffcc00, #00ffcc, #9900ff);
-  background-size: 200% 200%;
-  animation: rainbowShift 2s linear infinite;
-  color: #fff;
-  box-shadow: 0 0 22px rgba(255, 204, 0, 0.95);
-}
-
-@keyframes rainbowShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* Full-Screen Cutscene Overlay */
-.rng-cutscene {
-  position: absolute;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto;
-}
-
-#rng-cutscene-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.rng-cutscene-hud {
-  position: relative;
-  z-index: 102;
-  text-align: center;
-  pointer-events: none;
-  animation: cutscenePop 0.45s cubic-bezier(0.17, 0.89, 0.32, 1.28);
-}
-
-@keyframes cutscenePop {
-  0% { transform: scale(0.4); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.cutscene-tier {
-  font-size: 18px;
-  font-weight: 900;
-  letter-spacing: 5px;
-  text-transform: uppercase;
-  color: #fff;
-  text-shadow: 0 0 18px currentColor;
-  margin-bottom: 8px;
-}
-
-.cutscene-name {
-  font-size: 38px;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.9), 0 0 25px currentColor;
-}
-
-.cutscene-odds {
-  font-size: 16px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.88);
-  margin-top: 8px;
-  letter-spacing: 2px;
-}
-
-.cutscene-skip {
-  position: absolute;
-  right: 24px;
-  bottom: 20px;
-  z-index: 103;
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-}
-
-.screen-shake {
-  animation: shakeAnim 0.45s ease-in-out;
-}
-
-@keyframes shakeAnim {
-  0%, 100% { transform: translate(0, 0); }
-  20% { transform: translate(-7px, 5px); }
-  40% { transform: translate(7px, -6px); }
-  60% { transform: translate(-5px, -4px); }
-  80% { transform: translate(5px, 6px); }
-}
-
-/* =============================================================================
-   9. CLICKABLE MULTIPLIER BREAKDOWN POPOVER
-   ============================================================================= */
-.mult-popover {
-  position: absolute;
-  left: 55px;
-  top: 110px;
-  width: 390px;
-  background-color: var(--color-card);
-  border: 2px solid var(--color-accent);
-  border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(42, 28, 20, 0.32);
-  padding: 12px 14px;
-  z-index: 25;
-  pointer-events: auto;
-  animation: popFadeIn 0.15s ease-out;
-}
-
-@keyframes popFadeIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.mult-pop-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 6px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--color-panel-alt);
-}
-
-.mult-pop-title {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--color-text);
-  letter-spacing: 0.3px;
-}
-
-.mult-pop-close {
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 5px;
-  background-color: var(--color-panel-alt);
-  color: var(--color-text);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.mult-pop-close:hover {
-  background-color: var(--color-danger);
-  color: #fff;
-}
-
-.mult-pop-body {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 11.5px;
-}
-
-.mult-section-label {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--color-text-light);
-  margin-top: 4px;
-}
-
-.mult-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 2px 6px;
-  border-radius: 5px;
-  background-color: rgba(230, 222, 212, 0.35);
-}
-
-.mult-row-label {
-  color: var(--color-text);
-  font-weight: 600;
-}
-
-.mult-row-val {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.mult-divider {
-  height: 1px;
-  background-color: var(--color-panel-alt);
-  margin: 4px 0;
-}
-
-.mult-row-total {
-  background-color: var(--color-gold-bg);
-  border: 1px solid rgba(212, 154, 42, 0.45);
-  padding: 5px 8px;
-}
-
-.mult-softcap-box {
-  margin-top: 4px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background-color: var(--color-panel);
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.mult-softcap-active {
-  background-color: rgb(255, 242, 240);
-  border: 1px solid rgba(175, 75, 75, 0.35);
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rainy Cafe: Grand Master Edition</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app-wrapper">
+    <main id="game-container" aria-label="Rainy Cafe: Grand Master Edition">
+      
+      <!-- =================================================================
+           LEFT STAGE: WINDOW SCENE, MUG, CAT, HUD & STABILIZERS
+           ================================================================= -->
+      <section id="left-stage">
+        <!-- Interactive Canvas: Sky, Rain, Decor, Cat, Croissant, Mug, Steam & Popups -->
+        <canvas id="scene-canvas" width="440" height="632"></canvas>
+
+        <!-- Single Clean Top Production & Level Overlay (No Nesting/Duplication) -->
+        <header id="hud-overlay">
+          <h1 id="beans-display">0 Beans</h1>
+          <div id="rates-display">0.0/s &nbsp;|&nbsp; +1.0/sip</div>
+          <div id="multiplier-display" role="button" tabindex="0" title="Click to inspect Multiplier Breakdown">
+            Multiplier: 1.0x ▾
+          </div>
+
+          <!-- Barista Level & XP Dashboard -->
+          <div id="level-dashboard">
+            <div id="level-title">Lv. 1 - Amateur Sipper</div>
+            <div class="progress-track xp-track">
+              <div id="xp-bar-fill" class="progress-fill xp-fill" style="width: 0%;"></div>
+            </div>
+            <div id="xp-text">0 / 150 XP</div>
+          </div>
+
+          <!-- Compact Currency Grid (Populated by game.js when > 0) -->
+          <div id="currency-grid" aria-live="polite"></div>
+        </header>
+
+        <!-- Clickable Multiplier Breakdown Popover -->
+        <aside id="multiplier-popover" class="mult-popover hidden" aria-label="Multiplier Breakdown">
+          <div class="mult-pop-header">
+            <span class="mult-pop-title">Global Multiplier Breakdown</span>
+            <button id="btn-close-mult-pop" class="mult-pop-close" type="button" aria-label="Close">×</button>
+          </div>
+          <div id="mult-pop-body" class="mult-pop-body"></div>
+        </aside>
+
+        <!-- Bottom Stabilizer Meters (Silo Storage & Espresso Boiler) -->
+        <div id="stabilizer-panel">
+          <!-- Silo Storage Row -->
+          <div class="stabilizer-row">
+            <div class="meter-column">
+              <div id="silo-text" class="meter-label">Silo Storage (Lv.0): 0 / 50.00K</div>
+              <div class="progress-track stabilizer-track">
+                <div id="silo-bar-fill" class="progress-fill silo-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+            <button id="btn-silo-upgrade" class="btn btn-silo" type="button">
+              +Cap (12.00K)
+            </button>
+          </div>
+
+          <!-- Espresso Boiler Temperature Row -->
+          <div class="stabilizer-row">
+            <div class="meter-column">
+              <div id="boiler-text" class="meter-label heat-cold">Boiler: 70°C (Normal Temperature)</div>
+              <div class="progress-track stabilizer-track">
+                <div id="boiler-bar-fill" class="progress-fill heat-cold-fill" style="width: 40%;"></div>
+              </div>
+            </div>
+            <div class="boiler-btn-group">
+              <button id="btn-vent" class="btn btn-vent" type="button" title="Hotkey: V">Vent</button>
+              <button id="btn-auto-vent" class="btn btn-toggle" type="button">AUTO</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Non-Blocking Slide-In Achievement Toast Notification -->
+        <div id="achievement-toast" class="toast hidden" role="status" aria-live="polite">
+          <div class="toast-accent"></div>
+          <div class="toast-body">
+            <div id="toast-title" class="toast-title">Achievement: First Sip</div>
+            <div id="toast-desc" class="toast-desc">Click coffee mug 1 time.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================
+           RIGHT PANEL: DUAL-ROW 15-TAB NAVIGATION & SCROLLABLE VIEWS
+           ================================================================= -->
+      <section id="right-panel">
+        <!-- Dual-Row Top Shelf Tabs -->
+        <nav id="tab-shelf" aria-label="Cafe Management Tabs">
+          <div class="tab-row" id="tab-row-0">
+            <button class="tab-btn active" data-tab="menu" type="button">Menu</button>
+            <button class="tab-btn" data-tab="staff" type="button">Staff</button>
+            <button class="tab-btn" data-tab="decor" type="button">Decor</button>
+            <button class="tab-btn" data-tab="brew" type="button">Brew</button>
+            <button class="tab-btn" data-tab="orders" type="button">Orders</button>
+            <button class="tab-btn" data-tab="plinko" type="button">Plinko</button>
+            <button class="tab-btn" data-tab="talents" type="button">Talents</button>
+            <button class="tab-btn" data-tab="rng" type="button">RNG ★</button>
+          </div>
+          <div class="tab-row" id="tab-row-1">
+            <button class="tab-btn" data-tab="sinks" type="button">Sinks</button>
+            <button class="tab-btn" data-tab="cosmos" type="button">Cosmos</button>
+            <button class="tab-btn" data-tab="roast" type="button">Roast</button>
+            <button class="tab-btn" data-tab="dynasty" type="button">Dynasty</button>
+            <button class="tab-btn" data-tab="pantheon" type="button">Pantheon</button>
+            <button class="tab-btn" data-tab="quests" type="button">Quests</button>
+            <button class="tab-btn" data-tab="config" type="button">Config</button>
+          </div>
+        </nav>
+
+        <!-- Scrollable Tab Viewport -->
+        <div id="tab-viewport">
+
+          <!-- 1. MENU TAB (30 Regular Upgrades) -->
+          <div id="tab-menu" class="tab-pane active">
+            <div class="pane-toolbar">
+              <span class="toolbar-label">Buy Mode:</span>
+              <div class="buy-mode-group" role="group" aria-label="Buy Quantity">
+                <button class="mode-btn active" data-mode="1" type="button">x1</button>
+                <button class="mode-btn" data-mode="10" type="button">x10</button>
+                <button class="mode-btn" data-mode="100" type="button">x100</button>
+                <button class="mode-btn" data-mode="max" type="button">MAX</button>
+              </div>
+              <button id="btn-buy-max-menu" class="btn btn-gold btn-sm" type="button">
+                BUY MAX ALL (B)
+              </button>
+            </div>
+            <div id="upgrades-list" class="card-list"></div>
+          </div>
+
+          <!-- 2. STAFF TAB (5 Cafe Companions) -->
+          <div id="tab-staff" class="tab-pane">
+            <div class="pane-header-row">
+              <h2 class="pane-title">Cafe Staff &amp; Companions</h2>
+              <button id="btn-buy-max-staff" class="btn btn-gold btn-sm" type="button">
+                BUY MAX ALL (B)
+              </button>
+            </div>
+            <div id="staff-list" class="card-list"></div>
+          </div>
+
+          <!-- 3. DECOR TAB (6 Visual & Passive Decor Pieces) -->
+          <div id="tab-decor" class="tab-pane">
+            <div id="decor-list" class="card-list"></div>
+          </div>
+
+          <!-- 4. BREW TAB (12 Coffee Recipes) -->
+          <div id="tab-brew" class="tab-pane">
+            <div id="brew-list" class="card-list"></div>
+          </div>
+
+          <!-- 5. ORDERS TAB (Customer Counter) -->
+          <div id="tab-orders" class="tab-pane">
+            <div class="pane-header-row">
+              <h2 class="pane-title">Customer Counter</h2>
+              <button id="btn-auto-serve" class="btn btn-success btn-sm" type="button">
+                Auto-Serve: ON
+              </button>
+            </div>
+            <p id="customer-stars-display" class="sub-stat-star">
+              Customer Stars Collected: 0 ★ (+0% Multiplier)
+            </p>
+            <div id="order-card" class="game-card order-box">
+              <div id="order-title" class="card-title">Waiting for next customer...</div>
+              <div id="order-timer" class="card-desc"></div>
+              <button id="btn-serve-order" class="btn btn-serve hidden" type="button">
+                Serve Drink!
+              </button>
+            </div>
+          </div>
+
+          <!-- 6. PLINKO TAB (12-Currency Physics Simulator) -->
+          <div id="tab-plinko" class="tab-pane">
+            <div id="plinko-currency-grid" class="plinko-curr-grid"></div>
+            <div id="plinko-risk-label" class="plinko-risk-text">
+              Beans: Bias Handicap 0%
+            </div>
+            <canvas id="plinko-canvas" width="545" height="420"></canvas>
+            <div class="plinko-controls">
+              <div class="plinko-bal-col">
+                <div id="plinko-bal-label" class="plinko-bal-text">Bal: 0</div>
+                <label class="plinko-input-wrap">
+                  <span>Bet:</span>
+                  <input id="plinko-bet-input" type="text" value="100" maxlength="14" />
+                </label>
+              </div>
+              <div class="plinko-chips">
+                <button class="chip-btn" data-chip="min" type="button">Min</button>
+                <button class="chip-btn" data-chip="10" type="button">2%</button>
+                <button class="chip-btn" data-chip="50" type="button">5%</button>
+                <button class="chip-btn" data-chip="max" type="button">10% Max</button>
+              </div>
+              <button id="btn-plinko-drop" class="btn btn-accent btn-drop" type="button">
+                DROP (100)
+              </button>
+            </div>
+          </div>
+
+          <!-- 7. TALENTS TAB (Barista Mastery & Level Crates) -->
+          <div id="tab-talents" class="tab-pane">
+            <div class="pane-header-row">
+              <div>
+                <h2 class="pane-title">Barista Mastery Talents</h2>
+                <div id="talent-points-display" class="sub-stat-muted">
+                  Unspent Points: 0 &nbsp;|&nbsp; Crit: 1% (3.0x)
+                </div>
+              </div>
+              <button id="btn-reset-talents" class="btn btn-secondary btn-sm" type="button">
+                Reset Talents
+              </button>
+            </div>
+            <div id="talents-list" class="card-list"></div>
+            <h2 class="pane-title section-spacer">Level Milestone Supply Crates</h2>
+            <div id="milestones-list" class="card-list"></div>
+          </div>
+
+          <!-- 8. RNG TAB (10-Tier Aura Roller & Compendium) -->
+          <div id="tab-rng" class="tab-pane">
+            <div class="pane-header-row">
+              <div>
+                <h2 class="pane-title">Celestial Aura RNG Roller</h2>
+                <div id="rng-stats-line" class="sub-stat-muted">
+                  Total Rolls: 0 &nbsp;|&nbsp; Luck: 1.00x &nbsp;|&nbsp; RNG Mult: 1.00x
+                </div>
+              </div>
+              <div class="rng-top-controls">
+                <label class="rng-cutscene-select-wrap" title="Minimum rarity to play full-screen cutscene">
+                  <span>Cutscene:</span>
+                  <select id="rng-cutscene-threshold">
+                    <option value="4">Legendary+</option>
+                    <option value="5">Mythic+</option>
+                    <option value="6">Exotic+</option>
+                    <option value="7">Secret+</option>
+                    <option value="99">Off</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <!-- Slot Reel / Rolling Stage -->
+            <div id="rng-stage-box" class="rng-stage">
+              <div id="rng-reel-window" class="rng-reel-window">
+                <div id="rng-current-tier-badge" class="rng-tier-badge tier-common">READY TO ROLL</div>
+                <div id="rng-current-aura-name" class="rng-aura-name">Click Roll to Test Your Fate</div>
+                <div id="rng-current-odds" class="rng-aura-odds">10 Rarities Available</div>
+                <div id="rng-current-buff" class="rng-aura-buff">Every roll levels up your Compendium permanently!</div>
+              </div>
+
+              <div class="rng-progress-wrap">
+                <div id="rng-roll-bar" class="rng-roll-bar" style="width: 0%;"></div>
+              </div>
+
+              <div class="rng-action-row">
+                <button id="btn-rng-roll" class="btn btn-gold btn-rng-main" type="button">
+                  ROLL AURA (R)
+                </button>
+                <button id="btn-rng-auto" class="btn btn-secondary btn-rng-toggle" type="button">
+                  Auto-Roll: OFF
+                </button>
+                <button id="btn-rng-fast" class="btn btn-secondary btn-rng-toggle" type="button">
+                  Fast Roll: OFF
+                </button>
+              </div>
+            </div>
+
+            <!-- Grindy RNG Upgrades (Luck, Speed, Multi-Roll) -->
+            <h3 class="pane-subtitle section-spacer">Fortune &amp; Roll Enhancers</h3>
+            <div id="rng-upgrades-list" class="card-list compact-list"></div>
+
+            <!-- 10-Rarity Compendium & Aura Equipper -->
+            <h3 class="pane-subtitle section-spacer">10-Rarity Aura Compendium (Click to Equip / Preview)</h3>
+            <div id="rng-compendium-list" class="card-list"></div>
+          </div>
+
+          <!-- 9. SINKS TAB (Altar, Transmutation & Endless Crucible) -->
+          <div id="tab-sinks" class="tab-pane">
+            <div class="game-card card-altar">
+              <div class="card-accent accent-gold"></div>
+              <div class="card-main">
+                <div id="altar-title" class="card-title">Altar of the Roast (Blessings: 0 ★)</div>
+                <div class="card-desc">Sacrifice 50% beans for +2% global mult &amp; massive XP.</div>
+              </div>
+              <button id="btn-altar-sacrifice" class="btn btn-gold" type="button">
+                Offer 50% Balance
+              </button>
+            </div>
+
+            <h2 class="pane-title section-spacer">Transmutation Forge (Exchange)</h2>
+            <div id="transmute-list" class="card-list compact-list"></div>
+
+            <h2 class="pane-title section-spacer">The Endless Crucible (Uncapped Sinks)</h2>
+            <div id="sinks-list" class="card-list"></div>
+          </div>
+
+          <!-- 10. COSMOS TAB (8 Forges, Pinnacle Sanctuary & God-Tier Perks) -->
+          <div id="tab-cosmos" class="tab-pane">
+            <h2 class="pane-title">The Celestial Forge &amp; Multiversal Sinks</h2>
+            <div id="cosmic-forges-list" class="card-list compact-list"></div>
+
+            <!-- Pinnacle Goal Banner -->
+            <button id="sanctuary-goal-banner" class="sanctuary-banner" type="button">
+              GOAL: Lv.100, 12 Recipes, Silo 45, 10 OSB, 1 Eternal Bean
+            </button>
+
+            <h2 class="pane-title section-spacer">God-Tier Cosmic Perks</h2>
+            <div id="cosmic-perks-list" class="card-list"></div>
+          </div>
+
+          <!-- 11. ROAST TAB (Tier 1 Prestige: Golden Beans) -->
+          <div id="tab-roast" class="tab-pane">
+            <div id="roast-bal-header" class="prestige-bal text-gold">
+              Available: 0 Golden Beans
+            </div>
+            <button id="btn-trigger-rebirth" class="prestige-banner banner-gold" type="button">
+              <span class="banner-accent accent-gold"></span>
+              <span class="banner-content">
+                <strong class="banner-title">Perform Roastery Rebirth (Tier 1)</strong>
+                <span id="rebirth-status-text" class="banner-sub">0 / 25.00K beans</span>
+              </span>
+            </button>
+            <div class="pane-header-row section-spacer">
+              <h3 class="pane-subtitle">Permanent Roastery Upgrades</h3>
+              <button id="btn-buy-max-roast" class="btn btn-gold btn-sm" type="button">
+                BUY MAX ALL (B)
+              </button>
+            </div>
+            <div id="roastery-list" class="card-list"></div>
+          </div>
+
+          <!-- 12. DYNASTY TAB (Tier 2 Prestige: Astral Crystals) -->
+          <div id="tab-dynasty" class="tab-pane">
+            <div id="dynasty-bal-header" class="prestige-bal text-astral">
+              Available: 0 Astral Crystals
+            </div>
+            <button id="btn-trigger-dynasty" class="prestige-banner banner-astral" type="button">
+              <span class="banner-accent accent-astral"></span>
+              <span class="banner-content">
+                <strong class="banner-title">Ascend to Franchise Dynasty (Tier 2)</strong>
+                <span id="dynasty-status-text" class="banner-sub">0 / 100 golden beans</span>
+              </span>
+            </button>
+            <div class="pane-header-row section-spacer">
+              <h3 class="pane-subtitle">Franchise Dynasty Perks</h3>
+              <button id="btn-buy-max-dynasty" class="btn btn-astral btn-sm" type="button">
+                BUY MAX ALL (B)
+              </button>
+            </div>
+            <div id="dynasty-list" class="card-list"></div>
+          </div>
+
+          <!-- 13. PANTHEON TAB (Tier 3 Prestige: Starlight Shards) -->
+          <div id="tab-pantheon" class="tab-pane">
+            <div id="pantheon-bal-header" class="prestige-bal text-pantheon">
+              Available: 0 Starlight Shards
+            </div>
+            <button id="btn-trigger-pantheon" class="prestige-banner banner-pantheon" type="button">
+              <span class="banner-accent accent-pantheon"></span>
+              <span class="banner-content">
+                <strong class="banner-title">Ascend to Cosmic Pantheon (Tier 3)</strong>
+                <span id="pantheon-status-text" class="banner-sub">0 / 50 astral crystals</span>
+              </span>
+            </button>
+            <div class="pane-header-row section-spacer">
+              <h3 class="pane-subtitle">Pantheon Constellation Perks</h3>
+              <button id="btn-buy-max-pantheon" class="btn btn-pantheon btn-sm" type="button">
+                BUY MAX ALL (B)
+              </button>
+            </div>
+            <div id="pantheon-list" class="card-list"></div>
+          </div>
+
+          <!-- 14. QUESTS TAB (6 Daily Cafe Contracts) -->
+          <div id="tab-quests" class="tab-pane">
+            <h2 class="pane-title">Daily Cafe Contracts &amp; Quests</h2>
+            <div id="quests-list" class="card-list"></div>
+          </div>
+
+          <!-- 15. CONFIG TAB (Audio, Visuals, Notation & Save Management) -->
+          <div id="tab-config" class="tab-pane">
+            <h2 class="pane-title">Cafe Settings &amp; Preferences</h2>
+            <div class="card-list config-list">
+              
+              <div class="game-card config-row">
+                <span class="card-title">Sound Effects</span>
+                <button id="btn-cfg-sfx" class="btn btn-success btn-cfg" type="button">ENABLED</button>
+              </div>
+
+              <div class="game-card config-row">
+                <span class="card-title">Master Volume</span>
+                <div class="vol-group">
+                  <button class="vol-btn" data-vol="0.25" type="button">25%</button>
+                  <button class="vol-btn" data-vol="0.5" type="button">50%</button>
+                  <button class="vol-btn active" data-vol="1" type="button">100%</button>
+                </div>
+              </div>
+
+              <div class="game-card config-row">
+                <span class="card-title">Ambient Rain Streaks</span>
+                <button id="btn-cfg-rain" class="btn btn-success btn-cfg" type="button">ENABLED</button>
+              </div>
+
+              <div class="game-card config-row">
+                <span class="card-title">Steam &amp; Smoke Particles</span>
+                <button id="btn-cfg-particles" class="btn btn-success btn-cfg" type="button">ENABLED</button>
+              </div>
+
+              <div class="game-card config-row">
+                <span class="card-title">Number Formatting</span>
+                <button id="btn-cfg-notation" class="btn btn-accent btn-cfg-wide" type="button">
+                  Suffixes (1.5M)
+                </button>
+              </div>
+
+              <div class="game-card config-row">
+                <span class="card-title">Manual Game Save (LocalStorage)</span>
+                <button id="btn-cfg-save" class="btn btn-success btn-cfg-wide" type="button">
+                  Save Progress Now
+                </button>
+              </div>
+
+              <div class="game-card config-danger">
+                <div class="card-accent accent-danger"></div>
+                <div class="card-main">
+                  <div class="card-title text-danger">Remove Data / Wipe Save</div>
+                  <div class="card-desc">Deletes local save data and resets all currencies to 0.</div>
+                </div>
+                <button id="btn-cfg-wipe" class="btn btn-danger btn-wipe" type="button">
+                  Wipe All Save Data
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- =================================================================
+           FULL-SCREEN HIGH-RARITY RNG CUTSCENE OVERLAY
+           ================================================================= -->
+      <div id="rng-cutscene-overlay" class="rng-cutscene hidden">
+        <canvas id="rng-cutscene-canvas" width="1060" height="680"></canvas>
+        <div id="rng-cutscene-text-wrap" class="rng-cutscene-hud">
+          <div id="rng-cutscene-tier" class="cutscene-tier">LEGENDARY</div>
+          <div id="rng-cutscene-name" class="cutscene-name">Golden Sovereign Crown</div>
+          <div id="rng-cutscene-odds" class="cutscene-odds">1 in 250</div>
+        </div>
+        <button id="btn-skip-cutscene" class="btn btn-secondary cutscene-skip" type="button">
+          Skip (Space)
+        </button>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
