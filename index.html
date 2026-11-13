@@ -15,14 +15,20 @@
            ================================================================= -->
       <section id="left-stage">
         <!-- Interactive Canvas: Sky, Rain, Decor, Cat, Croissant, Mug, Steam & Popups -->
-        <canvas id="scene-canvas" width="440" height="632"></canvas>
+        <canvas id="scene-canvas" width="450" height="652"></canvas>
 
-        <!-- Single Clean Top Production & Level Overlay (No Nesting/Duplication) -->
+        <!-- Single Clean Top Production & Level Overlay -->
         <header id="hud-overlay">
           <h1 id="beans-display">0 Beans</h1>
           <div id="rates-display">0.0/s &nbsp;|&nbsp; +1.0/sip</div>
-          <div id="multiplier-display" role="button" tabindex="0" title="Click to inspect Multiplier Breakdown">
-            Multiplier: 1.0x ▾
+          
+          <div class="hud-pill-row">
+            <button id="multiplier-display" class="hud-pill" type="button" title="Inspect every multiplier source">
+              Multiplier: 1.0x ▾
+            </button>
+            <button id="btn-open-glossary" class="hud-pill hud-pill-guide" type="button" title="View all 18 Currencies & Number Suffixes">
+              Currencies &amp; Guide 📖
+            </button>
           </div>
 
           <!-- Barista Level & XP Dashboard -->
@@ -34,20 +40,29 @@
             <div id="xp-text">0 / 150 XP</div>
           </div>
 
-          <!-- Compact Currency Grid (Populated by game.js when > 0) -->
+          <!-- Compact 3-Column Active Currency Grid (Shows Full Names + Color Badges) -->
           <div id="currency-grid" aria-live="polite"></div>
         </header>
 
         <!-- Clickable Multiplier Breakdown Popover -->
-        <aside id="multiplier-popover" class="mult-popover hidden" aria-label="Multiplier Breakdown">
-          <div class="mult-pop-header">
-            <span class="mult-pop-title">Global Multiplier Breakdown</span>
-            <button id="btn-close-mult-pop" class="mult-pop-close" type="button" aria-label="Close">×</button>
+        <aside id="multiplier-popover" class="hud-popover hidden" aria-label="Multiplier Breakdown">
+          <div class="popover-header">
+            <span class="popover-title">Global Multiplier Breakdown</span>
+            <button id="btn-close-mult-pop" class="popover-close" type="button" aria-label="Close">×</button>
           </div>
-          <div id="mult-pop-body" class="mult-pop-body"></div>
+          <div id="mult-pop-body" class="popover-body"></div>
         </aside>
 
-        <!-- Bottom Stabilizer Meters (Silo Storage & Espresso Boiler) -->
+        <!-- Interactive 18-Currency & Number Suffix Glossary Popover -->
+        <aside id="glossary-popover" class="hud-popover glossary-popover hidden" aria-label="Currency Glossary">
+          <div class="popover-header">
+            <span class="popover-title">18-Currency &amp; Suffix Guide</span>
+            <button id="btn-close-glossary" class="popover-close" type="button" aria-label="Close">×</button>
+          </div>
+          <div id="glossary-pop-body" class="popover-body glossary-scroll"></div>
+        </aside>
+
+        <!-- Bottom Stabilizer Meters (Silo Storage & Espresso Boiler with Sweet-Spot Marker) -->
         <div id="stabilizer-panel">
           <!-- Silo Storage Row -->
           <div class="stabilizer-row">
@@ -57,7 +72,7 @@
                 <div id="silo-bar-fill" class="progress-fill silo-fill" style="width: 0%;"></div>
               </div>
             </div>
-            <button id="btn-silo-upgrade" class="btn btn-silo" type="button">
+            <button id="btn-silo-upgrade" class="btn btn-silo" type="button" title="Increase maximum Bean storage capacity">
               +Cap (12.00K)
             </button>
           </div>
@@ -65,14 +80,16 @@
           <!-- Espresso Boiler Temperature Row -->
           <div class="stabilizer-row">
             <div class="meter-column">
-              <div id="boiler-text" class="meter-label heat-cold">Boiler: 70°C (Normal Temperature)</div>
+              <div id="boiler-text" class="meter-label heat-cold">Boiler: 70°C (Normal)</div>
               <div class="progress-track stabilizer-track">
+                <!-- Visual Sweet-Spot Zone Indicator (85°C to 95°C = 70% to 90% of 50-100°C track) -->
+                <div class="boiler-sweet-zone" title="Sweet Spot (85°C–95°C): +50% Extraction Bonus!"></div>
                 <div id="boiler-bar-fill" class="progress-fill heat-cold-fill" style="width: 40%;"></div>
               </div>
             </div>
             <div class="boiler-btn-group">
-              <button id="btn-vent" class="btn btn-vent" type="button" title="Hotkey: V">Vent</button>
-              <button id="btn-auto-vent" class="btn btn-toggle" type="button">AUTO</button>
+              <button id="btn-vent" class="btn btn-vent" type="button" title="Cool boiler by 25°C (Hotkey: V)">Vent</button>
+              <button id="btn-auto-vent" class="btn btn-toggle" type="button" title="Automatically vent at 95°C">AUTO</button>
             </div>
           </div>
         </div>
@@ -88,10 +105,10 @@
       </section>
 
       <!-- =================================================================
-           RIGHT PANEL: DUAL-ROW 15-TAB NAVIGATION & SCROLLABLE VIEWS
+           RIGHT PANEL: SYMMETRIC 8x8 16-TAB NAVIGATION & VIEWPORT
            ================================================================= -->
       <section id="right-panel">
-        <!-- Dual-Row Top Shelf Tabs -->
+        <!-- Dual-Row 16-Tab Navigation Shelf -->
         <nav id="tab-shelf" aria-label="Cafe Management Tabs">
           <div class="tab-row" id="tab-row-0">
             <button class="tab-btn active" data-tab="menu" type="button">Menu</button>
@@ -99,11 +116,12 @@
             <button class="tab-btn" data-tab="decor" type="button">Decor</button>
             <button class="tab-btn" data-tab="brew" type="button">Brew</button>
             <button class="tab-btn" data-tab="orders" type="button">Orders</button>
+            <button class="tab-btn" data-tab="arcade" type="button">Arcade 🎮</button>
             <button class="tab-btn" data-tab="plinko" type="button">Plinko</button>
-            <button class="tab-btn" data-tab="talents" type="button">Talents</button>
             <button class="tab-btn" data-tab="rng" type="button">RNG ★</button>
           </div>
           <div class="tab-row" id="tab-row-1">
+            <button class="tab-btn" data-tab="talents" type="button">Talents</button>
             <button class="tab-btn" data-tab="sinks" type="button">Sinks</button>
             <button class="tab-btn" data-tab="cosmos" type="button">Cosmos</button>
             <button class="tab-btn" data-tab="roast" type="button">Roast</button>
@@ -119,8 +137,11 @@
 
           <!-- 1. MENU TAB (30 Regular Upgrades) -->
           <div id="tab-menu" class="tab-pane active">
+            <div class="pane-helper-banner">
+              Buy cafe equipment to increase <strong>Beans/sec</strong> and <strong>Beans/sip</strong>. Every 25, 50, 100, 250, 500 &amp; 1,000 owned doubles that item's output!
+            </div>
             <div class="pane-toolbar">
-              <span class="toolbar-label">Buy Mode:</span>
+              <span class="toolbar-label">Buy Quantity:</span>
               <div class="buy-mode-group" role="group" aria-label="Buy Quantity">
                 <button class="mode-btn active" data-mode="1" type="button">x1</button>
                 <button class="mode-btn" data-mode="10" type="button">x10</button>
@@ -136,6 +157,9 @@
 
           <!-- 2. STAFF TAB (5 Cafe Companions) -->
           <div id="tab-staff" class="tab-pane">
+            <div class="pane-helper-banner">
+              Hire cozy companions to automate mug sips, catch flying Golden Croissants, auto-buy upgrades, and boost offline &amp; tip income.
+            </div>
             <div class="pane-header-row">
               <h2 class="pane-title">Cafe Staff &amp; Companions</h2>
               <button id="btn-buy-max-staff" class="btn btn-gold btn-sm" type="button">
@@ -147,20 +171,29 @@
 
           <!-- 3. DECOR TAB (6 Visual & Passive Decor Pieces) -->
           <div id="tab-decor" class="tab-pane">
+            <div class="pane-helper-banner">
+              Decorate your rainy window cafe for permanent passive bonuses and visible window upgrades.
+            </div>
             <div id="decor-list" class="card-list"></div>
           </div>
 
           <!-- 4. BREW TAB (12 Coffee Recipes) -->
           <div id="tab-brew" class="tab-pane">
+            <div class="pane-helper-banner">
+              Research specialty drinks to unlock permanent cafe-wide multipliers and fulfill higher-paying Customer Orders.
+            </div>
             <div id="brew-list" class="card-list"></div>
           </div>
 
           <!-- 5. ORDERS TAB (Customer Counter) -->
           <div id="tab-orders" class="tab-pane">
+            <div class="pane-helper-banner">
+              Serve freshly brewed drinks to customers to earn <strong>Customer Stars ★</strong> (+2% global multiplier each) and huge bean tips.
+            </div>
             <div class="pane-header-row">
               <h2 class="pane-title">Customer Counter</h2>
               <button id="btn-auto-serve" class="btn btn-success btn-sm" type="button">
-                Auto-Serve: ON
+                Auto-Serve: OFF
               </button>
             </div>
             <p id="customer-stars-display" class="sub-stat-star">
@@ -175,13 +208,109 @@
             </div>
           </div>
 
-          <!-- 6. PLINKO TAB (12-Currency Physics Simulator) -->
+          <!-- 6. ARCADE TAB (4 Interactive Minigames + Token Shop) -->
+          <div id="tab-arcade" class="tab-pane">
+            <div class="pane-header-row">
+              <div>
+                <h2 class="pane-title">Rainy Cafe Arcade</h2>
+                <div id="arcade-tokens-display" class="sub-stat-star">
+                  Arcade Tokens: 0 🪙 &nbsp;|&nbsp; Active Arcade Buff: 1.00x
+                </div>
+              </div>
+              <div class="arcade-subnav" role="tablist" aria-label="Select Minigame">
+                <button class="arcade-tab-btn active" data-minigame="shot" type="button">🎯 Shot Puller</button>
+                <button class="arcade-tab-btn" data-minigame="catcher" type="button">☕ Bean Catcher</button>
+                <button class="arcade-tab-btn" data-minigame="memory" type="button">🃏 Latte Match</button>
+                <button class="arcade-tab-btn" data-minigame="roastluck" type="button">🔥 Roast Risk</button>
+              </div>
+            </div>
+
+            <!-- MINIGAME A: ESPRESSO SHOT-PULLER (Timing Precision) -->
+            <div id="mg-shot" class="minigame-panel active">
+              <div class="mg-card">
+                <div class="mg-header">
+                  <strong>Espresso Pressure Calibration (9-BAR Sweet Spot)</strong>
+                  <span id="shot-streak-label" class="mg-badge">Streak: 0x</span>
+                </div>
+                <p class="mg-desc">Click <strong>PULL SHOT</strong> when the needle enters the green 9-BAR zone! Higher streaks award Arcade Tokens, Beans &amp; +20% Extraction Buffs.</p>
+                <div class="shot-gauge-track">
+                  <div id="shot-sweet-zone" class="shot-sweet-zone" style="left: 42%; width: 16%;"></div>
+                  <div id="shot-needle" class="shot-needle" style="left: 0%;"></div>
+                </div>
+                <div class="mg-footer-row">
+                  <span id="shot-result-text" class="mg-status">Ready to calibrate pressure...</span>
+                  <button id="btn-pull-shot" class="btn btn-gold" type="button">PULL SHOT!</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- MINIGAME B: RAINY BEAN CATCHER (25s Canvas Action Game) -->
+            <div id="mg-catcher" class="minigame-panel">
+              <div class="mg-card">
+                <div class="mg-header">
+                  <strong>Rainy Window Bean Catcher</strong>
+                  <span id="catcher-hud-label" class="mg-badge">Score: 0 | Time: 25s</span>
+                </div>
+                <p class="mg-desc">Move your mouse (or Left/Right arrows) to catch falling Coffee Beans, Golden Beans &amp; Arcade Tokens while dodging Hot Steam Clouds!</p>
+                <canvas id="catcher-canvas" width="520" height="230"></canvas>
+                <div class="mg-footer-row">
+                  <span id="catcher-result-text" class="mg-status">25-second rush! Free to play.</span>
+                  <button id="btn-start-catcher" class="btn btn-success" type="button">START RUSH</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- MINIGAME C: BARISTA LATTE MEMORY MATCH (4x3 Card Puzzle) -->
+            <div id="mg-memory" class="minigame-panel">
+              <div class="mg-card">
+                <div class="mg-header">
+                  <strong>Barista Latte Art Memory Match</strong>
+                  <span id="memory-moves-label" class="mg-badge">Pairs: 0/6 | Moves: 0</span>
+                </div>
+                <p class="mg-desc">Match all 6 pairs of cafe icons to win Arcade Tokens, Customer Stars ★, and a burst of Beans!</p>
+                <div id="memory-grid" class="memory-grid"></div>
+                <div class="mg-footer-row">
+                  <span id="memory-result-text" class="mg-status">Flip two cards to find matching pairs.</span>
+                  <button id="btn-reset-memory" class="btn btn-accent" type="button">New Board</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- MINIGAME D: ROAST PRESS-YOUR-LUCK ("Double or Burn") -->
+            <div id="mg-roastluck" class="minigame-panel">
+              <div class="mg-card">
+                <div class="mg-header">
+                  <strong>Dark Roast Press-Your-Luck</strong>
+                  <span id="roastluck-stage-label" class="mg-badge">Batch Multiplier: 1.0x</span>
+                </div>
+                <p class="mg-desc">Roast deeper to multiply your pot up to <strong>25.0x</strong>—or <strong>Cash Out</strong> before the beans scorch and burn!</p>
+                <div class="roastluck-meter-box">
+                  <div id="roastluck-pot-display" class="roastluck-pot">Current Pot: 0 Beans + 0 Tokens</div>
+                  <div id="roastluck-chance-display" class="roastluck-chance">Next Roast Success Chance: 85%</div>
+                </div>
+                <div class="mg-footer-row">
+                  <button id="btn-roastluck-start" class="btn btn-gold" type="button">Start Batch (10% Beans)</button>
+                  <button id="btn-roastluck-push" class="btn btn-danger" type="button" disabled>🔥 Roast Deeper</button>
+                  <button id="btn-roastluck-cash" class="btn btn-success" type="button" disabled>💰 Cash Out</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Arcade Token Prize Counter -->
+            <h3 class="pane-subtitle section-spacer">Arcade Token Prize Counter</h3>
+            <div id="arcade-shop-list" class="card-list compact-list"></div>
+          </div>
+
+          <!-- 7. PLINKO TAB (18-Currency Physics Simulator) -->
           <div id="tab-plinko" class="tab-pane">
+            <div class="pane-helper-banner">
+              Select any of your <strong>18 Currencies</strong> below, set your wager (up to 10% of balance), and click the top strip or <strong>DROP</strong> to aim!
+            </div>
             <div id="plinko-currency-grid" class="plinko-curr-grid"></div>
             <div id="plinko-risk-label" class="plinko-risk-text">
-              Beans: Bias Handicap 0%
+              Coffee Beans: Bias Handicap 0%
             </div>
-            <canvas id="plinko-canvas" width="545" height="420"></canvas>
+            <canvas id="plinko-canvas" width="545" height="365"></canvas>
             <div class="plinko-controls">
               <div class="plinko-bal-col">
                 <div id="plinko-bal-label" class="plinko-bal-text">Bal: 0</div>
@@ -200,24 +329,6 @@
                 DROP (100)
               </button>
             </div>
-          </div>
-
-          <!-- 7. TALENTS TAB (Barista Mastery & Level Crates) -->
-          <div id="tab-talents" class="tab-pane">
-            <div class="pane-header-row">
-              <div>
-                <h2 class="pane-title">Barista Mastery Talents</h2>
-                <div id="talent-points-display" class="sub-stat-muted">
-                  Unspent Points: 0 &nbsp;|&nbsp; Crit: 1% (3.0x)
-                </div>
-              </div>
-              <button id="btn-reset-talents" class="btn btn-secondary btn-sm" type="button">
-                Reset Talents
-              </button>
-            </div>
-            <div id="talents-list" class="card-list"></div>
-            <h2 class="pane-title section-spacer">Level Milestone Supply Crates</h2>
-            <div id="milestones-list" class="card-list"></div>
           </div>
 
           <!-- 8. RNG TAB (10-Tier Aura Roller & Compendium) -->
@@ -243,7 +354,6 @@
               </div>
             </div>
 
-            <!-- Slot Reel / Rolling Stage -->
             <div id="rng-stage-box" class="rng-stage">
               <div id="rng-reel-window" class="rng-reel-window">
                 <div id="rng-current-tier-badge" class="rng-tier-badge tier-common">READY TO ROLL</div>
@@ -269,51 +379,76 @@
               </div>
             </div>
 
-            <!-- Grindy RNG Upgrades (Luck, Speed, Multi-Roll) -->
             <h3 class="pane-subtitle section-spacer">Fortune &amp; Roll Enhancers</h3>
             <div id="rng-upgrades-list" class="card-list compact-list"></div>
 
-            <!-- 10-Rarity Compendium & Aura Equipper -->
             <h3 class="pane-subtitle section-spacer">10-Rarity Aura Compendium (Click to Equip / Preview)</h3>
             <div id="rng-compendium-list" class="card-list"></div>
           </div>
 
-          <!-- 9. SINKS TAB (Altar, Transmutation & Endless Crucible) -->
+          <!-- 9. TALENTS TAB (Barista Mastery & Level Crates) -->
+          <div id="tab-talents" class="tab-pane">
+            <div class="pane-header-row">
+              <div>
+                <h2 class="pane-title">Barista Mastery Talents</h2>
+                <div id="talent-points-display" class="sub-stat-muted">
+                  Unspent Points: 0 &nbsp;|&nbsp; Crit: 1% (3.0x)
+                </div>
+              </div>
+              <button id="btn-reset-talents" class="btn btn-secondary btn-sm" type="button">
+                Reset Talents
+              </button>
+            </div>
+            <div id="talents-list" class="card-list"></div>
+            <h2 class="pane-title section-spacer">Level Milestone Supply Crates</h2>
+            <div id="milestones-list" class="card-list"></div>
+          </div>
+
+          <!-- 10. SINKS TAB (Altar, Transmutation & Endless Crucible) -->
           <div id="tab-sinks" class="tab-pane">
+            <div class="pane-helper-banner">
+              Convert excess Coffee Beans into higher-tier currencies or dump resources into uncapped multipliers.
+            </div>
             <div class="game-card card-altar">
               <div class="card-accent accent-gold"></div>
               <div class="card-main">
                 <div id="altar-title" class="card-title">Altar of the Roast (Blessings: 0 ★)</div>
-                <div class="card-desc">Sacrifice 50% beans for +2% global mult &amp; massive XP.</div>
+                <div class="card-desc">Sacrifice 50% of Coffee Beans for +2% global multiplier &amp; massive Barista XP.</div>
               </div>
               <button id="btn-altar-sacrifice" class="btn btn-gold" type="button">
-                Offer 50% Balance
+                Offer 50% Beans
               </button>
             </div>
 
-            <h2 class="pane-title section-spacer">Transmutation Forge (Exchange)</h2>
+            <h2 class="pane-title section-spacer">Transmutation Forge (Currency Exchange)</h2>
             <div id="transmute-list" class="card-list compact-list"></div>
 
-            <h2 class="pane-title section-spacer">The Endless Crucible (Uncapped Sinks)</h2>
+            <h2 class="pane-title section-spacer">The Endless Crucible (Uncapped Multipliers)</h2>
             <div id="sinks-list" class="card-list"></div>
           </div>
 
-          <!-- 10. COSMOS TAB (8 Forges, Pinnacle Sanctuary & God-Tier Perks) -->
+          <!-- 11. COSMOS TAB (12 Celestial Forges, Pinnacle Sanctuary & God-Tier Perks) -->
           <div id="tab-cosmos" class="tab-pane">
-            <h2 class="pane-title">The Celestial Forge &amp; Multiversal Sinks</h2>
+            <div class="pane-helper-banner">
+              Forge <strong>12 Endgame Celestial Currencies</strong> using full resource recipes—every forged currency grants a massive permanent multiplier!
+            </div>
+            <h2 class="pane-title">The Celestial Forge (12 Endgame Currencies)</h2>
             <div id="cosmic-forges-list" class="card-list compact-list"></div>
 
             <!-- Pinnacle Goal Banner -->
             <button id="sanctuary-goal-banner" class="sanctuary-banner" type="button">
-              GOAL: Lv.100, 12 Recipes, Silo 45, 10 OSB, 1 Eternal Bean
+              GOAL: Lv.100, 12 Recipes, Silo 45, 10 Omega Singularity, 3 Genesis Crema &amp; 1 Eternal Bean
             </button>
 
             <h2 class="pane-title section-spacer">God-Tier Cosmic Perks</h2>
             <div id="cosmic-perks-list" class="card-list"></div>
           </div>
 
-          <!-- 11. ROAST TAB (Tier 1 Prestige: Golden Beans) -->
+          <!-- 12. ROAST TAB (Tier 1 Prestige: Golden Beans) -->
           <div id="tab-roast" class="tab-pane">
+            <div class="pane-helper-banner">
+              Reset your Coffee Beans and Menu Upgrades to claim <strong>Golden Beans</strong> (+5% global multiplier each + Roastery perks).
+            </div>
             <div id="roast-bal-header" class="prestige-bal text-gold">
               Available: 0 Golden Beans
             </div>
@@ -321,7 +456,7 @@
               <span class="banner-accent accent-gold"></span>
               <span class="banner-content">
                 <strong class="banner-title">Perform Roastery Rebirth (Tier 1)</strong>
-                <span id="rebirth-status-text" class="banner-sub">0 / 25.00K beans</span>
+                <span id="rebirth-status-text" class="banner-sub">0 / 25.00K Coffee Beans</span>
               </span>
             </button>
             <div class="pane-header-row section-spacer">
@@ -333,8 +468,11 @@
             <div id="roastery-list" class="card-list"></div>
           </div>
 
-          <!-- 12. DYNASTY TAB (Tier 2 Prestige: Astral Crystals) -->
+          <!-- 13. DYNASTY TAB (Tier 2 Prestige: Astral Crystals) -->
           <div id="tab-dynasty" class="tab-pane">
+            <div class="pane-helper-banner">
+              Reset Tier 1 progress to claim <strong>Astral Crystals</strong> and unlock franchise automation &amp; scaling perks.
+            </div>
             <div id="dynasty-bal-header" class="prestige-bal text-astral">
               Available: 0 Astral Crystals
             </div>
@@ -342,7 +480,7 @@
               <span class="banner-accent accent-astral"></span>
               <span class="banner-content">
                 <strong class="banner-title">Ascend to Franchise Dynasty (Tier 2)</strong>
-                <span id="dynasty-status-text" class="banner-sub">0 / 100 golden beans</span>
+                <span id="dynasty-status-text" class="banner-sub">0 / 100 Golden Beans</span>
               </span>
             </button>
             <div class="pane-header-row section-spacer">
@@ -354,8 +492,11 @@
             <div id="dynasty-list" class="card-list"></div>
           </div>
 
-          <!-- 13. PANTHEON TAB (Tier 3 Prestige: Starlight Shards) -->
+          <!-- 14. PANTHEON TAB (Tier 3 Prestige: Starlight Shards) -->
           <div id="tab-pantheon" class="tab-pane">
+            <div class="pane-helper-banner">
+              Reset Tier 2 progress to claim <strong>Starlight Shards</strong> and unlock constellation-level multipliers.
+            </div>
             <div id="pantheon-bal-header" class="prestige-bal text-pantheon">
               Available: 0 Starlight Shards
             </div>
@@ -363,7 +504,7 @@
               <span class="banner-accent accent-pantheon"></span>
               <span class="banner-content">
                 <strong class="banner-title">Ascend to Cosmic Pantheon (Tier 3)</strong>
-                <span id="pantheon-status-text" class="banner-sub">0 / 50 astral crystals</span>
+                <span id="pantheon-status-text" class="banner-sub">0 / 50 Astral Crystals</span>
               </span>
             </button>
             <div class="pane-header-row section-spacer">
@@ -375,13 +516,16 @@
             <div id="pantheon-list" class="card-list"></div>
           </div>
 
-          <!-- 14. QUESTS TAB (6 Daily Cafe Contracts) -->
+          <!-- 15. QUESTS TAB (6 Auto-Refreshing Cafe Contracts) -->
           <div id="tab-quests" class="tab-pane">
+            <div class="pane-helper-banner">
+              Complete contracts for Coffee Beans, Customer Stars ★, and Arcade Tokens 🪙. Claimed contracts automatically upgrade to the next tier!
+            </div>
             <h2 class="pane-title">Daily Cafe Contracts &amp; Quests</h2>
             <div id="quests-list" class="card-list"></div>
           </div>
 
-          <!-- 15. CONFIG TAB (Audio, Visuals, Notation & Save Management) -->
+          <!-- 16. CONFIG TAB (Audio, Visuals, Notation & Save Management) -->
           <div id="tab-config" class="tab-pane">
             <h2 class="pane-title">Cafe Settings &amp; Preferences</h2>
             <div class="card-list config-list">
@@ -445,7 +589,7 @@
            FULL-SCREEN HIGH-RARITY RNG CUTSCENE OVERLAY
            ================================================================= -->
       <div id="rng-cutscene-overlay" class="rng-cutscene hidden">
-        <canvas id="rng-cutscene-canvas" width="1060" height="680"></canvas>
+        <canvas id="rng-cutscene-canvas" width="1120" height="700"></canvas>
         <div id="rng-cutscene-text-wrap" class="rng-cutscene-hud">
           <div id="rng-cutscene-tier" class="cutscene-tier">LEGENDARY</div>
           <div id="rng-cutscene-name" class="cutscene-name">Golden Sovereign Crown</div>
