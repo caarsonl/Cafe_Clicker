@@ -2424,6 +2424,7 @@ class ArcadeManager {
 class GameState {
   constructor() {
     // Settings
+    this.saveDirty = false;
     this.sfxEnabled = true;
     this.sfxVolume = 1.0;
     this.rainEnabled = true;
@@ -2719,7 +2720,7 @@ class GameState {
   // --- Economy & Multiplier Calculations ---
 
   getMaxStorage() { return 50000.0 * Math.pow(4.5, this.siloLevel); }
-  getSiloUpgradeCost() { return 12000.0 * Math.pow(4.6, this.siloLevel); }
+  getSiloUpgradeCost() { return Math.floor(this.getMaxStorage() * 0.35); }
   getStaffCost(st) { return Math.max(10.0, st.baseCost * Math.pow(1.30, st.level)); }
   getRoasteryCost(upg) { return Math.max(1, Math.floor(upg.baseCost * Math.pow(1.40, upg.count))); }
 
@@ -3336,7 +3337,9 @@ class GameState {
   }
 
   // --- Save & Load (LocalStorage with 15-Tier RNG & Crafted Gear Support) ---
-
+  markDirty() {
+    this.saveDirty = true;
+  }
   saveGame() {
     const plinkoRefunds = this.plinko ? this.plinko.getPendingRefundsByCurrency() : {};
     const rngRefunds = this.rng ? this.rng.getPendingRefunds() : {};
@@ -3429,6 +3432,7 @@ class GameState {
   loadGame() {
     try {
       const raw = localStorage.getItem("rainy_cafe_grand_master_save");
+      this.saveDirty = false;
       if (!raw) return;
       const data = JSON.parse(raw);
 
@@ -4946,10 +4950,21 @@ class GameState {
       ctx.lineTo(cx, foamY + 10 * this.scaleY);
       ctx.closePath();
       ctx.fill();
+    } else if (this.latteStage <= 2) {
+      for (let tier = -1; tier <= 1; tier++) {
+        ctx.beginPath();
+        ctx.ellipse(cx, foamY + 2 + tier * 3, (16 - Math.abs(tier) * 4) * this.scaleX, 3.5 * this.scaleY, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (this.latteStage <= 4) {
+      drawGoldenSparkle(ctx, cx, foamY + 2, 11 * this.scaleX, COLORS.goldHover);
     } else {
+      ctx.strokeStyle = COLORS.goldHover;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.arc(cx, foamY + 2, 12, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.ellipse(cx, foamY + 2, 22 * this.scaleX, 6 * this.scaleY, 0, 0, Math.PI * 1.75);
+      ctx.stroke();
+      drawGoldenSparkle(ctx, cx, foamY + 2, 9 * this.scaleX, "#ffffff");
     }
 
     for (const p of this.popups) p.draw(ctx);
@@ -5411,6 +5426,10 @@ class GameState {
 // 12. RESPONSIVE VIEWPORT AUTO-SCALING & 60FPS BOOTSTRAP LOOP
 // =============================================================================
 
+// =============================================================================
+// 12. RESPONSIVE VIEWPORT AUTO-SCALING & RELIABLE AUTO-SAVE 60FPS LOOP
+// =============================================================================
+
 function fitGameToViewport() {
   const container = document.getElementById("game-container");
   if (!container) return;
@@ -5428,6 +5447,11 @@ window.addEventListener("DOMContentLoaded", () => {
   const game = new GameState();
   let lastTime = performance.now();
   let saveTimer = 0.0;
+  let dirtySaveTimer = 0.0;
+
+  // Mark save dirty on any click or key press inside the game
+  window.addEventListener("pointerdown", () => game.markDirty());
+  window.addEventListener("keydown", () => game.markDirty());
 
   function loop(now) {
     const dt = Math.min((now - lastTime) / 1000.0, 0.1);
@@ -5437,15 +5461,33 @@ window.addEventListener("DOMContentLoaded", () => {
     game.drawSceneCanvas();
     game.refreshDOM();
 
+    // Flush dirty changes within 1.5s, and force a full background save every 5s
     saveTimer += dt;
-    if (saveTimer >= 30.0) {
+    if (game.saveDirty) {
+      dirtySaveTimer += dt;
+      if (dirtySaveTimer >= 1.5) {
+        dirtySaveTimer = 0.0;
+        saveTimer = 0.0;
+        game.saveGame();
+      }
+    }
+    if (saveTimer >= 5.0) {
       saveTimer = 0.0;
+      dirtySaveTimer = 0.0;
       game.saveGame();
     }
 
     requestAnimationFrame(loop);
   }
 
+  // Reliable cross-browser save hooks (Safari iPadOS/iOS + Desktop)
+  window.addEventListener("pagehide", () => game.saveGame());
   window.addEventListener("beforeunload", () => game.saveGame());
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      game.saveGame();
+    }
+  });
+
   requestAnimationFrame(loop);
 });
