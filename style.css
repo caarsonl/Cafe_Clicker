@@ -1,5 +1,4 @@
-/* =============================================================================
-   1. COLOR PALETTES & THEME VARIABLES
+1. COLOR PALETTES & THEME VARIABLES (18 Currencies)
    ============================================================================= */
 :root {
   --color-bg: rgb(238, 232, 224);
@@ -8,7 +7,7 @@
   --color-panel: rgb(230, 222, 212);
   --color-panel-alt: rgb(220, 210, 198);
   --color-text: rgb(58, 42, 34);
-  --color-text-light: rgb(145, 125, 115);
+  --color-text-light: rgb(135, 115, 105);
   --color-text-muted: rgb(180, 165, 155);
   --color-accent: rgb(198, 108, 68);
   --color-accent-hover: rgb(218, 128, 88);
@@ -16,7 +15,8 @@
   --color-card-hover: rgb(255, 253, 250);
   --color-card-locked: rgb(238, 234, 230);
 
-  /* Prestige Tiers */
+  /* Core & Prestige Tiers */
+  --color-tokens: rgb(230, 126, 34);
   --color-gold: rgb(212, 154, 42);
   --color-gold-hover: rgb(235, 178, 65);
   --color-gold-bg: rgb(255, 249, 235);
@@ -27,15 +27,19 @@
   --color-pantheon-hover: rgb(195, 125, 245);
   --color-pantheon-bg: rgb(250, 240, 255);
 
-  /* Cosmic & Transcendent Currencies */
+  /* 12 Cosmic & Transcendent Currencies */
   --color-dark-matter: rgb(75, 45, 110);
   --color-supernova: rgb(245, 110, 35);
   --color-chronos: rgb(40, 170, 105);
-  --color-aether: rgb(50, 195, 215);
-  --color-omega: rgb(240, 70, 150);
-  --color-celestial-dew: rgb(120, 210, 255);
-  --color-quasar-nectar: rgb(255, 190, 50);
-  --color-eternal-bean: rgb(255, 105, 180);
+  --color-aether: rgb(35, 175, 200);
+  --color-omega: rgb(230, 60, 140);
+  --color-celestial-dew: rgb(75, 165, 235);
+  --color-quasar-nectar: rgb(235, 165, 25);
+  --color-void-truffle: rgb(110, 50, 85);
+  --color-nebula-honey: rgb(215, 135, 30);
+  --color-solaris-amber: rgb(230, 95, 45);
+  --color-genesis-crema: rgb(145, 70, 210);
+  --color-eternal-bean: rgb(240, 75, 165);
 
   /* Status & Meters */
   --color-success: rgb(65, 125, 80);
@@ -55,7 +59,7 @@
 }
 
 /* =============================================================================
-   2. GLOBAL RESET & VIEWPORT SHELL
+   2. GLOBAL RESET & RESPONSIVE VIEWPORT SHELL
    ============================================================================= */
 * {
   box-sizing: border-box;
@@ -86,16 +90,17 @@ body {
 }
 
 #game-container {
-  width: 1060px;
-  height: 680px;
+  width: 1120px;
+  height: 700px;
   background-color: var(--color-bg);
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
   display: grid;
-  grid-template-columns: 480px 580px;
+  grid-template-columns: 490px 630px;
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
+  transform-origin: center center;
 }
 
 .hidden {
@@ -107,33 +112,33 @@ body {
    ============================================================================= */
 #left-stage {
   position: relative;
-  width: 480px;
-  height: 680px;
+  width: 490px;
+  height: 700px;
   background-color: var(--color-bg);
 }
 
 #scene-canvas {
   position: absolute;
-  left: 30px;
+  left: 20px;
   top: 24px;
-  width: 440px;
-  height: 632px;
+  width: 450px;
+  height: 652px;
   border-radius: 16px;
   cursor: pointer;
   z-index: 1;
 }
 
-/* Top HUD Overlay (Frosted Pill Backdrop Prevents Decor Collision) */
+/* Top HUD Overlay (Frosted Pill Backdrop) */
 #hud-overlay {
   position: absolute;
-  left: 48px;
-  top: 32px;
-  width: 404px;
-  padding: 8px 12px;
+  left: 34px;
+  top: 30px;
+  width: 422px;
+  padding: 8px 10px;
   border-radius: 14px;
-  background-color: rgba(238, 232, 224, 0.72);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  background-color: rgba(238, 232, 224, 0.78);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   text-align: center;
   pointer-events: none;
   z-index: 2;
@@ -153,40 +158,51 @@ body {
   margin-top: 2px;
 }
 
-/* Clickable Multiplier Pill */
-#multiplier-display {
+.hud-pill-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 5px;
   pointer-events: auto;
+}
+
+.hud-pill {
   cursor: pointer;
-  display: inline-block;
-  font-size: 12px;
+  font-family: var(--font-main);
+  font-size: 11.5px;
   font-weight: 700;
   color: var(--color-accent);
-  margin-top: 4px;
-  padding: 2px 10px;
+  padding: 3px 10px;
   border-radius: 12px;
-  background-color: rgba(252, 249, 246, 0.85);
-  border: 1px solid rgba(198, 108, 68, 0.38);
+  background-color: rgba(252, 249, 246, 0.9);
+  border: 1px solid rgba(198, 108, 68, 0.4);
   transition: background-color 0.12s, transform 0.08s;
 }
 
-#multiplier-display:hover {
+.hud-pill:hover {
   background-color: var(--color-card);
   transform: translateY(-1px);
 }
 
-#multiplier-display.frenzy-active {
+.hud-pill-guide {
+  color: var(--color-text);
+  border-color: rgba(58, 42, 34, 0.25);
+}
+
+.hud-pill.frenzy-active {
   color: var(--color-gold);
   border-color: var(--color-gold);
 }
 
 /* Level & XP Bar */
 #level-dashboard {
-  width: 250px;
+  width: 260px;
   margin: 6px auto 0;
 }
 
 #level-title {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--color-text);
   margin-bottom: 2px;
@@ -216,7 +232,7 @@ body {
 }
 
 #xp-text {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--color-text-light);
   margin-top: 2px;
 }
@@ -226,44 +242,56 @@ body {
   font-weight: 700;
 }
 
-/* Compact 3-Column Currency Grid (Never Overflows Into Coffee Mug) */
+/* Compact 3-Column Currency Grid (Full Currency Names + Color Dots) */
 #currency-grid {
   width: 100%;
-  max-height: 54px;
+  max-height: 76px;
   margin: 5px auto 0;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  column-gap: 6px;
+  column-gap: 4px;
   row-gap: 2px;
   text-align: left;
-  padding: 0 4px;
-  overflow: hidden;
+  padding: 0 2px;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+#currency-grid::-webkit-scrollbar {
+  width: 3px;
+}
+
+#currency-grid::-webkit-scrollbar-thumb {
+  background: rgba(198, 108, 68, 0.4);
+  border-radius: 2px;
 }
 
 .curr-badge {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
   display: flex;
   align-items: center;
   gap: 4px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .curr-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 2px;
   display: inline-block;
   transform: rotate(45deg);
   flex-shrink: 0;
 }
 
-/* Stabilizer Meters (Positioned Below Saucer Hitbox) */
+/* Stabilizer Meters (Silo & Boiler with Sweet-Spot Visual Zone) */
 #stabilizer-panel {
   position: absolute;
-  left: 45px;
-  top: 484px;
-  width: 395px;
+  left: 38px;
+  top: 498px;
+  width: 414px;
   z-index: 3;
   display: flex;
   flex-direction: column;
@@ -274,16 +302,16 @@ body {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .meter-column {
-  width: 260px;
+  width: 278px;
 }
 
 .meter-label {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text);
   margin-bottom: 3px;
 }
@@ -291,6 +319,19 @@ body {
 .stabilizer-track {
   height: 14px;
   border: 1px solid var(--color-text);
+}
+
+.boiler-sweet-zone {
+  position: absolute;
+  left: 70%;
+  width: 20%;
+  top: 0;
+  bottom: 0;
+  background-color: rgba(65, 160, 95, 0.28);
+  border-left: 1px dashed var(--color-heat-optimal);
+  border-right: 1px dashed var(--color-heat-optimal);
+  z-index: 2;
+  pointer-events: none;
 }
 
 .silo-fill {
@@ -316,12 +357,12 @@ body {
   gap: 4px;
 }
 
-/* Achievement Slide-In Toast (pointer-events: none so it NEVER blocks Mochi the Cat) */
+/* Achievement Slide-In Toast (pointer-events: none so it NEVER blocks Mochi) */
 .toast {
   position: absolute;
-  right: 22px;
+  right: 18px;
   bottom: 18px;
-  width: 285px;
+  width: 290px;
   height: 56px;
   background-color: var(--color-card);
   border-radius: 10px;
@@ -363,34 +404,202 @@ body {
 }
 
 /* =============================================================================
-   4. RIGHT PANEL: DUAL-ROW 15-TAB NAVIGATION & SCROLLABLE VIEWPORT
+   4. HUD POPOVERS (MULTIPLIER BREAKDOWN & 18-CURRENCY GLOSSARY)
+   ============================================================================= */
+.hud-popover {
+  position: absolute;
+  left: 34px;
+  top: 112px;
+  width: 422px;
+  background-color: var(--color-card);
+  border: 2px solid var(--color-accent);
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(42, 28, 20, 0.36);
+  padding: 12px 14px;
+  z-index: 25;
+  pointer-events: auto;
+  animation: popFadeIn 0.15s ease-out;
+}
+
+.glossary-popover {
+  max-height: 540px;
+  display: flex;
+  flex-direction: column;
+}
+
+.glossary-scroll {
+  overflow-y: auto;
+  max-height: 475px;
+  padding-right: 4px;
+}
+
+.glossary-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.glossary-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-accent);
+  border-radius: 3px;
+}
+
+@keyframes popFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--color-panel-alt);
+}
+
+.popover-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.popover-close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 5px;
+  background-color: var(--color-panel-alt);
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.popover-close:hover {
+  background-color: var(--color-danger);
+  color: #fff;
+}
+
+.popover-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11.5px;
+}
+
+.mult-section-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--color-text-light);
+  margin-top: 4px;
+}
+
+.mult-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background-color: rgba(230, 222, 212, 0.35);
+}
+
+.mult-row-label {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.mult-row-val {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.mult-divider {
+  height: 1px;
+  background-color: var(--color-panel-alt);
+  margin: 4px 0;
+}
+
+.mult-row-total {
+  background-color: var(--color-gold-bg);
+  border: 1px solid rgba(212, 154, 42, 0.45);
+  padding: 5px 8px;
+}
+
+.mult-softcap-box {
+  margin-top: 4px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background-color: var(--color-panel);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.mult-softcap-active {
+  background-color: rgb(255, 242, 240);
+  border: 1px solid rgba(175, 75, 75, 0.35);
+}
+
+.glossary-item {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background-color: rgba(230, 222, 212, 0.35);
+  border-left: 4px solid var(--color-accent);
+}
+
+.glossary-item-top {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 11.5px;
+}
+
+.glossary-item-desc {
+  font-size: 10.5px;
+  color: var(--color-text-light);
+  margin-top: 2px;
+}
+
+.suffix-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
+
+.suffix-chip {
+  background: var(--color-panel);
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+/* =============================================================================
+   5. RIGHT PANEL: SYMMETRIC 8x8 16-TAB NAVIGATION & SCROLLABLE VIEWPORT
    ============================================================================= */
 #right-panel {
-  width: 580px;
-  height: 680px;
+  width: 630px;
+  height: 700px;
   background-color: var(--color-panel);
   display: flex;
   flex-direction: column;
 }
 
 #tab-shelf {
-  height: 56px;
-  padding: 3px 15px;
+  height: 58px;
+  padding: 4px 14px;
   background-color: var(--color-panel);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   border-bottom: 1px solid rgba(58, 42, 34, 0.08);
 }
 
 .tab-row {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-#tab-row-0 {
   grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
 }
 
 .tab-btn {
@@ -421,6 +630,7 @@ body {
 .tab-btn.active[data-tab="roast"] { color: var(--color-gold); }
 .tab-btn.active[data-tab="plinko"],
 .tab-btn.active[data-tab="sinks"] { color: var(--color-accent); }
+.tab-btn.active[data-tab="arcade"] { color: var(--color-tokens); }
 .tab-btn.active[data-tab="cosmos"],
 .tab-btn.active[data-tab="rng"] { color: var(--color-omega); }
 .tab-btn.active[data-tab="dynasty"] { color: var(--color-astral); }
@@ -430,7 +640,7 @@ body {
 #tab-viewport {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 15px 20px 15px;
+  padding: 10px 14px 20px 14px;
 }
 
 #tab-viewport::-webkit-scrollbar {
@@ -455,8 +665,20 @@ body {
   display: block;
 }
 
+/* Friendly Tab Instruction Banner */
+.pane-helper-banner {
+  background-color: rgba(252, 249, 246, 0.72);
+  border-left: 4px solid var(--color-accent);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  color: var(--color-text);
+  margin-bottom: 10px;
+  line-height: 1.35;
+}
+
 /* =============================================================================
-   5. CARDS, HEADERS, BUTTONS & SUB-COMPONENTS
+   6. CARDS, HEADERS, BUTTONS & SUB-COMPONENTS
    ============================================================================= */
 .pane-toolbar,
 .pane-header-row {
@@ -477,7 +699,7 @@ body {
   font-size: 18px;
   font-weight: 700;
   color: var(--color-text);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .section-spacer {
@@ -488,7 +710,7 @@ body {
   font-size: 13px;
   font-weight: 600;
   color: var(--color-star);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .sub-stat-muted {
@@ -503,7 +725,7 @@ body {
 }
 
 .mode-btn {
-  width: 50px;
+  width: 52px;
   height: 28px;
   background-color: var(--color-panel-alt);
   color: var(--color-text);
@@ -538,7 +760,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 70px;
+  min-height: 68px;
   transition: background-color 0.12s, transform 0.08s;
 }
 
@@ -596,7 +818,7 @@ body {
 }
 
 .card-count {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--color-accent);
 }
@@ -647,21 +869,21 @@ body {
 }
 
 .btn-silo {
-  width: 115px;
+  width: 124px;
   height: 30px;
   font-size: 11px;
   background-color: var(--color-success);
 }
 
 .btn-vent {
-  width: 66px;
+  width: 68px;
   height: 30px;
   font-size: 11px;
   background-color: var(--color-heat-cold);
 }
 
 .btn-toggle {
-  width: 45px;
+  width: 52px;
   height: 30px;
   font-size: 11px;
   background-color: var(--color-panel-alt);
@@ -748,7 +970,8 @@ body {
 /* Pinnacle Sanctuary Banner */
 .sanctuary-banner {
   width: 100%;
-  height: 52px;
+  min-height: 54px;
+  padding: 8px 12px;
   margin-top: 10px;
   background-color: var(--color-card);
   border: 2px solid var(--color-accent);
@@ -768,7 +991,190 @@ body {
 }
 
 /* =============================================================================
-   6. PLINKO SIMULATOR STYLES
+   7. ARCADE TAB & 4 PLAYABLE MINIGAMES
+   ============================================================================= */
+.arcade-subnav {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.arcade-tab-btn {
+  height: 28px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 6px;
+  background-color: var(--color-panel-alt);
+  color: var(--color-text);
+  font-family: var(--font-main);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.arcade-tab-btn.active {
+  background-color: var(--color-tokens);
+  color: #fff;
+}
+
+.minigame-panel {
+  display: none;
+}
+
+.minigame-panel.active {
+  display: block;
+}
+
+.mg-card {
+  background-color: var(--color-card);
+  border-radius: 10px;
+  padding: 14px;
+  border: 2px solid rgba(230, 126, 34, 0.35);
+}
+
+.mg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+
+.mg-badge {
+  background-color: var(--color-gold-bg);
+  color: var(--color-tokens);
+  border: 1px solid rgba(230, 126, 34, 0.4);
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.mg-desc {
+  font-size: 12px;
+  color: var(--color-text-light);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.mg-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mg-status {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* Minigame A: Espresso Shot-Puller */
+.shot-gauge-track {
+  position: relative;
+  width: 100%;
+  height: 32px;
+  background: linear-gradient(90deg, #5d8aa8 0%, #65a05f 50%, #c83232 100%);
+  border-radius: 8px;
+  border: 2px solid var(--color-text);
+  overflow: hidden;
+}
+
+.shot-sweet-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background-color: rgba(255, 249, 235, 0.65);
+  border-left: 3px solid #fff;
+  border-right: 3px solid #fff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+}
+
+.shot-needle {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 6px;
+  background-color: var(--color-text);
+  border: 1px solid #fff;
+  border-radius: 3px;
+}
+
+/* Minigame B: Rainy Bean Catcher */
+#catcher-canvas {
+  width: 100%;
+  height: 230px;
+  background-color: rgb(215, 222, 228);
+  border-radius: 8px;
+  border: 1px solid var(--color-text-muted);
+  display: block;
+  cursor: ew-resize;
+}
+
+/* Minigame C: Latte Art Memory Match */
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.memory-card {
+  height: 54px;
+  border-radius: 8px;
+  background-color: var(--color-accent);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.12s, background-color 0.15s;
+}
+
+.memory-card:hover {
+  filter: brightness(1.06);
+}
+
+.memory-card.flipped,
+.memory-card.matched {
+  background-color: var(--color-gold-bg);
+  color: var(--color-text);
+  border: 2px solid var(--color-gold);
+  cursor: default;
+}
+
+.memory-card.matched {
+  background-color: rgb(232, 248, 236);
+  border-color: var(--color-success);
+}
+
+/* Minigame D: Roast Press-Your-Luck */
+.roastluck-meter-box {
+  background-color: rgb(42, 32, 28);
+  color: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+}
+
+.roastluck-pot {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-gold-hover);
+}
+
+.roastluck-chance {
+  font-size: 12px;
+  color: rgb(225, 210, 195);
+  margin-top: 6px;
+}
+
+/* =============================================================================
+   8. PLINKO SIMULATOR STYLES (18 Currencies)
    ============================================================================= */
 .plinko-curr-grid {
   display: grid;
@@ -778,19 +1184,22 @@ body {
 }
 
 .plinko-curr-btn {
-  height: 24px;
+  height: 22px;
   border: none;
-  border-radius: 6px;
+  border-radius: 5px;
   background-color: var(--color-panel-alt);
   color: var(--color-text);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 3px;
 }
 
 .plinko-curr-btn.active {
   color: #fff;
-  font-weight: 700;
 }
 
 .plinko-risk-text {
@@ -805,6 +1214,7 @@ body {
   border-radius: 8px;
   display: block;
   cursor: crosshair;
+  margin: 0 auto;
 }
 
 .plinko-controls {
@@ -869,11 +1279,11 @@ body {
 
 .btn-drop {
   height: 38px;
-  min-width: 108px;
+  min-width: 112px;
 }
 
 /* =============================================================================
-   7. ORDERS & CONFIG STYLES
+   9. ORDERS & CONFIG STYLES
    ============================================================================= */
 .order-box {
   flex-direction: column;
@@ -937,7 +1347,7 @@ body {
 }
 
 /* =============================================================================
-   8. RNG ROLLER, 10 RARITY THEMES & FULL-SCREEN CUTSCENE OVERLAY
+   10. RNG ROLLER, 10 RARITY THEMES & FULL-SCREEN CUTSCENE OVERLAY
    ============================================================================= */
 .rng-top-controls {
   display: flex;
@@ -1185,122 +1595,4 @@ body {
   40% { transform: translate(7px, -6px); }
   60% { transform: translate(-5px, -4px); }
   80% { transform: translate(5px, 6px); }
-}
-
-/* =============================================================================
-   9. CLICKABLE MULTIPLIER BREAKDOWN POPOVER
-   ============================================================================= */
-.mult-popover {
-  position: absolute;
-  left: 55px;
-  top: 110px;
-  width: 390px;
-  background-color: var(--color-card);
-  border: 2px solid var(--color-accent);
-  border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(42, 28, 20, 0.32);
-  padding: 12px 14px;
-  z-index: 25;
-  pointer-events: auto;
-  animation: popFadeIn 0.15s ease-out;
-}
-
-@keyframes popFadeIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.mult-pop-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 6px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--color-panel-alt);
-}
-
-.mult-pop-title {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--color-text);
-  letter-spacing: 0.3px;
-}
-
-.mult-pop-close {
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 5px;
-  background-color: var(--color-panel-alt);
-  color: var(--color-text);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.mult-pop-close:hover {
-  background-color: var(--color-danger);
-  color: #fff;
-}
-
-.mult-pop-body {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 11.5px;
-}
-
-.mult-section-label {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--color-text-light);
-  margin-top: 4px;
-}
-
-.mult-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 2px 6px;
-  border-radius: 5px;
-  background-color: rgba(230, 222, 212, 0.35);
-}
-
-.mult-row-label {
-  color: var(--color-text);
-  font-weight: 600;
-}
-
-.mult-row-val {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.mult-divider {
-  height: 1px;
-  background-color: var(--color-panel-alt);
-  margin: 4px 0;
-}
-
-.mult-row-total {
-  background-color: var(--color-gold-bg);
-  border: 1px solid rgba(212, 154, 42, 0.45);
-  padding: 5px 8px;
-}
-
-.mult-softcap-box {
-  margin-top: 4px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background-color: var(--color-panel);
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.mult-softcap-active {
-  background-color: rgb(255, 242, 240);
-  border: 1px solid rgba(175, 75, 75, 0.35);
 }
