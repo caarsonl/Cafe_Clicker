@@ -1,6 +1,6 @@
 /**
- * Cozy Rainy Cafe: Grand Master Edition — Web Engine (game.js — Part 1 of 2)
- * Sections 1–7: Formatters, Icons, Audio Synth, Weather, Plinko, Models & RNG Engine
+ * Cozy Rainy Cafe: Grand Master Edition — Upgraded Web Engine (game.js — Part 1 of 2)
+ * Features: 18 Currencies, 6 Minigames (Arcade + Plinko + RNG), Full Glossary & Cutscenes
  */
 
 // 4-Corner roundRect Polyfill (Supports [tl, tr, br, bl] arrays for rounded mug base)
@@ -30,12 +30,27 @@ if (typeof CanvasRenderingContext2D !== "undefined" && !CanvasRenderingContext2D
 }
 
 // =============================================================================
-// 1. MATHEMATICAL FORMATTERS & COLOR CONSTANTS
+// 1. MATHEMATICAL FORMATTERS, 18-CURRENCY REGISTRY & COLOR CONSTANTS
 // =============================================================================
 
 const SUFFIXES = [
   "", "K", "M", "B", "T", "Qd", "Qn", "Sx", "Sp", "Oc", "No",
   "Dc", "Ud", "Dd", "Td", "Qad", "Qnd", "Sxd", "Spd", "Ocd", "Nod", "Vg"
+];
+
+const SUFFIX_GUIDE = [
+  { sym: "K", name: "Thousand (10³)" },
+  { sym: "M", name: "Million (10⁶)" },
+  { sym: "B", name: "Billion (10⁹)" },
+  { sym: "T", name: "Trillion (10¹²)" },
+  { sym: "Qd", name: "Quadrillion (10¹⁵)" },
+  { sym: "Qn", name: "Quintillion (10¹⁸)" },
+  { sym: "Sx", name: "Sextillion (10²¹)" },
+  { sym: "Sp", name: "Septillion (10²⁴)" },
+  { sym: "Oc", name: "Octillion (10²⁷)" },
+  { sym: "No", name: "Nonillion (10³⁰)" },
+  { sym: "Dc", name: "Decillion (10³³)" },
+  { sym: "Ud+", name: "Undecillion+ (10³⁶+)" }
 ];
 
 function formatNum(val, notation = "suffix") {
@@ -55,7 +70,6 @@ function formatNum(val, notation = "suffix") {
     return val.toExponential(2);
   }
   let scaled = val / Math.pow(1000.0, exp);
-  // Prevent "1000.0K" rounding glitch right below 1,000,000
   if (scaled >= 999.95 && exp + 1 < SUFFIXES.length) {
     exp += 1;
     scaled = val / Math.pow(1000.0, exp);
@@ -69,11 +83,12 @@ const COLORS = {
   bg: "rgb(238, 232, 224)",
   windowRain: "rgb(175, 188, 198)",
   text: "rgb(58, 42, 34)",
-  textLight: "rgb(145, 125, 115)",
+  textLight: "rgb(135, 115, 105)",
   textMuted: "rgb(180, 165, 155)",
   accent: "rgb(198, 108, 68)",
   card: "rgb(252, 249, 246)",
   cardLocked: "rgb(238, 234, 230)",
+  tokens: "rgb(230, 126, 34)",
   gold: "rgb(212, 154, 42)",
   goldHover: "rgb(235, 178, 65)",
   goldBg: "rgb(255, 249, 235)",
@@ -82,11 +97,15 @@ const COLORS = {
   darkMatter: "rgb(75, 45, 110)",
   supernova: "rgb(245, 110, 35)",
   chronos: "rgb(40, 170, 105)",
-  aether: "rgb(50, 195, 215)",
-  omega: "rgb(240, 70, 150)",
-  dew: "rgb(120, 210, 255)",
-  quasar: "rgb(255, 190, 50)",
-  eternal: "rgb(255, 105, 180)",
+  aether: "rgb(35, 175, 200)",
+  omega: "rgb(230, 60, 140)",
+  celestialDew: "rgb(75, 165, 235)",
+  quasarNectar: "rgb(235, 165, 25)",
+  voidTruffle: "rgb(110, 50, 85)",
+  nebulaHoney: "rgb(215, 135, 30)",
+  solarisAmber: "rgb(230, 95, 45)",
+  genesisCrema: "rgb(145, 70, 210)",
+  eternalBean: "rgb(240, 75, 165)",
   mug: "rgb(248, 244, 238)",
   mugShadow: "rgb(215, 208, 200)",
   coffee: "rgb(52, 32, 20)",
@@ -99,6 +118,33 @@ const COLORS = {
   star: "rgb(225, 165, 45)",
   heatCold: "rgb(70, 130, 180)"
 };
+
+// Complete 18-Currency Directory (Full Names, Short Labels & Descriptions)
+const CURRENCY_META = [
+  { key: "beans", name: "Coffee Beans", short: "Beans", tier: "Core", color: COLORS.text, desc: "Primary currency earned by clicking the mug and running cafe equipment." },
+  { key: "stars", name: "Customer Stars", short: "Stars ★", tier: "Service", color: COLORS.star, desc: "Earned from Orders, Quests & Memory Match (+2% global multiplier each)." },
+  { key: "tokens", name: "Arcade Tokens", short: "Tokens 🪙", tier: "Arcade", color: COLORS.tokens, desc: "Earned from Arcade minigames & Quests; spent on permanent Arcade Prizes." },
+  { key: "golden", name: "Golden Beans", short: "Golden", tier: "Prestige 1", color: COLORS.gold, desc: "Claimed on Roastery Rebirth (+5% global multiplier each + Roastery perks)." },
+  { key: "astral", name: "Astral Crystals", short: "Crystals", tier: "Prestige 2", color: COLORS.astral, desc: "Claimed on Franchise Dynasty Ascension; unlocks automation & scaling perks." },
+  { key: "shards", name: "Starlight Shards", short: "Shards", tier: "Prestige 3", color: COLORS.pantheon, desc: "Claimed on Cosmic Pantheon Ascension; powers 3x constellation multipliers." },
+  { key: "dark_matter", name: "Dark Matter Roast", short: "Dark Matter", tier: "Cosmic 1", color: COLORS.darkMatter, desc: "Forged from 100 Sp Beans (+100% global multiplier each)." },
+  { key: "supernova", name: "Supernova Bean", short: "Supernova", tier: "Cosmic 2", color: COLORS.supernova, desc: "Forged from 10 Oc Beans (+250% global multiplier each)." },
+  { key: "chronos", name: "Chronos Crystal", short: "Chronos", tier: "Cosmic 3", color: COLORS.chronos, desc: "Forged from 1 No Beans (+600% global multiplier each)." },
+  { key: "aether", name: "Aetherial Essence", short: "Aether", tier: "Cosmic 4", color: COLORS.aether, desc: "Forged from 100 No Beans (+1,500% global multiplier each)." },
+  { key: "omega", name: "Omega Singularity", short: "Omega", tier: "Cosmic 5", color: COLORS.omega, desc: "Forged from 10 Dc Beans (+7,500% global multiplier each)." },
+  { key: "dew", name: "Celestial Dew", short: "Dew Drops", tier: "Cosmic 6", color: COLORS.celestialDew, desc: "Forged from 1 No Beans + 10 Shards (+25,000% global multiplier each)." },
+  { key: "quasar", name: "Quasar Nectar", short: "Quasar", tier: "Cosmic 7", color: COLORS.quasarNectar, desc: "Forged from 100 No Beans + 3 Omega Singularity (+100,000% mult each)." },
+  { key: "void_truffle", name: "Void Truffle", short: "Truffles", tier: "Cosmic 8", color: COLORS.voidTruffle, desc: "Forged from 500 Sp Beans + 5 Dark Matter (+150,000% mult & +10% Crit)." },
+  { key: "nebula_honey", name: "Nebula Honey", short: "N-Honey", tier: "Cosmic 9", color: COLORS.nebulaHoney, desc: "Forged from 50 Oc Beans + 5 Supernova (+200,000% mult & +25% Tips)." },
+  { key: "solaris_amber", name: "Solaris Amber", short: "S-Amber", tier: "Cosmic 10", color: COLORS.solarisAmber, desc: "Forged from 5 No Beans + 10 Chronos (+300,000% mult & +15% Luck)." },
+  { key: "genesis_crema", name: "Genesis Crema", short: "Genesis", tier: "Cosmic 11", color: COLORS.genesisCrema, desc: "Forged from 500 No Beans + 5 Aether + 5 Truffles (+400,000% mult each)." },
+  { key: "eternal", name: "Eternal Bean", short: "Eternal", tier: "Pinnacle", color: COLORS.eternalBean, desc: "Ultimate Cosmic Currency (+500,000% mult; required for Sanctuary)." }
+];
+
+function getCurrencyName(key) {
+  const found = CURRENCY_META.find((c) => c.key === key);
+  return found ? found.name : key;
+}
 
 // =============================================================================
 // 2. PROCEDURAL CANVAS ICON DRAWERS
@@ -459,7 +505,7 @@ class GoldenCroissantEvent {
     this.active = true;
     this.timer = 0.0;
     this.x = -35;
-    this.y = 140 + Math.random() * (height - 280);
+    this.y = 165 + Math.random() * (height - 320);
     this.vx = 55.0 + Math.random() * 30.0;
     this.vy = -15.0 + Math.random() * 30.0;
   }
@@ -483,33 +529,33 @@ class GoldenCroissantEvent {
 }
 
 // =============================================================================
-// 5. MULTI-CURRENCY PLINKO PHYSICS SIMULATOR
+// 5. 18-CURRENCY PLINKO PHYSICS SIMULATOR
 // =============================================================================
 
 class MultiCurrencyPlinko {
-  constructor(width = 545, height = 420) {
+  constructor(width = 545, height = 365) {
     this.width = width;
     this.height = height;
     this.xCenter = width / 2;
-    this.yTop = 8;
+    this.yTop = 4;
     this.pegR = 4;
-    this.ballR = 6.5;
+    this.ballR = 6.2;
     this.gravity = 420.0;
     this.dx = 38;
-    this.dy = 34;
+    this.dy = 30;
     this.numRows = 9;
 
     this.pegs = [];
     for (let r = 0; r < this.numRows; r++) {
       const count = r + 3;
       const startX = this.xCenter - ((count - 1) * this.dx) / 2.0;
-      const rowY = this.yTop + 62 + r * this.dy;
+      const rowY = this.yTop + 46 + r * this.dy;
       for (let c = 0; c < count; c++) {
         this.pegs.push({ x: startX + c * this.dx, y: rowY });
       }
     }
 
-    this.binY = this.yTop + 62 + (this.numRows - 1) * this.dy + 30;
+    this.binY = this.yTop + 46 + (this.numRows - 1) * this.dy + 24;
     this.multipliers = [10.0, 4.0, 1.8, 0.6, 0.25, 0.25, 0.6, 1.8, 4.0, 10.0];
     this.numBins = this.multipliers.length;
     const totalSpan = this.numBins * this.dx;
@@ -523,9 +569,10 @@ class MultiCurrencyPlinko {
 
   getCurrencyBias(talentReduction = 0.0) {
     const biasMap = {
-      beans: 0.0, golden: 0.2, astral: 0.35, shards: 0.5,
-      dark_matter: 0.6, supernova: 0.7, chronos: 0.78,
-      aether: 0.85, omega: 0.9, dew: 0.92, quasar: 0.94, eternal: 0.96
+      beans: 0.0, stars: 0.15, tokens: 0.15, golden: 0.20, astral: 0.35, shards: 0.50,
+      dark_matter: 0.60, supernova: 0.70, chronos: 0.78, aether: 0.85, omega: 0.90,
+      dew: 0.92, quasar: 0.94, void_truffle: 0.94, nebula_honey: 0.95,
+      solaris_amber: 0.95, genesis_crema: 0.96, eternal: 0.97
     };
     const base = biasMap[this.currencyType] || 0.0;
     return Math.max(0.0, base - talentReduction);
@@ -544,7 +591,6 @@ class MultiCurrencyPlinko {
     let s = (str || "").trim().toLowerCase();
     let mult = 1.0;
 
-    // Parse all suffix tiers (longest first so "qd" matches before "d")
     const orderedSuffixes = SUFFIXES
       .map((suf, idx) => ({ suf: suf.toLowerCase(), idx }))
       .filter((item) => item.suf.length > 0)
@@ -570,7 +616,7 @@ class MultiCurrencyPlinko {
     const clampedX = Math.max(this.xCenter - 110, Math.min(this.xCenter + 110, xPos));
     this.balls.push({
       x: clampedX,
-      y: this.yTop + 34,
+      y: this.yTop + 28,
       vx: -18.0 + Math.random() * 36.0,
       vy: 10.0 + Math.random() * 20.0,
       bet: betAmt,
@@ -580,7 +626,6 @@ class MultiCurrencyPlinko {
     return { success: true, amount: betAmt };
   }
 
-  // Refund any in-flight balls if player reloads/closes tab before landing
   getPendingRefundsByCurrency() {
     const refunds = {};
     for (const b of this.balls) {
@@ -617,7 +662,6 @@ class MultiCurrencyPlinko {
             b.vx = b.vx - (1.0 + restitution) * dot * nx + (-12 + Math.random() * 24) + inwardNudge;
             b.vy = b.vy - (1.0 + restitution) * dot * ny;
 
-            // 45ms audio cooldown prevents Web Audio clipping on multi-ball drops
             const nowMs = performance.now();
             if (nowMs - this.lastPegSoundMs > 45) {
               this.lastPegSoundMs = nowMs;
@@ -657,9 +701,9 @@ class MultiCurrencyPlinko {
   draw(ctx) {
     ctx.clearRect(0, 0, this.width, this.height);
 
-    const stripW = 280, stripH = 26;
+    const stripW = 280, stripH = 22;
     const stripX = this.xCenter - stripW / 2;
-    const stripY = this.yTop + 8;
+    const stripY = this.yTop + 4;
     ctx.fillStyle = COLORS.card;
     ctx.strokeStyle = COLORS.accent;
     ctx.lineWidth = 1;
@@ -669,9 +713,9 @@ class MultiCurrencyPlinko {
     ctx.stroke();
 
     ctx.fillStyle = COLORS.textLight;
-    ctx.font = "600 11px 'Segoe UI', sans-serif";
+    ctx.font = "600 10.5px 'Segoe UI', sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("CLICK STRIP TO AIM LAUNCH (10% MAX BET)", this.xCenter, stripY + 17);
+    ctx.fillText("CLICK STRIP TO AIM LAUNCH (10% MAX BET)", this.xCenter, stripY + 15);
 
     for (const p of this.pegs) {
       ctx.fillStyle = "rgb(190, 160, 120)";
@@ -698,17 +742,18 @@ class MultiCurrencyPlinko {
       ctx.fillStyle = bg;
       ctx.strokeStyle = border;
       ctx.beginPath();
-      ctx.roundRect(bx + 2, this.binY, this.dx - 4, 32, 4);
+      ctx.roundRect(bx + 2, this.binY, this.dx - 4, 28, 4);
       ctx.fill();
       ctx.stroke();
 
       ctx.fillStyle = tc;
-      ctx.font = "bold 11px 'Segoe UI', sans-serif";
-      ctx.fillText(`${mult}x`, bx + this.dx / 2, this.binY + 20);
+      ctx.font = "bold 10.5px 'Segoe UI', sans-serif";
+      ctx.fillText(`${mult}x`, bx + this.dx / 2, this.binY + 18);
     }
 
     for (const b of this.balls) {
       const { x: bx, y: by, currency: curr } = b;
+      const meta = CURRENCY_META.find((m) => m.key === curr);
       if (curr === "beans") {
         ctx.fillStyle = COLORS.coffee;
         ctx.beginPath();
@@ -730,19 +775,9 @@ class MultiCurrencyPlinko {
       } else if (curr === "shards") {
         drawStarlightShard(ctx, bx, by, 8, COLORS.pantheon);
       } else {
-        const cMap = {
-          dark_matter: COLORS.darkMatter,
-          supernova: COLORS.supernova,
-          chronos: COLORS.chronos,
-          aether: COLORS.aether,
-          omega: COLORS.omega,
-          dew: COLORS.dew,
-          quasar: COLORS.quasar,
-          eternal: COLORS.eternal
-        };
-        ctx.fillStyle = cMap[curr] || COLORS.omega;
+        ctx.fillStyle = meta ? meta.color : COLORS.omega;
         ctx.beginPath();
-        ctx.arc(bx, by, 8, 0, Math.PI * 2);
+        ctx.arc(bx, by, 7.5, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -944,6 +979,8 @@ class RNGManager {
     if (this.counts[6] > 0) luck *= 1.35;
     if (this.counts[9] > 0) luck *= 2.00;
     luck *= 1.0 + this.game.talents[4].rank * 0.08;
+    if (this.game.solarisAmber > 0) luck *= 1.0 + this.game.solarisAmber * 0.15;
+    if (this.game.arcade) luck *= this.game.arcade.getArcadeLuckMult();
     return luck;
   }
 
@@ -987,7 +1024,6 @@ class RNGManager {
     };
   }
 
-  // Normalized weighted probability pool prevents high luck from starving mid-tier auras
   pickRandomRarity() {
     const luck = this.getTotalLuck();
     const weights = RNG_RARITIES.map((r) => {
@@ -1041,7 +1077,6 @@ class RNGManager {
       const isFirstDiscovery = this.counts[res.index] === 0;
       this.totalRolls += 1;
       this.counts[res.index] += 1;
-      // Only auto-equip on first discovery of a rarer tier so manual equips are respected
       if (this.equippedIndex === -1 || (isFirstDiscovery && res.index > this.equippedIndex)) {
         this.equippedIndex = res.index;
       }
@@ -1164,8 +1199,8 @@ class RNGManager {
       const angle = Math.random() * Math.PI * 2;
       const speed = 60 + Math.random() * 280;
       this.particles.push({
-        x: 530,
-        y: 340,
+        x: 560,
+        y: 350,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         size: 3 + Math.random() * 6,
@@ -1209,8 +1244,8 @@ class RNGManager {
         ctx.fillStyle = "rgba(243, 156, 18, 0.12)";
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(-35, -500);
-        ctx.lineTo(35, -500);
+        ctx.lineTo(-35, -550);
+        ctx.lineTo(35, -550);
         ctx.closePath();
         ctx.fill();
       }
@@ -1225,8 +1260,8 @@ class RNGManager {
 
     if (idx === 5) {
       for (let ring = 0; ring < 3; ring++) {
-        const rad = ((t * 320 + ring * 120) % 550);
-        ctx.strokeStyle = `rgba(231, 76, 60, ${Math.max(0, 1 - rad / 550)})`;
+        const rad = ((t * 320 + ring * 120) % 580);
+        ctx.strokeStyle = `rgba(231, 76, 60, ${Math.max(0, 1 - rad / 580)})`;
         ctx.lineWidth = 6;
         ctx.beginPath();
         ctx.arc(cx, cy, rad, 0, Math.PI * 2);
@@ -1249,7 +1284,7 @@ class RNGManager {
         ctx.lineWidth = 3;
         ctx.save();
         ctx.rotate((i * Math.PI) / 12 + t * 0.8);
-        ctx.strokeRect(-160, -160, 320, 320);
+        ctx.strokeRect(-165, -165, 330, 330);
         ctx.restore();
       }
       ctx.restore();
@@ -1282,7 +1317,7 @@ class RNGManager {
         const ang = (i / 16) * Math.PI * 2 + t * 1.5;
         ctx.beginPath();
         ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(ang) * 600, cy + Math.sin(ang) * 600);
+        ctx.lineTo(cx + Math.cos(ang) * 650, cy + Math.sin(ang) * 650);
         ctx.stroke();
       }
       ctx.strokeStyle = "#ffffff";
@@ -1312,8 +1347,8 @@ class RNGManager {
         ctx.fillStyle = `hsla(${hue}, 100%, 70%, 0.25)`;
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(a - 0.08) * 650, Math.sin(a - 0.08) * 650);
-        ctx.lineTo(Math.cos(a + 0.08) * 650, Math.sin(a + 0.08) * 650);
+        ctx.lineTo(Math.cos(a - 0.08) * 680, Math.sin(a - 0.08) * 680);
+        ctx.lineTo(Math.cos(a + 0.08) * 680, Math.sin(a + 0.08) * 680);
         ctx.closePath();
         ctx.fill();
       }
@@ -1470,7 +1505,7 @@ class RNGManager {
       const can = u.level < u.max && bal >= cost;
       document.getElementById(`lvl-${u.id}`).textContent = `Lv. ${u.level}/${u.max}`;
       const btn = document.getElementById(`btn-${u.id}`);
-      btn.textContent = u.level >= u.max ? "MAX" : `${formatNum(cost, nm)} ${u.curr}`;
+      btn.textContent = u.level >= u.max ? "MAX" : `${formatNum(cost, nm)} ${getCurrencyName(u.curr)}`;
       btn.className = `btn btn-sm ${can ? "btn-gold" : "btn-disabled"}`;
       btn.disabled = !can;
     }
@@ -1502,8 +1537,477 @@ class RNGManager {
     }
   }
 }
+
 // =============================================================================
-// 8. MASTER GAME ENGINE (game.js — Part 2 of 2)
+// 8. RAINY CAFE ARCADE ENGINE (4 PLAYABLE MINIGAMES + TOKEN PRIZE SHOP)
+// =============================================================================
+
+class ArcadeManager {
+  constructor(game) {
+    this.game = game;
+    this.activeGame = "shot";
+
+    // Minigame A: Espresso Shot-Puller
+    this.shotPos = 0.0;
+    this.shotDir = 1;
+    this.shotStreak = 0;
+    this.shotSweetStart = 42.0;
+    this.shotSweetWidth = 16.0;
+    this.shotBuffTimer = 0.0;
+
+    // Minigame B: Rainy Window Bean Catcher
+    this.catcherActive = false;
+    this.catcherTime = 25.0;
+    this.catcherScore = 0;
+    this.catcherCupX = 260;
+    this.catcherItems = [];
+    this.catcherSpawnTimer = 0.0;
+
+    // Minigame C: Barista Latte Art Memory Match
+    this.memorySymbols = ["☕", "🥐", "🐱", "🌧️", "⭐", "✨"];
+    this.memoryCards = [];
+    this.memoryFlipped = [];
+    this.memoryMatched = 0;
+    this.memoryMoves = 0;
+    this.memoryLock = false;
+
+    // Minigame D: Dark Roast Press-Your-Luck
+    this.roastActive = false;
+    this.roastStep = 0;
+    this.roastPotBeans = 0;
+    this.roastPotTokens = 0;
+    this.roastMultipliers = [1.5, 2.5, 4.0, 7.0, 12.0, 25.0];
+    this.roastChances = [0.85, 0.72, 0.60, 0.48, 0.36, 0.25];
+
+    // Arcade Token Prize Counter (Permanent Upgrades)
+    this.shopUpgrades = [
+      { id: "arc1", name: "Golden Arcade Membership", baseCost: 15, scale: 1.45, level: 0, max: 50, desc: "+25% Global Multiplier per level" },
+      { id: "arc2", name: "Double-Shot Token Magnet", baseCost: 25, scale: 1.65, level: 0, max: 20, desc: "+15% more Arcade Tokens won from all minigames" },
+      { id: "arc3", name: "Four-Leaf Token Charm", baseCost: 40, scale: 1.75, level: 0, max: 25, desc: "+12% RNG Aura Luck per level" },
+      { id: "arc4", name: "Precision Pressure Valve", baseCost: 30, scale: 1.80, level: 0, max: 10, desc: "Widens the Espresso Shot-Puller sweet spot" }
+    ];
+  }
+
+  getShopCost(u) {
+    return Math.max(1, Math.floor(u.baseCost * Math.pow(u.scale, u.level)));
+  }
+
+  getTokenGainMult() {
+    return 1.0 + this.shopUpgrades[1].level * 0.15;
+  }
+
+  getArcadeGlobalMult() {
+    let m = 1.0 + this.shopUpgrades[0].level * 0.25;
+    if (this.shotBuffTimer > 0) m *= 1.25;
+    return m;
+  }
+
+  getArcadeLuckMult() {
+    return 1.0 + this.shopUpgrades[2].level * 0.12;
+  }
+
+  awardTokens(baseAmt) {
+    const gained = Math.max(1, Math.round(baseAmt * this.getTokenGainMult()));
+    this.game.arcadeTokens += gained;
+    return gained;
+  }
+
+  // --- Minigame A: Shot-Puller ---
+  pullEspressoShot() {
+    const needleCenter = this.shotPos;
+    const end = this.shotSweetStart + this.shotSweetWidth;
+    if (needleCenter >= this.shotSweetStart && needleCenter <= end) {
+      this.shotStreak += 1;
+      const tokens = this.awardTokens(2 + this.shotStreak);
+      const beanBonus = Math.max(150, (this.game.bps * 8 + this.game.clickPower * 15) * (1 + this.shotStreak * 0.25));
+      this.game.beans = Math.min(this.game.getMaxStorage(), this.game.beans + beanBonus);
+      this.game.lifetimeBeansRun += beanBonus;
+      this.game.lifetimeBeansAll += beanBonus;
+      this.shotBuffTimer = 20.0;
+      this.game.addXp(45 * this.shotStreak);
+      this.game.recalculateRates();
+      this.game.sfx.playFrenzy(this.game.sfxEnabled, this.game.sfxVolume);
+      document.getElementById("shot-result-text").textContent =
+        `PERFECT 9-BAR! +${tokens} Tokens & +${formatNum(beanBonus, this.game.notationMode)} Beans!`;
+    } else {
+      this.shotStreak = 0;
+      this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
+      document.getElementById("shot-result-text").textContent =
+        needleCenter < this.shotSweetStart ? "Under-extracted! Too early." : "Over-extracted! Too late.";
+    }
+    // Randomize next sweet spot position
+    const baseW = 16.0 + this.shopUpgrades[3].level * 1.5;
+    this.shotSweetWidth = Math.min(34.0, baseW);
+    this.shotSweetStart = 15.0 + Math.random() * (70.0 - this.shotSweetWidth);
+  }
+
+  // --- Minigame B: Rainy Window Bean Catcher ---
+  startBeanCatcher() {
+    this.catcherActive = true;
+    this.catcherTime = 25.0;
+    this.catcherScore = 0;
+    this.catcherItems = [];
+    this.catcherSpawnTimer = 0.0;
+    document.getElementById("btn-start-catcher").disabled = true;
+    document.getElementById("catcher-result-text").textContent = "Catch beans & golden tokens! Avoid grey steam!";
+    this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume);
+  }
+
+  finishBeanCatcher() {
+    this.catcherActive = false;
+    document.getElementById("btn-start-catcher").disabled = false;
+    const tokens = this.awardTokens(Math.max(1, Math.floor(this.catcherScore / 3)));
+    const beansWon = Math.max(200, (this.game.bps * 15 + this.game.clickPower * 25) * (1 + this.catcherScore * 0.1));
+    this.game.beans = Math.min(this.game.getMaxStorage(), this.game.beans + beansWon);
+    this.game.lifetimeBeansRun += beansWon;
+    this.game.lifetimeBeansAll += beansWon;
+    this.game.addXp(120 + this.catcherScore * 10);
+    this.game.recalculateRates();
+    this.game.sfx.playLevelup(this.game.sfxEnabled, this.game.sfxVolume);
+    document.getElementById("catcher-result-text").textContent =
+      `Finished! Score ${this.catcherScore} -> +${tokens} Tokens & +${formatNum(beansWon, this.game.notationMode)} Beans!`;
+  }
+
+  // --- Minigame C: Latte Art Memory Match ---
+  resetMemoryBoard() {
+    const deck = [...this.memorySymbols, ...this.memorySymbols];
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    this.memoryCards = deck.map((sym, idx) => ({ id: idx, sym, flipped: false, matched: false }));
+    this.memoryFlipped = [];
+    this.memoryMatched = 0;
+    this.memoryMoves = 0;
+    this.memoryLock = false;
+    this.renderMemoryGrid();
+    document.getElementById("memory-result-text").textContent = "Flip two cards to find matching pairs.";
+  }
+
+  renderMemoryGrid() {
+    const grid = document.getElementById("memory-grid");
+    if (!grid) return;
+    grid.innerHTML = "";
+    this.memoryCards.forEach((card) => {
+      const el = document.createElement("div");
+      el.className = `memory-card${card.flipped ? " flipped" : ""}${card.matched ? " matched" : ""}`;
+      el.textContent = card.flipped || card.matched ? card.sym : "?";
+      el.addEventListener("click", () => this.handleMemoryFlip(card.id));
+      grid.appendChild(el);
+    });
+    document.getElementById("memory-moves-label").textContent =
+      `Pairs: ${this.memoryMatched}/6 | Moves: ${this.memoryMoves}`;
+  }
+
+  handleMemoryFlip(id) {
+    if (this.memoryLock) return;
+    const card = this.memoryCards[id];
+    if (!card || card.flipped || card.matched) return;
+
+    card.flipped = true;
+    this.memoryFlipped.push(card);
+    this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.7);
+    this.renderMemoryGrid();
+
+    if (this.memoryFlipped.length === 2) {
+      this.memoryMoves += 1;
+      const [c1, c2] = this.memoryFlipped;
+      if (c1.sym === c2.sym) {
+        c1.matched = true;
+        c2.matched = true;
+        this.memoryMatched += 1;
+        this.memoryFlipped = [];
+        this.game.sfx.playBuy(this.game.sfxEnabled, this.game.sfxVolume);
+        this.renderMemoryGrid();
+
+        if (this.memoryMatched === 6) {
+          const efficiencyBonus = Math.max(1, 14 - this.memoryMoves);
+          const tokens = this.awardTokens(5 + efficiencyBonus);
+          const beansWon = Math.max(500, this.game.bps * 30 + this.game.clickPower * 40);
+          this.game.beans = Math.min(this.game.getMaxStorage(), this.game.beans + beansWon);
+          this.game.lifetimeBeansRun += beansWon;
+          this.game.lifetimeBeansAll += beansWon;
+          this.game.customerStars += 1;
+          this.game.addXp(250);
+          this.game.recalculateRates();
+          this.game.sfx.playFrenzy(this.game.sfxEnabled, this.game.sfxVolume);
+          document.getElementById("memory-result-text").textContent =
+            `BOARD CLEARED! +${tokens} Tokens, +1 Star ★ & +${formatNum(beansWon, this.game.notationMode)} Beans!`;
+        }
+      } else {
+        this.memoryLock = true;
+        setTimeout(() => {
+          c1.flipped = false;
+          c2.flipped = false;
+          this.memoryFlipped = [];
+          this.memoryLock = false;
+          this.renderMemoryGrid();
+        }, 550);
+      }
+    }
+  }
+
+  // --- Minigame D: Dark Roast Press-Your-Luck ---
+  startRoastRisk() {
+    const wager = Math.max(50, Math.floor(this.game.beans * 0.10));
+    if (this.game.beans < wager) {
+      this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
+      return;
+    }
+    this.game.beans -= wager;
+    this.roastActive = true;
+    this.roastStep = 0;
+    this.roastPotBeans = wager;
+    this.roastPotTokens = 2;
+    this.game.sfx.playBrew(this.game.sfxEnabled, this.game.sfxVolume);
+    this.syncRoastRiskUI();
+  }
+
+  pushRoastRisk() {
+    if (!this.roastActive) return;
+    const chance = this.roastChances[Math.min(this.roastStep, this.roastChances.length - 1)];
+    if (Math.random() < chance) {
+      this.roastStep += 1;
+      const mult = this.roastMultipliers[Math.min(this.roastStep - 1, this.roastMultipliers.length - 1)];
+      this.roastPotBeans = Math.floor(this.roastPotBeans * (mult / (this.roastStep > 1 ? this.roastMultipliers[this.roastStep - 2] : 1.0)));
+      this.roastPotTokens += 3 * this.roastStep;
+      this.game.sfx.playFrenzy(this.game.sfxEnabled, this.game.sfxVolume);
+      if (this.roastStep >= this.roastMultipliers.length) {
+        this.cashOutRoastRisk();
+        return;
+      }
+    } else {
+      // Scorched!
+      this.roastActive = false;
+      this.roastPotBeans = 0;
+      this.roastPotTokens = 0;
+      this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
+    }
+    this.syncRoastRiskUI();
+  }
+
+  cashOutRoastRisk() {
+    if (!this.roastActive) return;
+    this.roastActive = false;
+    const tokens = this.awardTokens(this.roastPotTokens);
+    this.game.beans = Math.min(this.game.getMaxStorage(), this.game.beans + this.roastPotBeans);
+    this.game.lifetimeBeansRun += this.roastPotBeans;
+    this.game.lifetimeBeansAll += this.roastPotBeans;
+    this.game.addXp(100 * (this.roastStep + 1));
+    this.game.recalculateRates();
+    this.game.sfx.playLevelup(this.game.sfxEnabled, this.game.sfxVolume);
+    document.getElementById("roastluck-pot-display").textContent =
+      `CASHED OUT! +${formatNum(this.roastPotBeans, this.game.notationMode)} Beans & +${tokens} Tokens!`;
+    this.roastPotBeans = 0;
+    this.roastPotTokens = 0;
+    this.syncRoastRiskUI(true);
+  }
+
+  syncRoastRiskUI(keepPotMsg = false) {
+    const nm = this.game.notationMode;
+    const mult = this.roastStep === 0 ? 1.0 : this.roastMultipliers[Math.min(this.roastStep - 1, this.roastMultipliers.length - 1)];
+    const nextChance = Math.round(this.roastChances[Math.min(this.roastStep, this.roastChances.length - 1)] * 100);
+    document.getElementById("roastluck-stage-label").textContent = `Batch Multiplier: ${mult.toFixed(1)}x`;
+    if (!keepPotMsg) {
+      document.getElementById("roastluck-pot-display").textContent = this.roastActive
+        ? `Current Pot: ${formatNum(this.roastPotBeans, nm)} Beans + ${this.roastPotTokens} Tokens`
+        : "Batch Scorched or Ready — Start a new roast!";
+    }
+    document.getElementById("roastluck-chance-display").textContent = this.roastActive
+      ? `Next Roast Success Chance: ${nextChance}%`
+      : "Wager 10% of Beans to begin";
+
+    document.getElementById("btn-roastluck-start").disabled = this.roastActive || this.game.beans < 50;
+    document.getElementById("btn-roastluck-push").disabled = !this.roastActive;
+    document.getElementById("btn-roastluck-cash").disabled = !this.roastActive;
+  }
+
+  update(dt) {
+    if (this.shotBuffTimer > 0) {
+      this.shotBuffTimer -= dt;
+      if (this.shotBuffTimer <= 0) {
+        this.shotBuffTimer = 0;
+        this.game.recalculateRates();
+      }
+    }
+
+    // Shot-Puller Needle Oscillation
+    const speed = 75.0 + this.shotStreak * 12.0;
+    this.shotPos += this.shotDir * speed * dt;
+    if (this.shotPos >= 100.0) { this.shotPos = 100.0; this.shotDir = -1; }
+    else if (this.shotPos <= 0.0) { this.shotPos = 0.0; this.shotDir = 1; }
+
+    // Bean Catcher Physics
+    if (this.catcherActive) {
+      this.catcherTime -= dt;
+      if (this.catcherTime <= 0) {
+        this.catcherTime = 0;
+        this.finishBeanCatcher();
+      } else {
+        this.catcherSpawnTimer += dt;
+        if (this.catcherSpawnTimer >= 0.38) {
+          this.catcherSpawnTimer = 0;
+          const r = Math.random();
+          const type = r < 0.55 ? "bean" : r < 0.80 ? "golden" : "steam";
+          this.catcherItems.push({
+            x: 24 + Math.random() * 472,
+            y: -15,
+            vy: 140 + Math.random() * 90,
+            type
+          });
+        }
+        for (let i = this.catcherItems.length - 1; i >= 0; i--) {
+          const it = this.catcherItems[i];
+          it.y += it.vy * dt;
+          if (Math.abs(it.x - this.catcherCupX) < 36 && Math.abs(it.y - 196) < 20) {
+            if (it.type === "bean") { this.catcherScore += 1; this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.5); }
+            else if (it.type === "golden") { this.catcherScore += 3; this.game.sfx.playBuy(this.game.sfxEnabled, this.game.sfxVolume * 0.7); }
+            else { this.catcherScore = Math.max(0, this.catcherScore - 2); this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume * 0.6); }
+            this.catcherItems.splice(i, 1);
+          } else if (it.y > 245) {
+            this.catcherItems.splice(i, 1);
+          }
+        }
+      }
+    }
+  }
+
+  drawCatcherCanvas() {
+    const canvas = document.getElementById("catcher-canvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Rain lines
+    ctx.strokeStyle = COLORS.windowRain;
+    ctx.lineWidth = 1;
+    for (let x = 20; x < 520; x += 45) {
+      ctx.beginPath();
+      ctx.moveTo(x, 10);
+      ctx.lineTo(x - 8, 220);
+      ctx.stroke();
+    }
+
+    // Falling items
+    for (const it of this.catcherItems) {
+      if (it.type === "bean") {
+        ctx.fillStyle = COLORS.coffee;
+        ctx.beginPath();
+        ctx.ellipse(it.x, it.y, 8, 6, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (it.type === "golden") {
+        drawGoldenSparkle(ctx, it.x, it.y, 10, COLORS.gold);
+      } else {
+        ctx.fillStyle = "rgba(120, 120, 125, 0.85)";
+        ctx.beginPath();
+        ctx.arc(it.x, it.y, 11, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Player Mug
+    ctx.fillStyle = COLORS.mug;
+    ctx.strokeStyle = COLORS.accent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(this.catcherCupX - 28, 184, 56, 30, [2, 2, 12, 12]);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  buildDOM() {
+    document.querySelectorAll(".arcade-tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this.activeGame = btn.dataset.minigame;
+        document.querySelectorAll(".arcade-tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.minigame === this.activeGame));
+        document.querySelectorAll(".minigame-panel").forEach((p) => p.classList.toggle("active", p.id === `mg-${this.activeGame}`));
+        this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.7);
+      });
+    });
+
+    document.getElementById("btn-pull-shot").addEventListener("click", () => this.pullEspressoShot());
+    document.getElementById("btn-start-catcher").addEventListener("click", () => this.startBeanCatcher());
+
+    const cCanvas = document.getElementById("catcher-canvas");
+    cCanvas.addEventListener("mousemove", (e) => {
+      const rect = cCanvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * (cCanvas.width / rect.width);
+      this.catcherCupX = Math.max(32, Math.min(488, x));
+    });
+
+    document.getElementById("btn-reset-memory").addEventListener("click", () => this.resetMemoryBoard());
+    this.resetMemoryBoard();
+
+    document.getElementById("btn-roastluck-start").addEventListener("click", () => this.startRoastRisk());
+    document.getElementById("btn-roastluck-push").addEventListener("click", () => this.pushRoastRisk());
+    document.getElementById("btn-roastluck-cash").addEventListener("click", () => this.cashOutRoastRisk());
+
+    // Build Arcade Token Prize Shop
+    const shopList = document.getElementById("arcade-shop-list");
+    shopList.innerHTML = "";
+    this.shopUpgrades.forEach((u) => {
+      const card = document.createElement("div");
+      card.className = "game-card";
+      card.style.minHeight = "56px";
+      card.innerHTML = `
+        <div class="card-accent" style="background: var(--color-tokens);"></div>
+        <div class="card-main">
+          <div class="card-top-line">
+            <span class="card-title">${u.name}</span>
+            <span class="card-count" id="lvl-${u.id}" style="color: var(--color-tokens);">Lv. 0/${u.max}</span>
+          </div>
+          <div class="card-desc">${u.desc}</div>
+        </div>
+        <button class="btn btn-sm" id="btn-${u.id}" type="button">Buy</button>
+      `;
+      card.querySelector(`#btn-${u.id}`).addEventListener("click", () => {
+        const cost = this.getShopCost(u);
+        if (u.level < u.max && this.game.arcadeTokens >= cost) {
+          this.game.arcadeTokens -= cost;
+          u.level += 1;
+          this.game.recalculateRates();
+          this.game.sfx.playBuy(this.game.sfxEnabled, this.game.sfxVolume);
+        } else {
+          this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
+        }
+      });
+      shopList.appendChild(card);
+    });
+  }
+
+  refreshDOM() {
+    if (this.game.activeTab !== "arcade") return;
+    const nm = this.game.notationMode;
+    document.getElementById("arcade-tokens-display").innerHTML =
+      `Arcade Tokens: ${formatNum(this.game.arcadeTokens, nm)} 🪙 &nbsp;|&nbsp; Active Arcade Buff: ${this.getArcadeGlobalMult().toFixed(2)}x`;
+
+    if (this.activeGame === "shot") {
+      document.getElementById("shot-streak-label").textContent = `Streak: ${this.shotStreak}x`;
+      const zone = document.getElementById("shot-sweet-zone");
+      zone.style.left = `${this.shotSweetStart}%`;
+      zone.style.width = `${this.shotSweetWidth}%`;
+      document.getElementById("shot-needle").style.left = `${this.shotPos}%`;
+    } else if (this.activeGame === "catcher") {
+      document.getElementById("catcher-hud-label").textContent =
+        `Score: ${this.catcherScore} | Time: ${Math.ceil(this.catcherTime)}s`;
+      this.drawCatcherCanvas();
+    } else if (this.activeGame === "roastluck" && !this.roastActive) {
+      document.getElementById("btn-roastluck-start").disabled = this.game.beans < 50;
+    }
+
+    for (const u of this.shopUpgrades) {
+      const cost = this.getShopCost(u);
+      const can = u.level < u.max && this.game.arcadeTokens >= cost;
+      document.getElementById(`lvl-${u.id}`).textContent = `Lv. ${u.level}/${u.max}`;
+      const btn = document.getElementById(`btn-${u.id}`);
+      btn.textContent = u.level >= u.max ? "MAX" : `${formatNum(cost, nm)} Tokens`;
+      btn.className = `btn btn-sm ${can ? "btn-gold" : "btn-disabled"}`;
+      btn.disabled = !can;
+    }
+  }
+}
+// =============================================================================
+// 9. MASTER GAME ENGINE (game.js — Part 2 of 2: 18 Currencies & Full UI)
 // =============================================================================
 
 class GameState {
@@ -1534,17 +2038,21 @@ class GameState {
     this.xp = 0.0;
     this.altarBlessings = 0;
 
-    // 12 Currencies
+    // All 18 Currencies
     this.beans = 0.0;
     this.lifetimeBeansRun = 0.0;
     this.lifetimeBeansAll = 0.0;
+    this.customerStars = 0;
+    this.arcadeTokens = 0;
+
+    // 3 Prestige Currencies
     this.goldenBeans = 0;
     this.lifetimeGolden = 0;
     this.astralCrystals = 0;
     this.lifetimeCrystals = 0;
     this.starlightShards = 0;
-    this.customerStars = 0;
 
+    // 12 Cosmic & Transcendent Currencies
     this.darkMatter = 0;
     this.supernovaBeans = 0;
     this.chronosCrystals = 0;
@@ -1552,6 +2060,10 @@ class GameState {
     this.omegaSingularity = 0;
     this.celestialDew = 0;
     this.quasarNectar = 0;
+    this.voidTruffle = 0;
+    this.nebulaHoney = 0;
+    this.solarisAmber = 0;
+    this.genesisCrema = 0;
     this.eternalBeans = 0;
 
     this.sanctuaryUnlocked = false;
@@ -1578,28 +2090,29 @@ class GameState {
     this.frenzyMult = 1.0;
     this.multBreakdown = null;
 
-    // Canvas Entities (Mochi seated flush on y=630 sill line)
-    this.catCenter = { x: 85, y: 606 };
+    // Canvas Entities (450x652 #scene-canvas, sill at y=650, Mochi flush on sill)
+    this.catCenter = { x: 88, y: 626 };
     this.catScaleX = 1.0;
     this.catScaleY = 1.0;
     this.purrBlissTimer = 0.0;
     this.purrCombo = 0;
 
-    this.mugCenter = { x: 240, y: 371 };
+    this.mugCenter = { x: 245, y: 382 };
     this.scaleX = 1.0;
     this.scaleY = 1.0;
     this.latteStage = 0;
 
     this.activeTab = "menu";
     this.tabs = [
-      "menu", "staff", "decor", "brew", "orders", "plinko", "talents", "rng",
-      "sinks", "cosmos", "roast", "dynasty", "pantheon", "quests", "config"
+      "menu", "staff", "decor", "brew", "orders", "arcade", "plinko", "rng",
+      "talents", "sinks", "cosmos", "roast", "dynasty", "pantheon", "quests", "config"
     ];
 
     this.sfx = new PureSoundEngine();
-    this.weather = new WeatherEngine(440, 632);
-    this.plinko = new MultiCurrencyPlinko(545, 420);
+    this.weather = new WeatherEngine(450, 652);
+    this.plinko = new MultiCurrencyPlinko(545, 365);
     this.rng = new RNGManager(this);
+    this.arcade = new ArcadeManager(this);
 
     this.steamParticles = [];
     this.popups = [];
@@ -1621,6 +2134,7 @@ class GameState {
     this.recalculateRates();
     this.buildStaticDOM();
     this.rng.buildDOM();
+    this.arcade.buildDOM();
     this.rng.syncToggleButtons();
     this.syncBuyModeButtons();
     this.bindEvents();
@@ -1702,13 +2216,13 @@ class GameState {
     ];
 
     this.milestones = [
-      { targetLvl: 5, beans: 25000, golden: 5, crystals: 0, shards: 0, claimed: false },
-      { targetLvl: 10, beans: 150000, golden: 20, crystals: 1, shards: 0, claimed: false },
-      { targetLvl: 20, beans: 1000000, golden: 75, crystals: 5, shards: 0, claimed: false },
-      { targetLvl: 35, beans: 10000000, golden: 250, crystals: 20, shards: 1, claimed: false },
-      { targetLvl: 50, beans: 100000000, golden: 1000, crystals: 60, shards: 5, claimed: false },
-      { targetLvl: 75, beans: 1000000000, golden: 5000, crystals: 200, shards: 15, claimed: false },
-      { targetLvl: 100, beans: 10000000000, golden: 25000, crystals: 1000, shards: 50, claimed: false }
+      { targetLvl: 5, beans: 25000, golden: 5, crystals: 0, shards: 0, tokens: 10, claimed: false },
+      { targetLvl: 10, beans: 150000, golden: 20, crystals: 1, shards: 0, tokens: 25, claimed: false },
+      { targetLvl: 20, beans: 1000000, golden: 75, crystals: 5, shards: 0, tokens: 50, claimed: false },
+      { targetLvl: 35, beans: 10000000, golden: 250, crystals: 20, shards: 1, tokens: 100, claimed: false },
+      { targetLvl: 50, beans: 100000000, golden: 1000, crystals: 60, shards: 5, tokens: 200, claimed: false },
+      { targetLvl: 75, beans: 1000000000, golden: 5000, crystals: 200, shards: 15, tokens: 400, claimed: false },
+      { targetLvl: 100, beans: 10000000000, golden: 25000, crystals: 1000, shards: 50, tokens: 1000, claimed: false }
     ];
 
     this.sinks = [
@@ -1718,12 +2232,14 @@ class GameState {
       new EndlessMoneySink("snk4", "Astral Overdrive Core", 25, 1.40, "astral", "+25% Global Multiplier per level", "total_mult", 0.25)
     ];
 
+    // God-Tier Cosmic Perks using full currency names in descriptions
     this.cosmicPerks = [
-      new EndlessMoneySink("cos1", "Abyssal Matter Infuser", 1, 1.25, "dark_matter", "+100% Global Multiplier per DMR", "total_mult", 1.00),
-      new EndlessMoneySink("cos2", "Supernova Click Corona", 1, 1.30, "supernova", "+5.0x Crit Sip Multiplier per SNB", "click_mult", 5.00),
+      new EndlessMoneySink("cos1", "Abyssal Matter Infuser", 1, 1.25, "dark_matter", "+100% Global Multiplier per Dark Matter Roast", "total_mult", 1.00),
+      new EndlessMoneySink("cos2", "Supernova Click Corona", 1, 1.30, "supernova", "+5.0x Crit Sip Multiplier per Supernova Bean", "click_mult", 5.00),
       new EndlessMoneySink("cos3", "Chronos Warp Engine", 1, 1.35, "chronos", "+50% Global Mult & 1h BPS warp every 5m/lvl", "total_mult", 0.50),
-      new EndlessMoneySink("cos4", "Aetherial Horizon", 1, 1.40, "aether", "+200% Global Multiplier per AE", "total_mult", 2.00),
-      new EndlessMoneySink("cos5", "Omega Singularity Void", 1, 1.50, "omega", "+1,000% Global Production per OSB", "total_mult", 10.00)
+      new EndlessMoneySink("cos4", "Aetherial Horizon", 1, 1.40, "aether", "+200% Global Multiplier per Aetherial Essence", "total_mult", 2.00),
+      new EndlessMoneySink("cos5", "Omega Singularity Void", 1, 1.50, "omega", "+1,000% Global Production per Omega Singularity", "total_mult", 10.00),
+      new EndlessMoneySink("cos6", "Genesis Crema Reactor", 1, 1.60, "genesis_crema", "+2,500% Global Production per Genesis Crema", "total_mult", 25.00)
     ];
 
     this.roasteryUpgrades = [
@@ -1754,19 +2270,19 @@ class GameState {
     ];
 
     this.quests = [
-      { qid: "q01", title: "Sip the Morning Roast", desc: "Manually click the coffee mug.", targetVal: 150, rewardBeans: 25000, rewardStars: 2, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
-      { qid: "q02", title: "Pamper Mochi", desc: "Pet the sleeping window cat.", targetVal: 15, rewardBeans: 50000, rewardStars: 3, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
-      { qid: "q03", title: "Order Fulfillment", desc: "Serve customer orders at the counter.", targetVal: 5, rewardBeans: 120000, rewardStars: 5, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
-      { qid: "q04", title: "Bean Slinger", desc: "Drop balls through Plinko.", targetVal: 10, rewardBeans: 80000, rewardStars: 3, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
-      { qid: "q05", title: "Brew Master", desc: "Complete recipes in the Brew Lab.", targetVal: 2, rewardBeans: 200000, rewardStars: 6, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
-      { qid: "q06", title: "Steam Operator", desc: "Vent the espresso boiler.", targetVal: 3, rewardBeans: 150000, rewardStars: 4, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 }
+      { qid: "q01", title: "Sip the Morning Roast", desc: "Manually click the coffee mug.", targetVal: 150, rewardBeans: 25000, rewardStars: 2, rewardTokens: 5, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
+      { qid: "q02", title: "Pamper Mochi", desc: "Pet the sleeping window cat.", targetVal: 15, rewardBeans: 50000, rewardStars: 3, rewardTokens: 6, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
+      { qid: "q03", title: "Order Fulfillment", desc: "Serve customer orders at the counter.", targetVal: 5, rewardBeans: 120000, rewardStars: 5, rewardTokens: 8, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
+      { qid: "q04", title: "Bean Slinger", desc: "Drop balls through Plinko.", targetVal: 10, rewardBeans: 80000, rewardStars: 3, rewardTokens: 6, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
+      { qid: "q05", title: "Brew Master", desc: "Complete recipes in the Brew Lab.", targetVal: 2, rewardBeans: 200000, rewardStars: 6, rewardTokens: 10, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
+      { qid: "q06", title: "Steam Operator", desc: "Vent the espresso boiler.", targetVal: 3, rewardBeans: 150000, rewardStars: 4, rewardTokens: 7, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 }
     ];
 
     this.achievements = [
       { aid: "a01", title: "First Sip", desc: "Click coffee mug 1 time.", check: (s) => s.manualClicks >= 1, unlocked: false },
       { aid: "a02", title: "Warm Routine", desc: "Click coffee mug 1,000 times.", check: (s) => s.manualClicks >= 1000, unlocked: false },
-      { aid: "a03", title: "Aromatic Stash", desc: "Accumulate 100,000 beans.", check: (s) => s.beans >= 100000, unlocked: false },
-      { aid: "a04", title: "Millionaire Barista", desc: "Accumulate 1,000,000 beans.", check: (s) => s.beans >= 1000000, unlocked: false },
+      { aid: "a03", title: "Aromatic Stash", desc: "Accumulate 100,000 Coffee Beans.", check: (s) => s.beans >= 100000, unlocked: false },
+      { aid: "a04", title: "Millionaire Barista", desc: "Accumulate 1,000,000 Coffee Beans.", check: (s) => s.beans >= 1000000, unlocked: false },
       { aid: "a05", title: "Golden Awakening", desc: "Perform your first Rebirth.", check: (s) => s.rebirthCount >= 1, unlocked: false },
       { aid: "a06", title: "Franchise Founder", desc: "Ascend to Dynasty Prestige.", check: (s) => s.dynastyCount >= 1, unlocked: false },
       { aid: "a07", title: "Cosmic Ascendant", desc: "Reach Pantheon Ascension.", check: (s) => s.pantheonCount >= 1, unlocked: false },
@@ -1785,8 +2301,8 @@ class GameState {
       { aid: "a20", title: "Staff Manager", desc: "Level all 5 Staff members to Lv. 5+.", check: (s) => s.staff.every((st) => st.level >= 5), unlocked: false },
       { aid: "a21", title: "Order Specialist", desc: "Complete 25 customer orders.", check: (s) => s.ordersCompleted >= 25, unlocked: false },
       { aid: "a22", title: "Master Sommelier", desc: "Craft all 12 coffee recipes.", check: (s) => s.recipes.every((r) => r.crafted), unlocked: false },
-      { aid: "a23", title: "Silo Architect", desc: "Reach Silo Storage Level 5.", check: (s) => s.siloLevel >= 5, unlocked: false },
-      { aid: "a24", title: "Steam Master", desc: "Vent the espresso boiler 10 times.", check: (s) => s.boilerVents >= 10, unlocked: false },
+      { aid: "a23", title: "Arcade Regular", desc: "Collect 50 Arcade Tokens.", check: (s) => s.arcadeTokens >= 50, unlocked: false },
+      { aid: "a24", title: "Genesis Alchemist", desc: "Forge your first Genesis Crema.", check: (s) => s.genesisCrema >= 1, unlocked: false },
       { aid: "a25", title: "Sanctuary Guardian", desc: "Awaken the Omniversal Rainy Haven.", check: (s) => s.sanctuaryUnlocked, unlocked: false }
     ];
   }
@@ -1794,10 +2310,8 @@ class GameState {
   // --- Economy & Multiplier Calculations ---
 
   getMaxStorage() { return 50000.0 * Math.pow(4.5, this.siloLevel); }
-  // Cost scales slightly faster (4.6x) than capacity (4.5x) to prevent runaway self-funding
   getSiloUpgradeCost() { return 12000.0 * Math.pow(4.6, this.siloLevel); }
   getStaffCost(st) { return Math.max(10.0, st.baseCost * Math.pow(1.30, st.level)); }
-  // Removed rebirthCount cost penalty so players are never punished for rebirthing
   getRoasteryCost(upg) { return Math.max(1, Math.floor(upg.baseCost * Math.pow(1.40, upg.count))); }
 
   getUpgradeExponent() {
@@ -1835,8 +2349,9 @@ class GameState {
 
   getCritStats() {
     const rngCritBonus = this.rng && this.rng.counts[7] > 0 ? 1.0 : 0.0;
-    const chance = Math.min(0.60, 0.01 + this.level * 0.001 + this.talents[0].rank * 0.03);
-    const mult = 3.0 + this.talents[1].rank * 1.5 + this.cosmicPerks[1].level * 5.0 + rngCritBonus;
+    const truffleCritBonus = this.voidTruffle * 0.10;
+    const chance = Math.min(0.65, 0.01 + this.level * 0.001 + this.talents[0].rank * 0.03);
+    const mult = 3.0 + this.talents[1].rank * 1.5 + this.cosmicPerks[1].level * 5.0 + rngCritBonus + truffleCritBonus;
     return { chance, mult };
   }
 
@@ -1848,18 +2363,32 @@ class GameState {
     return Math.max(0.20, d);
   }
 
+  // Unified Balance Getter for all 18 Currencies
   getCurrencyBalance(cType) {
     const map = {
-      beans: this.beans, golden: this.goldenBeans, astral: this.astralCrystals,
-      shards: this.starlightShards, dark_matter: this.darkMatter,
-      supernova: this.supernovaBeans, chronos: this.chronosCrystals,
-      aether: this.aetherEssence, omega: this.omegaSingularity,
-      dew: this.celestialDew, quasar: this.quasarNectar, eternal: this.eternalBeans
+      beans: this.beans,
+      stars: this.customerStars,
+      tokens: this.arcadeTokens,
+      golden: this.goldenBeans,
+      astral: this.astralCrystals,
+      shards: this.starlightShards,
+      dark_matter: this.darkMatter,
+      supernova: this.supernovaBeans,
+      chronos: this.chronosCrystals,
+      aether: this.aetherEssence,
+      omega: this.omegaSingularity,
+      dew: this.celestialDew,
+      quasar: this.quasarNectar,
+      void_truffle: this.voidTruffle,
+      nebula_honey: this.nebulaHoney,
+      solaris_amber: this.solarisAmber,
+      genesis_crema: this.genesisCrema,
+      eternal: this.eternalBeans
     };
     return map[cType] ?? this.beans;
   }
 
-  // Probabilistic integer rounding eliminates the risk-free "Bet 1" Plinko exploit
+  // Unified Currency Adder with Probabilistic Rounding
   addCurrency(cType, amount) {
     if (cType === "beans") {
       const prev = this.beans;
@@ -1875,17 +2404,23 @@ class GameState {
     const amt = whole + (frac > 0 && Math.random() < frac ? 1 : 0);
 
     if (amt > 0) {
-      if (cType === "golden") { this.goldenBeans += amt; this.lifetimeGolden += amt; }
+      if (cType === "stars") this.customerStars += amt;
+      else if (cType === "tokens") this.arcadeTokens += amt;
+      else if (cType === "golden") { this.goldenBeans += amt; this.lifetimeGolden += amt; }
       else if (cType === "astral") { this.astralCrystals += amt; this.lifetimeCrystals += amt; }
-      else if (cType === "shards") { this.starlightShards += amt; }
-      else if (cType === "dark_matter") { this.darkMatter += amt; }
-      else if (cType === "supernova") { this.supernovaBeans += amt; }
-      else if (cType === "chronos") { this.chronosCrystals += amt; }
-      else if (cType === "aether") { this.aetherEssence += amt; }
-      else if (cType === "omega") { this.omegaSingularity += amt; }
-      else if (cType === "dew") { this.celestialDew += amt; }
-      else if (cType === "quasar") { this.quasarNectar += amt; }
-      else if (cType === "eternal") { this.eternalBeans += amt; }
+      else if (cType === "shards") this.starlightShards += amt;
+      else if (cType === "dark_matter") this.darkMatter += amt;
+      else if (cType === "supernova") this.supernovaBeans += amt;
+      else if (cType === "chronos") this.chronosCrystals += amt;
+      else if (cType === "aether") this.aetherEssence += amt;
+      else if (cType === "omega") this.omegaSingularity += amt;
+      else if (cType === "dew") this.celestialDew += amt;
+      else if (cType === "quasar") this.quasarNectar += amt;
+      else if (cType === "void_truffle") this.voidTruffle += amt;
+      else if (cType === "nebula_honey") this.nebulaHoney += amt;
+      else if (cType === "solaris_amber") this.solarisAmber += amt;
+      else if (cType === "genesis_crema") this.genesisCrema += amt;
+      else if (cType === "eternal") this.eternalBeans += amt;
       this.recalculateRates();
     }
     return amt;
@@ -1894,6 +2429,8 @@ class GameState {
   deductCurrency(cType, amount) {
     const amt = Math.floor(amount);
     if (cType === "beans") this.beans -= amount;
+    else if (cType === "stars") this.customerStars -= amt;
+    else if (cType === "tokens") this.arcadeTokens -= amt;
     else if (cType === "golden") this.goldenBeans -= amt;
     else if (cType === "astral") this.astralCrystals -= amt;
     else if (cType === "shards") this.starlightShards -= amt;
@@ -1904,6 +2441,10 @@ class GameState {
     else if (cType === "omega") this.omegaSingularity -= amt;
     else if (cType === "dew") this.celestialDew -= amt;
     else if (cType === "quasar") this.quasarNectar -= amt;
+    else if (cType === "void_truffle") this.voidTruffle -= amt;
+    else if (cType === "nebula_honey") this.nebulaHoney -= amt;
+    else if (cType === "solaris_amber") this.solarisAmber -= amt;
+    else if (cType === "genesis_crema") this.genesisCrema -= amt;
     else if (cType === "eternal") this.eternalBeans -= amt;
     this.recalculateRates();
   }
@@ -1958,7 +2499,7 @@ class GameState {
     if (leveled) {
       this.recalculateRates();
       this.sfx.playLevelup(this.sfxEnabled, this.sfxVolume);
-      this.popups.push(new FloatingPopup(`LEVEL UP! Lv. ${this.level} (+1 Skill Point)`, 240, 220, COLORS.gold));
+      this.popups.push(new FloatingPopup(`LEVEL UP! Lv. ${this.level} (+1 Skill Point)`, 245, 230, COLORS.gold));
     }
   }
 
@@ -1994,6 +2535,7 @@ class GameState {
     const levelMult = 1.0 + (this.level - 1) * 0.03;
     const talentBpsMult = 1.0 + this.talents[2].rank * 0.06;
     const altarMult = 1.0 + this.altarBlessings * 0.02;
+    const arcadeMult = this.arcade ? this.arcade.getArcadeGlobalMult() : 1.0;
 
     let crucibleMult = 1.0;
     let sinkClickMult = 1.0;
@@ -2011,7 +2553,6 @@ class GameState {
       }
     }
 
-    // Recipes (Including b12 total_mult fix!)
     let rBps = 1.0, rClick = 1.0, rTot = 1.0;
     for (const r of this.recipes) {
       if (r.crafted) {
@@ -2021,9 +2562,9 @@ class GameState {
       }
     }
 
-    const cafeActiveTotal = starMult * frenzy * catBliss * tempMult * levelMult * altarMult * crucibleMult * decorTot * rTot;
+    const cafeActiveTotal = starMult * frenzy * catBliss * tempMult * levelMult * altarMult * crucibleMult * decorTot * rTot * arcadeMult;
 
-    // 3. Cosmic & Transcendent Currencies + God-Tier Perks
+    // 3. All 12 Cosmic & Transcendent Currencies + God-Tier Perks
     let cosmicCurrencyMult =
       (1.0 + this.darkMatter * 1.0) *
       (1.0 + this.supernovaBeans * 2.5) *
@@ -2032,6 +2573,10 @@ class GameState {
       (1.0 + this.omegaSingularity * 75.0) *
       (1.0 + this.celestialDew * 250.0) *
       (1.0 + this.quasarNectar * 1000.0) *
+      (1.0 + this.voidTruffle * 1500.0) *
+      (1.0 + this.nebulaHoney * 2000.0) *
+      (1.0 + this.solarisAmber * 3000.0) *
+      (1.0 + this.genesisCrema * 4000.0) *
       (1.0 + this.eternalBeans * 5000.0);
 
     if (this.sanctuaryUnlocked) cosmicCurrencyMult *= 25.0;
@@ -2055,7 +2600,7 @@ class GameState {
 
     // 5. Raw Total & Soft-Cap Compression
     const rawMult = prestigeTotal * cafeActiveTotal * cosmicTotal * rngGlobal;
-    const softCapStart = this.sanctuaryUnlocked ? 1e22 : 1e18;
+    const softCapStart = this.sanctuaryUnlocked ? 1e24 : 1e18;
     const isSoftCapped = rawMult > softCapStart;
 
     if (isSoftCapped) {
@@ -2069,7 +2614,7 @@ class GameState {
       dynastyAndPantheon: dMult * d06Mult * pMult * harmonyMult,
       prestigeTotal,
       cafePermanent: levelMult * starMult * altarMult * decorTot * crucibleMult * rTot,
-      activeTempAndEvents: tempMult * frenzy * catBliss,
+      activeTempAndEvents: tempMult * frenzy * catBliss * arcadeMult,
       cosmicCurrencyMult,
       cosmicPerksMult,
       cosmicTotal,
@@ -2082,7 +2627,6 @@ class GameState {
       finalMult: this.totalMultiplier
     };
 
-    // Compute Click Power first so r04 (Self-Stirring Brass Spoons) converts actual total Click Power into BPS!
     this.clickPower =
       baseClicks * this.totalMultiplier * rClick * decorClick *
       sinkClickMult * rngClick * Math.pow(1.40, this.roasteryUpgrades[6].count);
@@ -2100,7 +2644,7 @@ class GameState {
 
   // --- Gameplay Actions ---
 
-  triggerCroissantFrenzy(popupX = 240, popupY = 255, label = "CAFFEINE FRENZY! (7x)") {
+  triggerCroissantFrenzy(popupX = 245, popupY = 265, label = "CAFFEINE FRENZY! (7x)") {
     const p02Count = this.pantheonPerks[1].count;
     this.frenzyMult = 7.0;
     this.frenzyTimer = p02Count >= 5 ? 999999.0 : 20.0 + p02Count * 15.0;
@@ -2116,7 +2660,7 @@ class GameState {
       this.beans -= cost;
       this.siloLevel += 1;
       this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
-      this.popups.push(new FloatingPopup(`Silo Upgraded! (Cap: ${formatNum(this.getMaxStorage(), this.notationMode)})`, 240, 215, COLORS.success));
+      this.popups.push(new FloatingPopup(`Silo Upgraded! (Cap: ${formatNum(this.getMaxStorage(), this.notationMode)})`, 245, 225, COLORS.success));
     } else {
       this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     }
@@ -2132,7 +2676,7 @@ class GameState {
     for (let i = 0; i < 8; i++) {
       this.steamParticles.push(new SteamPuff(this.mugCenter.x, this.mugCenter.y - 80));
     }
-    this.popups.push(new FloatingPopup("Steam Vented!", 240, 295, COLORS.heatCold));
+    this.popups.push(new FloatingPopup("Steam Vented!", 245, 305, COLORS.heatCold));
   }
 
   serveCurrentOrder() {
@@ -2143,7 +2687,8 @@ class GameState {
       let payout = Math.max(250.0, this.bps * 40.0 * this.activeOrder.rewardMult);
       const tipDecor = this.decor[3].bought ? this.decor[3].buffVal : 1.0;
       const talentTip = 1.0 + this.talents[3].rank * 0.15;
-      payout *= (1.0 + this.staff[4].level * 0.25) * tipDecor * talentTip;
+      const honeyTip = 1.0 + this.nebulaHoney * 0.25;
+      payout *= (1.0 + this.staff[4].level * 0.25) * tipDecor * talentTip * honeyTip;
 
       const prev = this.beans;
       this.beans = Math.min(this.getMaxStorage(), this.beans + payout);
@@ -2159,7 +2704,7 @@ class GameState {
       this.addXp(350);
       this.recalculateRates();
       this.sfx.playOrder(this.sfxEnabled, this.sfxVolume);
-      this.popups.push(new FloatingPopup(`+${formatNum(payout, this.notationMode)} Tip!`, 240, 255, COLORS.star));
+      this.popups.push(new FloatingPopup(`+${formatNum(payout, this.notationMode)} Tip!`, 245, 265, COLORS.star));
       return true;
     }
     return false;
@@ -2181,7 +2726,7 @@ class GameState {
     if (purchased) {
       this.recalculateRates();
       this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
-      this.popups.push(new FloatingPopup("ALL AFFORDABLE BOUGHT!", 240, 215, COLORS.success));
+      this.popups.push(new FloatingPopup("ALL AFFORDABLE BOUGHT!", 245, 225, COLORS.success));
     } else {
       this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     }
@@ -2208,7 +2753,7 @@ class GameState {
     if (boughtAny) {
       this.recalculateRates();
       this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
-      this.popups.push(new FloatingPopup("STAFF MAXED!", 240, 215, COLORS.star));
+      this.popups.push(new FloatingPopup("STAFF MAXED!", 245, 225, COLORS.star));
     } else {
       this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     }
@@ -2235,7 +2780,7 @@ class GameState {
     if (boughtAny) {
       this.recalculateRates();
       this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
-      this.popups.push(new FloatingPopup("ROASTERY UPGRADES MAXED!", 240, 215, COLORS.gold));
+      this.popups.push(new FloatingPopup("ROASTERY UPGRADES MAXED!", 245, 225, COLORS.gold));
     } else {
       this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     }
@@ -2259,7 +2804,7 @@ class GameState {
     if (boughtAny) {
       this.recalculateRates();
       this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
-      this.popups.push(new FloatingPopup("CRYSTAL PERKS MAXED!", 240, 215, COLORS.astral));
+      this.popups.push(new FloatingPopup("CRYSTAL PERKS MAXED!", 245, 225, COLORS.astral));
     } else {
       this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     }
@@ -2283,7 +2828,7 @@ class GameState {
     if (boughtAny) {
       this.recalculateRates();
       this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
-      this.popups.push(new FloatingPopup("PANTHEON PERKS MAXED!", 240, 215, COLORS.pantheon));
+      this.popups.push(new FloatingPopup("PANTHEON PERKS MAXED!", 245, 225, COLORS.pantheon));
     } else {
       this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     }
@@ -2304,7 +2849,7 @@ class GameState {
     this.addXp(500 * this.rebirthCount);
     this.recalculateRates();
     this.sfx.playRebirth(this.sfxEnabled, this.sfxVolume);
-    this.popups.push(new FloatingPopup(`+${earned} GOLDEN BEANS!`, 240, 235, COLORS.gold));
+    this.popups.push(new FloatingPopup(`+${earned} GOLDEN BEANS!`, 245, 245, COLORS.gold));
   }
 
   triggerDynasty() {
@@ -2319,14 +2864,14 @@ class GameState {
     this.beans = 0.0;
     this.goldenBeans = 0;
     this.lifetimeBeansRun = 0.0;
-    this.lifetimeGolden = 0; // Reset so Dynasty cannot be spammed back-to-back
+    this.lifetimeGolden = 0;
     this.rebirthCount = 0;
     for (const u of this.upgrades) u.count = 0;
     for (const r of this.roasteryUpgrades) r.count = 0;
     this.addXp(2500 * this.dynastyCount);
     this.recalculateRates();
     this.sfx.playAstral(this.sfxEnabled, this.sfxVolume);
-    this.popups.push(new FloatingPopup(`+${earned} ASTRAL CRYSTALS!`, 240, 235, COLORS.astral));
+    this.popups.push(new FloatingPopup(`+${earned} ASTRAL CRYSTALS!`, 245, 245, COLORS.astral));
   }
 
   triggerPantheon() {
@@ -2342,7 +2887,7 @@ class GameState {
     this.astralCrystals = 0;
     this.lifetimeBeansRun = 0.0;
     this.lifetimeGolden = 0;
-    this.lifetimeCrystals = 0; // Reset so Pantheon cannot be spammed back-to-back
+    this.lifetimeCrystals = 0;
     this.rebirthCount = 0;
     this.dynastyCount = 0;
     for (const u of this.upgrades) u.count = 0;
@@ -2351,7 +2896,7 @@ class GameState {
     this.addXp(10000 * this.pantheonCount);
     this.recalculateRates();
     this.sfx.playPantheon(this.sfxEnabled, this.sfxVolume);
-    this.popups.push(new FloatingPopup(`+${earned} STARLIGHT SHARDS!`, 240, 235, COLORS.pantheon));
+    this.popups.push(new FloatingPopup(`+${earned} STARLIGHT SHARDS!`, 245, 245, COLORS.pantheon));
   }
 
   checkGoalCompletion() {
@@ -2360,6 +2905,7 @@ class GameState {
       this.recipes.every((r) => r.crafted) &&
       this.siloLevel >= 45 &&
       this.omegaSingularity >= 10 &&
+      this.genesisCrema >= 3 &&
       this.eternalBeans >= 1
     );
   }
@@ -2369,7 +2915,7 @@ class GameState {
       this.sanctuaryUnlocked = true;
       this.recalculateRates();
       this.sfx.playLevelup(this.sfxEnabled, this.sfxVolume);
-      this.popups.push(new FloatingPopup("★ OMNIVERSAL SANCTUARY AWAKENED! (x25 Production) ★", 240, 215, COLORS.gold));
+      this.popups.push(new FloatingPopup("★ OMNIVERSAL SANCTUARY AWAKENED! (x25 Production) ★", 245, 225, COLORS.gold));
     } else {
       this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     }
@@ -2381,10 +2927,9 @@ class GameState {
     });
   }
 
-  // --- Save & Load (LocalStorage with Refund & Session Preservation) ---
+  // --- Save & Load (LocalStorage for all 18 Currencies & Minigames) ---
 
   saveGame() {
-    // Refund any in-flight Plinko balls or mid-roll RNG wager on unload/save so reload never eats bets
     const plinkoRefunds = this.plinko ? this.plinko.getPendingRefundsByCurrency() : {};
     const rngPendingBeans = this.rng && this.rng.isRolling ? this.rng.pendingCost : 0;
 
@@ -2408,7 +2953,7 @@ class GameState {
       achievements: this.achievements.filter((a) => a.unlocked).map((a) => a.aid),
       quests: this.quests.map((q) => ({
         qid: q.qid, cur: q.currentVal, done: q.completed,
-        target: q.targetVal, rwBeans: q.rewardBeans, rwStars: q.rewardStars, tier: q.tier
+        target: q.targetVal, rwBeans: q.rewardBeans, rwStars: q.rewardStars, rwTokens: q.rewardTokens, tier: q.tier
       })),
       sfxEnabled: this.sfxEnabled,
       sfxVolume: this.sfxVolume,
@@ -2419,6 +2964,8 @@ class GameState {
       beans: this.beans + (plinkoRefunds.beans || 0) + rngPendingBeans,
       lifetimeBeansRun: this.lifetimeBeansRun,
       lifetimeBeansAll: this.lifetimeBeansAll,
+      customerStars: this.customerStars + (plinkoRefunds.stars || 0),
+      arcadeTokens: this.arcadeTokens + (plinkoRefunds.tokens || 0),
       goldenBeans: this.goldenBeans + (plinkoRefunds.golden || 0),
       lifetimeGolden: this.lifetimeGolden,
       astralCrystals: this.astralCrystals + (plinkoRefunds.astral || 0),
@@ -2431,8 +2978,11 @@ class GameState {
       omegaSingularity: this.omegaSingularity + (plinkoRefunds.omega || 0),
       celestialDew: this.celestialDew + (plinkoRefunds.dew || 0),
       quasarNectar: this.quasarNectar + (plinkoRefunds.quasar || 0),
+      voidTruffle: this.voidTruffle + (plinkoRefunds.void_truffle || 0),
+      nebulaHoney: this.nebulaHoney + (plinkoRefunds.nebula_honey || 0),
+      solarisAmber: this.solarisAmber + (plinkoRefunds.solaris_amber || 0),
+      genesisCrema: this.genesisCrema + (plinkoRefunds.genesis_crema || 0),
       eternalBeans: this.eternalBeans + (plinkoRefunds.eternal || 0),
-      customerStars: this.customerStars,
       manualClicks: this.manualClicks,
       rebirthCount: this.rebirthCount,
       dynastyCount: this.dynastyCount,
@@ -2454,7 +3004,8 @@ class GameState {
         fastRoll: this.rng.fastRoll,
         cutsceneThreshold: this.rng.cutsceneThreshold,
         upgrades: this.rng.upgrades.map((u) => u.level)
-      }
+      },
+      arcadeShop: this.arcade.shopUpgrades.map((u) => u.level)
     };
     try {
       localStorage.setItem("rainy_cafe_grand_master_save", JSON.stringify(data));
@@ -2501,6 +3052,7 @@ class GameState {
             if (qData.target) q.targetVal = qData.target;
             if (qData.rwBeans) q.rewardBeans = qData.rwBeans;
             if (qData.rwStars) q.rewardStars = qData.rwStars;
+            if (qData.rwTokens) q.rewardTokens = qData.rwTokens;
             if (qData.tier) q.tier = qData.tier;
           }
         }
@@ -2516,6 +3068,8 @@ class GameState {
       this.beans = data.beans ?? 0.0;
       this.lifetimeBeansRun = data.lifetimeBeansRun ?? 0.0;
       this.lifetimeBeansAll = data.lifetimeBeansAll ?? 0.0;
+      this.customerStars = data.customerStars ?? 0;
+      this.arcadeTokens = data.arcadeTokens ?? 0;
       this.goldenBeans = data.goldenBeans ?? 0;
       this.lifetimeGolden = data.lifetimeGolden ?? 0;
       this.astralCrystals = data.astralCrystals ?? 0;
@@ -2529,9 +3083,12 @@ class GameState {
       this.omegaSingularity = data.omegaSingularity ?? 0;
       this.celestialDew = data.celestialDew ?? 0;
       this.quasarNectar = data.quasarNectar ?? 0;
+      this.voidTruffle = data.voidTruffle ?? 0;
+      this.nebulaHoney = data.nebulaHoney ?? 0;
+      this.solarisAmber = data.solarisAmber ?? 0;
+      this.genesisCrema = data.genesisCrema ?? 0;
       this.eternalBeans = data.eternalBeans ?? 0;
 
-      this.customerStars = data.customerStars ?? 0;
       this.manualClicks = data.manualClicks ?? 0;
       this.rebirthCount = data.rebirthCount ?? 0;
       this.dynastyCount = data.dynastyCount ?? 0;
@@ -2570,6 +3127,12 @@ class GameState {
         }
       }
 
+      if (Array.isArray(data.arcadeShop)) {
+        data.arcadeShop.forEach((lvl, i) => {
+          if (this.arcade.shopUpgrades[i]) this.arcade.shopUpgrades[i].level = lvl;
+        });
+      }
+
       const lastTs = data.lastSaveTimestamp ?? 0;
       if (lastTs > 0) {
         const elapsed = Date.now() / 1000 - lastTs;
@@ -2581,10 +3144,10 @@ class GameState {
           const rawOffline = this.bps * elapsed * offlinePct;
           this.beans = Math.min(this.getMaxStorage(), this.beans + rawOffline);
           const offlineEarned = Math.max(0, this.beans - prev);
-          this.lifetimeBeansRun += offlineEarned; // Counts toward next Rebirth!
+          this.lifetimeBeansRun += offlineEarned;
           this.lifetimeBeansAll += offlineEarned;
           this.addXp(Math.max(10, Math.floor(Math.log10(Math.max(10.0, offlineEarned)) * 18.0)));
-          this.popups.push(new FloatingPopup(`Welcome back! +${formatNum(offlineEarned, this.notationMode)}`, 240, 215, COLORS.gold));
+          this.popups.push(new FloatingPopup(`Welcome back! +${formatNum(offlineEarned, this.notationMode)}`, 245, 225, COLORS.gold));
         }
       }
     } catch (e) {
@@ -2594,7 +3157,6 @@ class GameState {
 
   wipeAllData() {
     localStorage.removeItem("rainy_cafe_grand_master_save");
-    localStorage.removeItem("rainy_cafe_rng_save");
     this.level = 1;
     this.xp = 0.0;
     this.playTime = 0.0;
@@ -2607,6 +3169,8 @@ class GameState {
     this.beans = 0.0;
     this.lifetimeBeansRun = 0.0;
     this.lifetimeBeansAll = 0.0;
+    this.customerStars = 0;
+    this.arcadeTokens = 0;
     this.goldenBeans = 0;
     this.lifetimeGolden = 0;
     this.astralCrystals = 0;
@@ -2619,9 +3183,12 @@ class GameState {
     this.omegaSingularity = 0;
     this.celestialDew = 0;
     this.quasarNectar = 0;
+    this.voidTruffle = 0;
+    this.nebulaHoney = 0;
+    this.solarisAmber = 0;
+    this.genesisCrema = 0;
     this.eternalBeans = 0;
     this.sanctuaryUnlocked = false;
-    this.customerStars = 0;
     this.manualClicks = 0;
     this.rebirthCount = 0;
     this.dynastyCount = 0;
@@ -2633,18 +3200,6 @@ class GameState {
     this.chronosWarpTimer = 0.0;
     this.activeOrder = null;
 
-    for (const s of [...this.sinks, ...this.cosmicPerks]) s.level = 0;
-    for (const t of this.talents) t.rank = 0;
-    for (const m of this.milestones) m.claimed = false;
-    for (const u of this.upgrades) u.count = 0;
-    for (const d of this.decor) d.bought = false;
-    for (const st of this.staff) st.level = 0;
-    for (const r of this.roasteryUpgrades) r.count = 0;
-    for (const dyn of this.dynastyPerks) dyn.count = 0;
-    for (const p of this.pantheonPerks) p.count = 0;
-    for (const rec of this.recipes) { rec.crafted = false; rec.brewing = false; rec.progress = 0; }
-    for (const a of this.achievements) a.unlocked = false;
-
     this.initCatalogs();
     this.rng.totalRolls = 0;
     this.rng.counts.fill(0);
@@ -2655,15 +3210,20 @@ class GameState {
     this.rng.syncToggleButtons();
     this.rng.resetStageDisplay();
 
+    for (const au of this.arcade.shopUpgrades) au.level = 0;
+    this.arcade.shotStreak = 0;
+    this.arcade.roastActive = false;
+    this.arcade.resetMemoryBoard();
+
     this.wipeConfirmActive = false;
     this.wipeConfirmTimer = 0.0;
     this.recalculateRates();
     this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
-    this.popups.push(new FloatingPopup("DATA WIPED CLEAN", 240, 255, COLORS.danger));
+    this.popups.push(new FloatingPopup("DATA WIPED CLEAN", 245, 265, COLORS.danger));
   }
 
   // ===========================================================================
-  // 9. STATIC DOM INITIALIZATION & IN-PLACE UI UPDATERS
+  // 10. STATIC DOM INITIALIZATION & IN-PLACE UI UPDATERS
   // ===========================================================================
 
   buildStaticDOM() {
@@ -2681,7 +3241,7 @@ class GameState {
             <span class="card-count" id="cnt-${upg.uid}">x0 (+1)</span>
           </div>
           <div class="card-desc">${upg.desc}</div>
-          <div class="card-cost" id="cost-${upg.uid}">Cost: 0 beans</div>
+          <div class="card-cost" id="cost-${upg.uid}">Cost: 0 Coffee Beans</div>
         </div>
       `;
       card.addEventListener("click", () => {
@@ -2714,7 +3274,7 @@ class GameState {
           <div class="card-desc">${st.desc}</div>
           <div class="card-cost" style="color: var(--color-star);" id="lvl-${st.uid}">Level: 0</div>
         </div>
-        <button class="btn" id="btn-${st.uid}" type="button">150</button>
+        <button class="btn" id="btn-${st.uid}" type="button">150 Beans</button>
       `;
       card.querySelector(`#btn-${st.uid}`).addEventListener("click", () => {
         const cost = this.getStaffCost(st);
@@ -2787,25 +3347,19 @@ class GameState {
       brewList.appendChild(card);
     });
 
+    // All 18 Currencies in Plinko Selector Grid (3 rows of 6)
     const plinkoGrid = document.getElementById("plinko-currency-grid");
     plinkoGrid.innerHTML = "";
-    const plinkoCurrs = [
-      ["beans", "Beans", COLORS.text], ["golden", "Golden", COLORS.gold],
-      ["astral", "Crystals", COLORS.astral], ["shards", "Shards", COLORS.pantheon],
-      ["dark_matter", "DMR", COLORS.darkMatter], ["supernova", "SNB", COLORS.supernova],
-      ["chronos", "CTC", COLORS.chronos], ["aether", "AE", COLORS.aether],
-      ["omega", "OSB", COLORS.omega], ["dew", "Dew", COLORS.dew],
-      ["quasar", "QN", COLORS.quasar], ["eternal", "ERB", COLORS.eternal]
-    ];
-    plinkoCurrs.forEach(([key, label, col]) => {
+    CURRENCY_META.forEach((meta) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "plinko-curr-btn";
-      btn.dataset.curr = key;
-      btn.dataset.color = col;
-      btn.textContent = label;
+      btn.dataset.curr = meta.key;
+      btn.dataset.color = meta.color;
+      btn.title = `${meta.name} (${meta.tier})`;
+      btn.textContent = meta.short;
       btn.addEventListener("click", () => {
-        this.plinko.currencyType = key;
+        this.plinko.currencyType = meta.key;
         this.sfx.playTap(this.sfxEnabled, this.sfxVolume * 0.8);
       });
       plinkoGrid.appendChild(btn);
@@ -2844,10 +3398,10 @@ class GameState {
       const card = document.createElement("div");
       card.className = "game-card";
       card.id = `card-ms-${m.targetLvl}`;
-      let rw = `+${formatNum(m.beans)} Beans`;
-      if (m.golden > 0) rw += ` | +${m.golden} Golden`;
-      if (m.crystals > 0) rw += ` | +${m.crystals} Crystals`;
-      if (m.shards > 0) rw += ` | +${m.shards} Shards`;
+      let rw = `+${formatNum(m.beans)} Coffee Beans | +${m.tokens} Arcade Tokens`;
+      if (m.golden > 0) rw += ` | +${m.golden} Golden Beans`;
+      if (m.crystals > 0) rw += ` | +${m.crystals} Astral Crystals`;
+      if (m.shards > 0) rw += ` | +${m.shards} Starlight Shards`;
       card.innerHTML = `
         <div class="card-accent" id="acc-ms-${m.targetLvl}"></div>
         <div class="card-main">
@@ -2859,39 +3413,46 @@ class GameState {
       card.querySelector(`#btn-ms-${m.targetLvl}`).addEventListener("click", () => {
         if (this.level >= m.targetLvl && !m.claimed) {
           m.claimed = true;
-          // Milestone crates allow Silo overflow so rewards are never deleted
           this.beans += m.beans;
           this.lifetimeBeansAll += m.beans;
+          this.arcadeTokens += m.tokens;
           this.goldenBeans += m.golden;
           this.astralCrystals += m.crystals;
           this.starlightShards += m.shards;
           this.recalculateRates();
           this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
-          this.popups.push(new FloatingPopup(`CRATE CLAIMED! (Lv. ${m.targetLvl})`, 240, 235, COLORS.gold));
+          this.popups.push(new FloatingPopup(`CRATE CLAIMED! (Lv. ${m.targetLvl})`, 245, 245, COLORS.gold));
         }
       });
       msList.appendChild(card);
     });
 
+    // Transmutation Forge with Full Currency Names
     const transList = document.getElementById("transmute-list");
     transList.innerHTML = "";
     const transmutes = [
-      { id: "tr1", title: "Beans -> Golden Bean", sub: "500M Beans -> +1 Golden Bean", fn: () => {
+      { id: "tr1", title: "Coffee Beans → Golden Bean", sub: "500M Coffee Beans → +1 Golden Bean", fn: () => {
         if (this.beans >= 500e6) {
           this.beans -= 500e6; this.goldenBeans += 1; this.lifetimeGolden += 1;
           this.recalculateRates(); this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
         } else this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
       }},
-      { id: "tr2", title: "Golden -> Astral Crystal", sub: "250 Golden -> +1 Astral Crystal", fn: () => {
+      { id: "tr2", title: "Golden Beans → Astral Crystal", sub: "250 Golden Beans → +1 Astral Crystal", fn: () => {
         if (this.goldenBeans >= 250) {
           this.goldenBeans -= 250; this.astralCrystals += 1; this.lifetimeCrystals += 1;
           this.recalculateRates(); this.sfx.playAstral(this.sfxEnabled, this.sfxVolume);
         } else this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
       }},
-      { id: "tr3", title: "Crystal -> Starlight Shard", sub: "100 Crystals -> +1 Starlight Shard", fn: () => {
+      { id: "tr3", title: "Astral Crystals → Starlight Shard", sub: "100 Astral Crystals → +1 Starlight Shard", fn: () => {
         if (this.astralCrystals >= 100) {
           this.astralCrystals -= 100; this.starlightShards += 1;
           this.recalculateRates(); this.sfx.playPantheon(this.sfxEnabled, this.sfxVolume);
+        } else this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
+      }},
+      { id: "tr4", title: "Arcade Tokens → Golden Bean", sub: "20 Arcade Tokens → +1 Golden Bean", fn: () => {
+        if (this.arcadeTokens >= 20) {
+          this.arcadeTokens -= 20; this.goldenBeans += 1; this.lifetimeGolden += 1;
+          this.recalculateRates(); this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
         } else this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
       }}
     ];
@@ -2905,7 +3466,7 @@ class GameState {
           <div class="card-title">${tr.title}</div>
           <div class="card-desc">${tr.sub}</div>
         </div>
-        <button class="btn btn-sm" id="btn-${tr.id}" type="button">Transmute Forge</button>
+        <button class="btn btn-sm" id="btn-${tr.id}" type="button">Transmute</button>
       `;
       card.querySelector(`#btn-${tr.id}`).addEventListener("click", tr.fn);
       transList.appendChild(card);
@@ -2959,40 +3520,54 @@ class GameState {
       sinksList.appendChild(card);
     });
 
+    // All 12 Celestial Forges with Crystal-Clear Full Currency Names!
     const cForgeList = document.getElementById("cosmic-forges-list");
     cForgeList.innerHTML = "";
     this.cosmicForgeDefs = [
-      { id: "cf1", name: "Dark Matter Roast (DMR)", req: "100 Sp Beans -> +1 DMR", col: COLORS.darkMatter,
+      { id: "cf1", name: "Dark Matter Roast", req: "Requires: 100 Sp Coffee Beans → +1 Dark Matter Roast (+100% Mult)", col: COLORS.darkMatter,
         can: () => this.beans >= 1e26, getOwned: () => this.darkMatter,
         act: () => { this.beans -= 1e26; this.darkMatter += 1; } },
-      { id: "cf2", name: "Supernova Bean (SNB)", req: "10 Oc Beans -> +1 SNB", col: COLORS.supernova,
+      { id: "cf2", name: "Supernova Bean", req: "Requires: 10 Oc Coffee Beans → +1 Supernova Bean (+250% Mult)", col: COLORS.supernova,
         can: () => this.beans >= 1e28, getOwned: () => this.supernovaBeans,
         act: () => { this.beans -= 1e28; this.supernovaBeans += 1; } },
-      { id: "cf3", name: "Chronos Crystal (CTC)", req: "1 No Beans -> +1 CTC", col: COLORS.chronos,
+      { id: "cf3", name: "Chronos Crystal", req: "Requires: 1 No Coffee Beans → +1 Chronos Crystal (+600% Mult)", col: COLORS.chronos,
         can: () => this.beans >= 1e30, getOwned: () => this.chronosCrystals,
         act: () => { this.beans -= 1e30; this.chronosCrystals += 1; } },
-      { id: "cf4", name: "Aetherial Essence (AE)", req: "100 No Beans -> +1 AE", col: COLORS.aether,
+      { id: "cf4", name: "Aetherial Essence", req: "Requires: 100 No Coffee Beans → +1 Aetherial Essence (+1,500% Mult)", col: COLORS.aether,
         can: () => this.beans >= 1e32, getOwned: () => this.aetherEssence,
         act: () => { this.beans -= 1e32; this.aetherEssence += 1; } },
-      { id: "cf5", name: "Omega Singularity (OSB)", req: "10 Dc Beans -> +1 OSB", col: COLORS.omega,
+      { id: "cf5", name: "Omega Singularity", req: "Requires: 10 Dc Coffee Beans → +1 Omega Singularity (+7,500% Mult)", col: COLORS.omega,
         can: () => this.beans >= 1e34, getOwned: () => this.omegaSingularity,
         act: () => { this.beans -= 1e34; this.omegaSingularity += 1; } },
-      { id: "cf6", name: "Celestial Dew (CD)", req: "1 No Beans + 10 Shards -> +1 Dew", col: COLORS.dew,
+      { id: "cf6", name: "Celestial Dew", req: "Requires: 1 No Coffee Beans + 10 Starlight Shards → +1 Celestial Dew", col: COLORS.celestialDew,
         can: () => this.beans >= 1e30 && this.starlightShards >= 10, getOwned: () => this.celestialDew,
         act: () => { this.beans -= 1e30; this.starlightShards -= 10; this.celestialDew += 1; } },
-      { id: "cf7", name: "Quasar Nectar (QN)", req: "100 No Beans + 3 OSB -> +1 Nectar", col: COLORS.quasar,
+      { id: "cf7", name: "Quasar Nectar", req: "Requires: 100 No Coffee Beans + 3 Omega Singularity → +1 Quasar Nectar", col: COLORS.quasarNectar,
         can: () => this.beans >= 1e32 && this.omegaSingularity >= 3, getOwned: () => this.quasarNectar,
         act: () => { this.beans -= 1e32; this.omegaSingularity -= 3; this.quasarNectar += 1; } },
-      { id: "cf8", name: "The Eternal Bean (ERB)", req: "10 Dc Beans + 5 QN + 25 Dew -> +1 ERB", col: COLORS.eternal,
-        can: () => this.beans >= 1e34 && this.quasarNectar >= 5 && this.celestialDew >= 25, getOwned: () => this.eternalBeans,
-        act: () => { this.beans -= 1e34; this.quasarNectar -= 5; this.celestialDew -= 25; this.eternalBeans += 1; } }
+      { id: "cf8", name: "Void Truffle", req: "Requires: 500 Sp Coffee Beans + 5 Dark Matter Roast → +1 Void Truffle (+10% Crit)", col: COLORS.voidTruffle,
+        can: () => this.beans >= 5e26 && this.darkMatter >= 5, getOwned: () => this.voidTruffle,
+        act: () => { this.beans -= 5e26; this.darkMatter -= 5; this.voidTruffle += 1; } },
+      { id: "cf9", name: "Nebula Honey", req: "Requires: 50 Oc Coffee Beans + 5 Supernova Beans → +1 Nebula Honey (+25% Tips)", col: COLORS.nebulaHoney,
+        can: () => this.beans >= 5e28 && this.supernovaBeans >= 5, getOwned: () => this.nebulaHoney,
+        act: () => { this.beans -= 5e28; this.supernovaBeans -= 5; this.nebulaHoney += 1; } },
+      { id: "cf10", name: "Solaris Amber", req: "Requires: 5 No Coffee Beans + 10 Chronos Crystals → +1 Solaris Amber (+15% Luck)", col: COLORS.solarisAmber,
+        can: () => this.beans >= 5e30 && this.chronosCrystals >= 10, getOwned: () => this.solarisAmber,
+        act: () => { this.beans -= 5e30; this.chronosCrystals -= 10; this.solarisAmber += 1; } },
+      { id: "cf11", name: "Genesis Crema", req: "Requires: 500 No Coffee Beans + 5 Aetherial Essence + 5 Void Truffles → +1 Genesis Crema", col: COLORS.genesisCrema,
+        can: () => this.beans >= 5e32 && this.aetherEssence >= 5 && this.voidTruffle >= 5, getOwned: () => this.genesisCrema,
+        act: () => { this.beans -= 5e32; this.aetherEssence -= 5; this.voidTruffle -= 5; this.genesisCrema += 1; } },
+      { id: "cf12", name: "The Eternal Bean", req: "Requires: 10 Dc Beans + 5 Quasar Nectar + 25 Celestial Dew + 3 Genesis Crema → +1 Eternal Bean", col: COLORS.eternalBean,
+        can: () => this.beans >= 1e34 && this.quasarNectar >= 5 && this.celestialDew >= 25 && this.genesisCrema >= 3,
+        getOwned: () => this.eternalBeans,
+        act: () => { this.beans -= 1e34; this.quasarNectar -= 5; this.celestialDew -= 25; this.genesisCrema -= 3; this.eternalBeans += 1; } }
     ];
     this.cosmicForgeDefs.forEach((cf) => {
       const card = document.createElement("div");
       card.className = "game-card";
       card.style.minHeight = "52px";
       card.innerHTML = `
-        <div class="card-accent" id="acc-${cf.id}"></div>
+        <div class="card-accent" id="acc-${cf.id}" style="background:${cf.col};"></div>
         <div class="card-main">
           <div class="card-top-line">
             <span class="card-title">${cf.name}</span>
@@ -3000,7 +3575,7 @@ class GameState {
           </div>
           <div class="card-desc">${cf.req}</div>
         </div>
-        <button class="btn btn-sm" id="btn-${cf.id}" type="button">Forge Cosmic</button>
+        <button class="btn btn-sm" id="btn-${cf.id}" type="button">Forge</button>
       `;
       card.querySelector(`#btn-${cf.id}`).addEventListener("click", () => {
         if (cf.can()) {
@@ -3154,14 +3729,15 @@ class GameState {
       card.querySelector(`#btn-${q.qid}`).addEventListener("click", () => {
         if (q.currentVal >= q.targetVal && !q.completed) {
           q.completed = true;
-          q.refreshTimer = 10.0; // Refreshes into next tier after 10 seconds
-          this.beans += q.rewardBeans; // Overflows Silo cap safely
+          q.refreshTimer = 10.0;
+          this.beans += q.rewardBeans;
           this.lifetimeBeansAll += q.rewardBeans;
           this.customerStars += q.rewardStars;
+          this.arcadeTokens += q.rewardTokens || 5;
           this.addXp(250 * q.tier);
           this.recalculateRates();
           this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
-          this.popups.push(new FloatingPopup(`+${formatNum(q.rewardBeans, this.notationMode)} Contract Reward!`, 240, 235, COLORS.gold));
+          this.popups.push(new FloatingPopup(`+${formatNum(q.rewardBeans, this.notationMode)} Beans & +${q.rewardTokens} Tokens!`, 245, 245, COLORS.gold));
         }
       });
       questsList.appendChild(card);
@@ -3181,35 +3757,47 @@ class GameState {
       this.handleSceneClick(x, y);
     });
 
-    // Multiplier Breakdown Popover Toggle & Close
+    // Multiplier Breakdown & 18-Currency Glossary Popovers
     const multDisplay = document.getElementById("multiplier-display");
     const multPopover = document.getElementById("multiplier-popover");
+    const glossaryBtn = document.getElementById("btn-open-glossary");
+    const glossaryPopover = document.getElementById("glossary-popover");
 
     const toggleMultPopover = () => {
+      glossaryPopover.classList.add("hidden");
       const opening = multPopover.classList.contains("hidden");
       multPopover.classList.toggle("hidden", !opening);
       this.sfx.playTap(this.sfxEnabled, this.sfxVolume * 0.8);
       if (opening) this.renderMultiplierBreakdown(true);
     };
 
-    multDisplay.addEventListener("click", (e) => {
-      e.stopPropagation();
-      toggleMultPopover();
-    });
-    multDisplay.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        toggleMultPopover();
-      }
-    });
+    const toggleGlossaryPopover = () => {
+      multPopover.classList.add("hidden");
+      const opening = glossaryPopover.classList.contains("hidden");
+      glossaryPopover.classList.toggle("hidden", !opening);
+      this.sfx.playTap(this.sfxEnabled, this.sfxVolume * 0.8);
+      if (opening) this.renderCurrencyGlossary();
+    };
+
+    multDisplay.addEventListener("click", (e) => { e.stopPropagation(); toggleMultPopover(); });
+    glossaryBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleGlossaryPopover(); });
+
     document.getElementById("btn-close-mult-pop").addEventListener("click", (e) => {
       e.stopPropagation();
       multPopover.classList.add("hidden");
       this.sfx.playTap(this.sfxEnabled, this.sfxVolume * 0.7);
     });
+    document.getElementById("btn-close-glossary").addEventListener("click", (e) => {
+      e.stopPropagation();
+      glossaryPopover.classList.add("hidden");
+      this.sfx.playTap(this.sfxEnabled, this.sfxVolume * 0.7);
+    });
+
     multPopover.addEventListener("mousedown", (e) => e.stopPropagation());
+    glossaryPopover.addEventListener("mousedown", (e) => e.stopPropagation());
     sceneCanvas.addEventListener("mousedown", () => {
-      if (!multPopover.classList.contains("hidden")) multPopover.classList.add("hidden");
+      multPopover.classList.add("hidden");
+      glossaryPopover.classList.add("hidden");
     });
 
     document.getElementById("btn-silo-upgrade").addEventListener("click", () => this.upgradeSilo());
@@ -3221,7 +3809,8 @@ class GameState {
 
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        if (!multPopover.classList.contains("hidden")) multPopover.classList.add("hidden");
+        multPopover.classList.add("hidden");
+        glossaryPopover.classList.add("hidden");
         this.switchTab(btn.dataset.tab);
         this.sfx.playTap(this.sfxEnabled, this.sfxVolume * 0.7);
       });
@@ -3308,7 +3897,7 @@ class GameState {
       this.addXp(xpGain);
       this.recalculateRates();
       this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
-      this.popups.push(new FloatingPopup(`ALTAR BLESSING (+2%)! +${xpGain} XP`, 240, 235, COLORS.gold));
+      this.popups.push(new FloatingPopup(`ALTAR BLESSING (+2%)! +${xpGain} XP`, 245, 245, COLORS.gold));
     });
 
     document.getElementById("sanctuary-goal-banner").addEventListener("click", () => this.activateSanctuary());
@@ -3341,7 +3930,7 @@ class GameState {
     document.getElementById("btn-cfg-save").addEventListener("click", () => {
       this.saveGame();
       this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
-      this.popups.push(new FloatingPopup("SAVED TO LOCALSTORAGE", 240, 255, COLORS.success));
+      this.popups.push(new FloatingPopup("SAVED TO LOCALSTORAGE", 245, 265, COLORS.success));
     });
     document.getElementById("btn-cfg-wipe").addEventListener("click", () => {
       if (!this.wipeConfirmActive) {
@@ -3353,7 +3942,7 @@ class GameState {
       }
     });
 
-    // Global Keyboard Hotkeys (Ignores Ctrl/Cmd/Alt browser shortcuts like Ctrl+R)
+    // Global Keyboard Hotkeys (Ignores Ctrl/Cmd/Alt browser shortcuts)
     window.addEventListener("keydown", (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (document.activeElement === betInput) return;
@@ -3369,9 +3958,15 @@ class GameState {
           triggerPlinkoDrop(this.plinko.xCenter);
         } else if (this.activeTab === "rng") {
           this.rng.startRoll(false);
+        } else if (this.activeTab === "arcade" && this.arcade.activeGame === "shot") {
+          this.arcade.pullEspressoShot();
         } else {
           this.handleSceneClick(this.mugCenter.x, this.mugCenter.y);
         }
+      } else if (e.key === "ArrowLeft" && this.activeTab === "arcade" && this.arcade.catcherActive) {
+        this.arcade.catcherCupX = Math.max(32, this.arcade.catcherCupX - 32);
+      } else if (e.key === "ArrowRight" && this.activeTab === "arcade" && this.arcade.catcherActive) {
+        this.arcade.catcherCupX = Math.min(488, this.arcade.catcherCupX + 32);
       } else if (e.key === "r" || e.key === "R") {
         if (this.rng) this.rng.startRoll(false);
       } else if (e.key === "b" || e.key === "B") {
@@ -3385,7 +3980,7 @@ class GameState {
       } else if (e.key === "s" || e.key === "S") {
         this.saveGame();
         this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
-        this.popups.push(new FloatingPopup("SAVED TO LOCALSTORAGE", 240, 255, COLORS.success));
+        this.popups.push(new FloatingPopup("SAVED TO LOCALSTORAGE", 245, 265, COLORS.success));
       } else if (e.key === "e" || e.key === "E") {
         const idx = (this.tabs.indexOf(this.activeTab) + 1) % this.tabs.length;
         this.switchTab(this.tabs[idx]);
@@ -3403,14 +3998,12 @@ class GameState {
   }
 
   handleSceneClick(x, y) {
-    // 1. Flying Lucky Croissant
     if (this.croissant.checkClick(x, y)) {
       this.croissantsCaught += 1;
       this.triggerCroissantFrenzy(x, y - 20, "CAFFEINE FRENZY! (7x)");
       return;
     }
 
-    // 2. Sleeping Cat Mochi
     if (Math.hypot(x - this.catCenter.x, y - this.catCenter.y) <= 44) {
       this.catScaleX = 1.25;
       this.catScaleY = 0.75;
@@ -3424,7 +4017,6 @@ class GameState {
       return;
     }
 
-    // 3. Coffee Mug Hitbox
     const { x: cx, y: cy } = this.mugCenter;
     if (x >= cx - 95 && x <= cx + 95 && y >= cy - 80 && y <= cy + 80) {
       const prevTemp = this.boilerTemp;
@@ -3438,7 +4030,6 @@ class GameState {
         (prevTemp < 85.0 && this.boilerTemp >= 85.0) ||
         (prevTemp <= 95.0 && this.boilerTemp > 95.0)
       ) {
-        // Recalculate immediately when entering or leaving the 85-95C Sweet Spot
         this.recalculateRates();
       }
 
@@ -3487,18 +4078,15 @@ class GameState {
   }
 
   // ===========================================================================
-  // 10. MAIN GAME LOOP (UPDATE, SCENE RENDER & DOM SYNC)
+  // 11. MAIN GAME LOOP (UPDATE, CANVAS RENDER & GLOSSARY / DOM SYNC)
   // ===========================================================================
 
   update(dt) {
     this.playTime += dt;
 
-    // Auto-timeout Wipe Data confirmation after 4s
     if (this.wipeConfirmActive) {
       this.wipeConfirmTimer -= dt;
-      if (this.wipeConfirmTimer <= 0) {
-        this.wipeConfirmActive = false;
-      }
+      if (this.wipeConfirmTimer <= 0) this.wipeConfirmActive = false;
     }
 
     if (this.overheatLockout) {
@@ -3516,7 +4104,6 @@ class GameState {
     const maxCap = this.getMaxStorage();
     if (this.beans < maxCap) {
       let gained = this.bps * dt;
-      // Roastery r08: Capped at 5x BPS so compound interest cannot bypass building progression
       if (this.roasteryUpgrades[7].count > 0 && this.bps > 0) {
         const interest = Math.min(this.bps * 5.0, this.beans * (this.roasteryUpgrades[7].count * 0.0006));
         gained += interest * dt;
@@ -3533,7 +4120,6 @@ class GameState {
       this.addXp(xpTrickle);
     }
 
-    // Dynasty d02: Astral Bean Synthesis (+1 Golden Bean/lvl every 60s)
     if (this.dynastyPerks[1].count > 0) {
       this.dynastySynthTimer += dt;
       if (this.dynastySynthTimer >= 60.0) {
@@ -3542,11 +4128,10 @@ class GameState {
         this.goldenBeans += synthAmt;
         this.lifetimeGolden += synthAmt;
         this.recalculateRates();
-        this.popups.push(new FloatingPopup(`+${synthAmt} Synthesized Golden Bean!`, 240, 235, COLORS.gold));
+        this.popups.push(new FloatingPopup(`+${synthAmt} Synthesized Golden Bean!`, 245, 245, COLORS.gold));
       }
     }
 
-    // Dynasty d05: Celestial Barista Guild
     if (this.dynastyPerks[4].count > 0) {
       this.guildAutoBuyTimer += dt;
       const interval = 2.0 / this.dynastyPerks[4].count;
@@ -3565,7 +4150,6 @@ class GameState {
       }
     }
 
-    // Cosmic cos3: Chronos Warp Engine (Respects Silo Cap)
     if (this.cosmicPerks[2].level > 0 && this.bps > 0) {
       this.chronosWarpTimer += dt;
       const warpInterval = 300.0 / this.cosmicPerks[2].level;
@@ -3577,21 +4161,20 @@ class GameState {
         this.lifetimeBeansRun += actualWarp;
         this.lifetimeBeansAll += actualWarp;
         this.sfx.playCosmic(this.sfxEnabled, this.sfxVolume);
-        this.popups.push(new FloatingPopup(`CHRONOS WARP! +${formatNum(actualWarp, this.notationMode)}`, 240, 220, COLORS.chronos));
+        this.popups.push(new FloatingPopup(`CHRONOS WARP! +${formatNum(actualWarp, this.notationMode)}`, 245, 230, COLORS.chronos));
       }
     }
 
-    // Plinko Update
     const payouts = this.plinko.update(dt, this.sfx, this.sfxEnabled, this.sfxVolume);
     for (const p of payouts) {
       const awarded = this.addCurrency(p.currency, p.payout);
-      const cName = p.currency.replace("_", " ").toUpperCase();
+      const cName = getCurrencyName(p.currency);
       if (awarded <= 0) {
         this.plinko.popups.push(new FloatingPopup(`0 ${cName} (${p.mult}x)`, p.x, p.y - 15, COLORS.danger));
       } else if (p.mult >= 10.0) {
         this.addXp(600);
         this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
-        this.plinko.popups.push(new FloatingPopup(`+${formatNum(awarded, this.notationMode)} ${cName} (10x JACKPOT)!`, p.x, p.y - 25, COLORS.gold));
+        this.plinko.popups.push(new FloatingPopup(`+${formatNum(awarded, this.notationMode)} ${cName} (10x)!`, p.x, p.y - 25, COLORS.gold));
       } else if (p.mult >= 1.8) {
         this.addXp(75);
         this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
@@ -3611,7 +4194,6 @@ class GameState {
       }
     }
 
-    // Staff 1: Mochi Auto-Sip (Respects Silo Cap)
     if (this.staff[0].level > 0 && this.beans < maxCap) {
       const prev = this.beans;
       this.beans = Math.min(maxCap, this.beans + this.clickPower * this.staff[0].level * dt);
@@ -3622,7 +4204,6 @@ class GameState {
       this.addXp(mochiXp);
     }
 
-    // Staff 3: Clara Auto-Buyer (every 3s)
     const autoTick = Math.floor(this.playTime / 3.0);
     if (this.staff[2].level > 0 && autoTick > this.lastAutoBuyTick) {
       this.lastAutoBuyTick = autoTick;
@@ -3639,12 +4220,11 @@ class GameState {
       }
     }
 
-    // Staff 2: Pip Croissant Scout
     if (this.staff[1].level > 0 && this.croissant.active) {
       if (Math.random() < this.staff[1].level * 0.15 * dt) {
         this.croissant.active = false;
         this.croissantsCaught += 1;
-        this.triggerCroissantFrenzy(240, 255, "Pip caught a Croissant!");
+        this.triggerCroissantFrenzy(245, 265, "Pip caught a Croissant!");
       }
     }
 
@@ -3657,7 +4237,6 @@ class GameState {
       }
     }
 
-    // Brew Lab Progress (Increments Quest q05 on completion)
     const speedMult = Math.pow(2.0, this.pantheonPerks[2].count);
     for (const r of this.recipes) {
       if (r.brewing) {
@@ -3669,16 +4248,14 @@ class GameState {
           this.addXp(500);
           this.recalculateRates();
           this.sfx.playBrew(this.sfxEnabled, this.sfxVolume);
-          this.popups.push(new FloatingPopup(`BREWED: ${r.name}!`, 240, 265, COLORS.success));
+          this.popups.push(new FloatingPopup(`BREWED: ${r.name}!`, 245, 275, COLORS.success));
         }
       }
     }
-    // Prevent q05 soft-lock if all 12 recipes are already mastered
     if (this.recipes.every((r) => r.crafted) && !this.quests[4].completed) {
       this.quests[4].currentVal = this.quests[4].targetVal;
     }
 
-    // Customer Orders (Always fulfills from mastered recipes or starter House Drip Coffee)
     if (this.activeOrder) {
       this.activeOrder.timeRemaining -= dt;
       this.activeOrder.age = (this.activeOrder.age || 0) + dt;
@@ -3704,7 +4281,6 @@ class GameState {
       }
     }
 
-    // Auto-Refresh Claimed Daily Quests into Next Tier
     for (const q of this.quests) {
       if (q.completed) {
         q.refreshTimer += dt;
@@ -3716,6 +4292,7 @@ class GameState {
           q.targetVal = Math.ceil(q.targetVal * 1.45);
           q.rewardBeans = Math.max(q.rewardBeans * 2.5, this.bps * 60.0);
           q.rewardStars += 1;
+          q.rewardTokens = (q.rewardTokens || 5) + 3;
         }
       }
     }
@@ -3724,7 +4301,6 @@ class GameState {
       this.ventBoiler();
     }
 
-    // Spring Physics for Mug & Cat
     this.scaleX += (1.0 - this.scaleX) * Math.min(14.0 * dt, 1.0);
     this.scaleY += (1.0 - this.scaleY) * Math.min(14.0 * dt, 1.0);
     this.catScaleX += (1.0 - this.catScaleX) * Math.min(12.0 * dt, 1.0);
@@ -3735,7 +4311,7 @@ class GameState {
     let cRate = 1.0 + this.talents[4].rank * 0.08;
     if (this.decor[2].bought) cRate *= this.decor[2].buffVal;
     if (this.recipes[5].crafted) cRate *= this.recipes[5].buffVal;
-    this.croissant.update(dt, 440, 632, cRate);
+    this.croissant.update(dt, 450, 652, cRate);
 
     if (this.particlesEnabled) {
       this.steamTimer += dt;
@@ -3755,6 +4331,7 @@ class GameState {
     }
 
     if (this.rng) this.rng.update(dt);
+    if (this.arcade) this.arcade.update(dt);
 
     for (const ach of this.achievements) {
       if (!ach.unlocked && ach.check(this)) {
@@ -3790,7 +4367,7 @@ class GameState {
     ctx.fill();
 
     if (this.decor[0].bought) {
-      for (let lx = 15; lx < 425; lx += 36) {
+      for (let lx = 15; lx < 435; lx += 36) {
         ctx.strokeStyle = "rgb(180, 160, 140)";
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -3822,29 +4399,28 @@ class GameState {
       ctx.strokeStyle = COLORS.gold;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(390, 2);
-      ctx.lineTo(390, 26);
+      ctx.moveTo(400, 2);
+      ctx.lineTo(400, 26);
       ctx.stroke();
       for (const cxOff of [-6, 0, 6]) {
         ctx.strokeStyle = COLORS.goldHover;
         ctx.beginPath();
-        ctx.moveTo(390 + cxOff, 26);
-        ctx.lineTo(390 + cxOff, 51 + Math.abs(cxOff) * 3);
+        ctx.moveTo(400 + cxOff, 26);
+        ctx.lineTo(400 + cxOff, 51 + Math.abs(cxOff) * 3);
         ctx.stroke();
       }
     }
 
     if (this.rainEnabled) this.weather.drawRain(ctx);
 
-    // Window Sill Line at y = 630
     ctx.strokeStyle = "rgb(200, 190, 180)";
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(0, 630);
-    ctx.lineTo(440, 630);
+    ctx.moveTo(0, 650);
+    ctx.lineTo(450, 650);
     ctx.stroke();
 
-    // Sleeping Cat Mochi seated flush on y = 630 sill
+    // Sleeping Cat Mochi seated flush on y = 650 sill
     const { x: catX, y: catY } = this.catCenter;
     const rx = 34 * this.catScaleX;
     const ry = 22 * this.catScaleY;
@@ -3885,7 +4461,6 @@ class GameState {
       for (const s of this.steamParticles) s.draw(ctx);
     }
 
-    // Equipped RNG Aura Halo behind the Mug
     const { x: cx, y: cy } = this.mugCenter;
     if (this.rng && this.rng.equippedIndex >= 0) {
       const eqRarity = RNG_RARITIES[this.rng.equippedIndex];
@@ -3900,7 +4475,6 @@ class GameState {
       ctx.restore();
     }
 
-    // Coffee Mug
     const w = 75 * this.scaleX;
     const h = 65 * this.scaleY;
 
@@ -3961,6 +4535,37 @@ class GameState {
     for (const p of this.popups) p.draw(ctx);
   }
 
+  // Interactive 18-Currency & Number Suffix Glossary Renderer
+  renderCurrencyGlossary() {
+    const body = document.getElementById("glossary-pop-body");
+    if (!body) return;
+    const nm = this.notationMode;
+
+    const currencyCards = CURRENCY_META.map((c) => {
+      const bal = this.getCurrencyBalance(c.key);
+      return `
+        <div class="glossary-item" style="border-left-color: ${c.color};">
+          <div class="glossary-item-top">
+            <span style="color: ${c.color};">${c.name} (${c.tier})</span>
+            <span>Owned: ${formatNum(bal, nm)}</span>
+          </div>
+          <div class="glossary-item-desc">${c.desc}</div>
+        </div>
+      `;
+    }).join("");
+
+    const suffixChips = SUFFIX_GUIDE.map(
+      (s) => `<div class="suffix-chip"><strong>${s.sym}</strong> = ${s.name}</div>`
+    ).join("");
+
+    body.innerHTML = `
+      <div class="mult-section-label">Number Suffix Cheat Sheet</div>
+      <div class="suffix-grid">${suffixChips}</div>
+      <div class="mult-section-label">All 18 Currencies &amp; How to Earn Them</div>
+      ${currencyCards}
+    `;
+  }
+
   renderMultiplierBreakdown(force = false) {
     const pop = document.getElementById("multiplier-popover");
     if (!pop || pop.classList.contains("hidden") || !this.multBreakdown) return;
@@ -4001,16 +4606,16 @@ class GameState {
       ${row("Dynasty & Pantheon Tiers", `${formatNum(b.dynastyAndPantheon, nm)}x`, "var(--color-pantheon)")}
       ${row("Total Prestige Multiplier", `${formatNum(b.prestigeTotal, nm)}x`, "var(--color-astral)")}
 
-      <div class="mult-section-label">Cosmic &amp; Transcendent</div>
+      <div class="mult-section-label">12 Cosmic &amp; Transcendent Currencies</div>
       ${row("Cosmic Currencies & Sanctuary", `${formatNum(b.cosmicCurrencyMult, nm)}x`, "var(--color-omega)")}
       ${row("God-Tier Cosmic Perks", `${formatNum(b.cosmicPerksMult, nm)}x`, "var(--color-aether)")}
       ${row("Total Cosmic Multiplier", `${formatNum(b.cosmicTotal, nm)}x`, "var(--color-omega)")}
 
-      <div class="mult-section-label">RNG Compendium &amp; Cafe</div>
+      <div class="mult-section-label">RNG Compendium, Arcade &amp; Cafe</div>
       ${row("RNG Global Aura Mult", `${formatNum(b.rngGlobal, nm)}x`, "var(--color-supernova)")}
       ${row("RNG Dedicated BPS / Click", `${formatNum(b.rngBps, nm)}x / ${formatNum(b.rngClick, nm)}x`, "var(--color-text-light)")}
       ${row("Cafe Level, Stars, Brew & Sinks", `${formatNum(b.cafePermanent, nm)}x`, "var(--color-accent)")}
-      ${row("Boiler Temp, Frenzy & Mochi Purr", `${formatNum(b.activeTempAndEvents, nm)}x`, "var(--color-success)")}
+      ${row("Boiler, Frenzy, Purr & Arcade", `${formatNum(b.activeTempAndEvents, nm)}x`, "var(--color-success)")}
 
       <div class="mult-divider"></div>
       <div class="mult-row mult-row-total">
@@ -4029,7 +4634,7 @@ class GameState {
   refreshDOM() {
     const nm = this.notationMode;
 
-    document.getElementById("beans-display").textContent = `${formatNum(this.beans, nm)} Beans`;
+    document.getElementById("beans-display").textContent = `${formatNum(this.beans, nm)} Coffee Beans`;
     document.getElementById("rates-display").innerHTML = `${formatNum(this.bps, nm)}/s &nbsp;|&nbsp; +${formatNum(this.clickPower, nm)}/sip`;
 
     let mStr = `Multiplier: ${formatNum(this.totalMultiplier, nm)}x`;
@@ -4056,23 +4661,18 @@ class GameState {
     xpTextEl.textContent = xpStr;
     xpTextEl.classList.toggle("has-points", availPts > 0);
 
-    // Diff-cached Currency Grid update (avoids 60 FPS DOM churn)
-    const currs = [
-      [this.goldenBeans, "Golden", COLORS.gold],
-      [this.astralCrystals, "Crystals", COLORS.astral],
-      [this.starlightShards, "Shards", COLORS.pantheon],
-      [this.darkMatter, "Dark Matter", COLORS.darkMatter],
-      [this.supernovaBeans, "Supernova", COLORS.supernova],
-      [this.chronosCrystals, "Chronos", COLORS.chronos],
-      [this.aetherEssence, "Aether", COLORS.aether],
-      [this.omegaSingularity, "Omega Void", COLORS.omega],
-      [this.celestialDew, "Dew", COLORS.dew],
-      [this.quasarNectar, "Q-Nectar", COLORS.quasar],
-      [this.eternalBeans, "Eternal", COLORS.eternal]
-    ].filter(([amt]) => amt > 0);
+    // 3-Column Active Secondary Currency Grid (All 17 non-bean currencies)
+    const activeSecondary = CURRENCY_META
+      .filter((m) => m.key !== "beans" && this.getCurrencyBalance(m.key) > 0)
+      .map((m) => ({
+        amt: this.getCurrencyBalance(m.key),
+        label: m.short,
+        fullName: m.name,
+        col: m.color
+      }));
 
-    const nextGridHtml = currs
-      .map(([amt, name, col]) => `<div class="curr-badge" style="color:${col}"><span class="curr-dot" style="background:${col}"></span>${formatNum(amt, nm)} ${name}</div>`)
+    const nextGridHtml = activeSecondary
+      .map((c) => `<div class="curr-badge" style="color:${c.col}" title="${c.fullName}"><span class="curr-dot" style="background:${c.col}"></span>${formatNum(c.amt, nm)} ${c.label}</div>`)
       .join("");
     if (nextGridHtml !== this._lastCurrencyGridHtml) {
       this._lastCurrencyGridHtml = nextGridHtml;
@@ -4123,7 +4723,7 @@ class GameState {
         document.getElementById(`acc-${upg.uid}`).className = `card-accent ${afford ? "" : "accent-muted"}`;
         document.getElementById(`cnt-${upg.uid}`).textContent = `x${upg.count} (+${qty})${mMult > 1 ? ` [${formatNum(mMult, nm)}x]` : ""}`;
         const costEl = document.getElementById(`cost-${upg.uid}`);
-        costEl.textContent = `Cost: ${formatNum(cost, nm)} beans`;
+        costEl.textContent = `Cost: ${formatNum(cost, nm)} Coffee Beans`;
         costEl.className = `card-cost ${afford ? "cost-afford" : "cost-locked"}`;
       }
     } else if (this.activeTab === "staff") {
@@ -4133,7 +4733,7 @@ class GameState {
         document.getElementById(`card-${st.uid}`).classList.toggle("locked", !afford);
         document.getElementById(`lvl-${st.uid}`).textContent = `Level: ${st.level}`;
         const btn = document.getElementById(`btn-${st.uid}`);
-        btn.textContent = formatNum(cost, nm);
+        btn.textContent = `${formatNum(cost, nm)} Beans`;
         btn.className = `btn ${afford ? "btn-gold" : "btn-disabled"}`;
       }
     } else if (this.activeTab === "decor") {
@@ -4147,7 +4747,7 @@ class GameState {
           btn.className = "btn btn-success";
           btn.disabled = true;
         } else {
-          btn.textContent = formatNum(dec.cost, nm);
+          btn.textContent = `${formatNum(dec.cost, nm)} Beans`;
           btn.className = `btn ${afford ? "btn-accent" : "btn-disabled"}`;
           btn.disabled = !afford;
         }
@@ -4167,7 +4767,7 @@ class GameState {
           btn.className = "btn btn-gold";
           btn.disabled = true;
         } else {
-          btn.textContent = formatNum(rec.costBeans, nm);
+          btn.textContent = `${formatNum(rec.costBeans, nm)} Beans`;
           btn.className = `btn ${afford ? "btn-accent" : "btn-disabled"}`;
           btn.disabled = !afford;
         }
@@ -4196,6 +4796,8 @@ class GameState {
         timerEl.textContent = "";
         serveBtn.classList.add("hidden");
       }
+    } else if (this.activeTab === "arcade") {
+      this.arcade.refreshDOM();
     } else if (this.activeTab === "plinko") {
       document.querySelectorAll(".plinko-curr-btn").forEach((b) => {
         const active = b.dataset.curr === this.plinko.currencyType;
@@ -4203,7 +4805,8 @@ class GameState {
         b.style.backgroundColor = active ? b.dataset.color : "";
       });
       const bias = this.plinko.getCurrencyBias(this.talents[4].rank * 0.03);
-      document.getElementById("plinko-risk-label").textContent = `${this.plinko.currencyType.replace("_", " ").toUpperCase()}: Bias Handicap ${Math.round(bias * 100)}%`;
+      const fullCurrName = getCurrencyName(this.plinko.currencyType);
+      document.getElementById("plinko-risk-label").textContent = `${fullCurrName}: Center Bias Handicap ${Math.round(bias * 100)}%`;
 
       const bal = this.getCurrencyBalance(this.plinko.currencyType);
       const maxBet = this.plinko.getMaxBet(bal);
@@ -4215,6 +4818,8 @@ class GameState {
 
       const pCanvas = document.getElementById("plinko-canvas");
       this.plinko.draw(pCanvas.getContext("2d"));
+    } else if (this.activeTab === "rng") {
+      this.rng.refreshDOM();
     } else if (this.activeTab === "talents") {
       const { chance, mult } = this.getCritStats();
       document.getElementById("talent-points-display").innerHTML = `Unspent Points: ${availPts} &nbsp;|&nbsp; Crit: ${Math.round(chance * 100)}% (${mult.toFixed(1)}x)`;
@@ -4238,8 +4843,6 @@ class GameState {
           btn.textContent = `Lv. ${m.targetLvl}`; btn.className = "btn btn-disabled"; btn.disabled = true;
         }
       }
-    } else if (this.activeTab === "rng") {
-      this.rng.refreshDOM();
     } else if (this.activeTab === "sinks") {
       document.getElementById("altar-title").textContent = `Altar of the Roast (Blessings: ${this.altarBlessings} ★)`;
       document.getElementById("btn-altar-sacrifice").disabled = this.beans < 1e6;
@@ -4247,6 +4850,7 @@ class GameState {
       document.getElementById("btn-tr1").disabled = this.beans < 500e6;
       document.getElementById("btn-tr2").disabled = this.goldenBeans < 250;
       document.getElementById("btn-tr3").disabled = this.astralCrystals < 100;
+      document.getElementById("btn-tr4").disabled = this.arcadeTokens < 20;
 
       for (const snk of this.sinks) {
         const bal = this.getCurrencyBalance(snk.currencyType);
@@ -4254,7 +4858,7 @@ class GameState {
         const can = bal >= cost;
         document.getElementById(`ttl-${snk.uid}`).textContent = `${snk.name} (Lv. ${snk.level})`;
         const costEl = document.getElementById(`cost-${snk.uid}`);
-        costEl.textContent = `Cost: ${formatNum(cost, nm)} ${snk.currencyType}`;
+        costEl.textContent = `Cost: ${formatNum(cost, nm)} ${getCurrencyName(snk.currencyType)}`;
         costEl.className = `card-cost ${can ? "cost-afford" : "cost-locked"}`;
         document.getElementById(`b1-${snk.uid}`).disabled = !can;
         document.getElementById(`b25-${snk.uid}`).disabled = !can;
@@ -4277,16 +4881,17 @@ class GameState {
       } else if (ready) {
         banner.textContent = "★ CLICK TO AWAKEN THE OMNIVERSAL SANCTUARY (+2500% MULT) ★";
       } else {
-        banner.textContent = "GOAL: Lv.100, 12 Recipes, Silo 45, 10 OSB, 1 Eternal Bean";
+        banner.textContent = "GOAL: Lv.100, 12 Recipes, Silo 45, 10 Omega Singularity, 3 Genesis Crema & 1 Eternal Bean";
       }
 
       for (const cp of this.cosmicPerks) {
         const bal = this.getCurrencyBalance(cp.currencyType);
         const cost = cp.getCostSingle();
         const can = bal >= cost;
+        const cFullName = getCurrencyName(cp.currencyType);
         document.getElementById(`ttl-${cp.uid}`).textContent = `${cp.name} (Lv. ${cp.level})`;
         const costEl = document.getElementById(`cost-${cp.uid}`);
-        costEl.textContent = `Cost: ${formatNum(cost, nm)} ${cp.currencyType.toUpperCase()} (Have: ${formatNum(bal, nm)})`;
+        costEl.textContent = `Cost: ${formatNum(cost, nm)} ${cFullName} (Owned: ${formatNum(bal, nm)})`;
         costEl.className = `card-cost ${can ? "cost-afford" : "cost-locked"}`;
         const btn = document.getElementById(`btn-${cp.uid}`);
         btn.disabled = !can;
@@ -4299,7 +4904,7 @@ class GameState {
       banner.classList.toggle("ready", pending > 0);
       document.getElementById("rebirth-status-text").textContent = pending > 0
         ? `Claim +${formatNum(pending, nm)} Golden Beans`
-        : `${formatNum(this.lifetimeBeansRun, nm)} / ${formatNum(this.getRebirthThreshold(), nm)} beans`;
+        : `${formatNum(this.lifetimeBeansRun, nm)} / ${formatNum(this.getRebirthThreshold(), nm)} Coffee Beans`;
 
       for (const upg of this.roasteryUpgrades) {
         const cost = this.getRoasteryCost(upg);
@@ -4317,7 +4922,7 @@ class GameState {
       banner.classList.toggle("ready", pending > 0);
       document.getElementById("dynasty-status-text").textContent = pending > 0
         ? `Claim +${formatNum(pending, nm)} Astral Crystals`
-        : `${formatNum(this.lifetimeGolden, nm)} / ${formatNum(this.getDynastyThreshold(), nm)} golden beans`;
+        : `${formatNum(this.lifetimeGolden, nm)} / ${formatNum(this.getDynastyThreshold(), nm)} Golden Beans`;
 
       for (const perk of this.dynastyPerks) {
         const afford = this.astralCrystals >= perk.cost && perk.count < perk.maxLvl;
@@ -4334,7 +4939,7 @@ class GameState {
       banner.classList.toggle("ready", pending > 0);
       document.getElementById("pantheon-status-text").textContent = pending > 0
         ? `Claim +${formatNum(pending, nm)} Starlight Shards`
-        : `${formatNum(this.lifetimeCrystals, nm)} / ${formatNum(this.getPantheonThreshold(), nm)} astral crystals`;
+        : `${formatNum(this.lifetimeCrystals, nm)} / ${formatNum(this.getPantheonThreshold(), nm)} Astral Crystals`;
 
       for (const perk of this.pantheonPerks) {
         const afford = this.starlightShards >= perk.cost && perk.count < perk.maxLvl;
@@ -4348,7 +4953,7 @@ class GameState {
       for (const q of this.quests) {
         const ready = q.currentVal >= q.targetVal && !q.completed;
         document.getElementById(`qtitle-${q.qid}`).textContent = `${q.title} (Tier ${q.tier})`;
-        document.getElementById(`qdesc-${q.qid}`).textContent = `${q.desc} — Reward: +${formatNum(q.rewardBeans, nm)} Beans & +${q.rewardStars} ★`;
+        document.getElementById(`qdesc-${q.qid}`).textContent = `${q.desc} — Reward: +${formatNum(q.rewardBeans, nm)} Beans, +${q.rewardStars} ★ & +${q.rewardTokens || 5} Tokens`;
         document.getElementById(`prog-${q.qid}`).textContent = q.completed
           ? `Refreshing in ${Math.ceil(10 - q.refreshTimer)}s...`
           : `Progress: ${formatNum(q.currentVal, nm)} / ${formatNum(q.targetVal, nm)}`;
@@ -4385,10 +4990,23 @@ class GameState {
 }
 
 // =============================================================================
-// 11. BOOTSTRAP & 60FPS REQUESTANIMATIONFRAME LOOP
+// 12. RESPONSIVE VIEWPORT AUTO-SCALING & 60FPS BOOTSTRAP LOOP
 // =============================================================================
 
+function fitGameToViewport() {
+  const container = document.getElementById("game-container");
+  if (!container) return;
+  const pad = 16;
+  const scaleX = (window.innerWidth - pad) / 1120;
+  const scaleY = (window.innerHeight - pad) / 700;
+  const scale = Math.min(1.0, scaleX, scaleY);
+  container.style.transform = scale < 1.0 ? `scale(${scale.toFixed(4)})` : "";
+}
+
 window.addEventListener("DOMContentLoaded", () => {
+  fitGameToViewport();
+  window.addEventListener("resize", fitGameToViewport);
+
   const game = new GameState();
   let lastTime = performance.now();
   let saveTimer = 0.0;
