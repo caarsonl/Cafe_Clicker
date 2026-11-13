@@ -14,7 +14,7 @@
            LEFT STAGE: WINDOW SCENE, MUG, CAT, HUD & STABILIZERS
            ================================================================= -->
       <section id="left-stage">
-        <!-- Interactive Canvas: Sky, Rain, Decor, Cat, Croissant, Mug, Steam & Popups -->
+        <!-- Interactive Canvas: Sky, Rain, Shimmering Drops, Decor, Cat, Croissant, Mug & Popups -->
         <canvas id="scene-canvas" width="450" height="652"></canvas>
 
         <!-- Single Clean Top Production & Level Overlay -->
@@ -26,8 +26,8 @@
             <button id="multiplier-display" class="hud-pill" type="button" title="Inspect every multiplier source">
               Multiplier: 1.0x ▾
             </button>
-            <button id="btn-open-glossary" class="hud-pill hud-pill-guide" type="button" title="View all 18 Currencies & Number Suffixes">
-              Currencies &amp; Guide 📖
+            <button id="btn-open-glossary" class="hud-pill hud-pill-guide" type="button" title="View all 30 Currencies & Number Suffixes">
+              30-Currency Guide 📖
             </button>
           </div>
 
@@ -37,7 +37,7 @@
             <div class="progress-track xp-track">
               <div id="xp-bar-fill" class="progress-fill xp-fill" style="width: 0%;"></div>
             </div>
-            <div id="xp-text">0 / 150 XP</div>
+            <div id="xp-text">0 / 158 XP</div>
           </div>
 
           <!-- Compact 3-Column Active Currency Grid (Shows Full Names + Color Badges) -->
@@ -53,10 +53,10 @@
           <div id="mult-pop-body" class="popover-body"></div>
         </aside>
 
-        <!-- Interactive 18-Currency & Number Suffix Glossary Popover -->
+        <!-- Interactive 30-Currency & Number Suffix Glossary Popover -->
         <aside id="glossary-popover" class="hud-popover glossary-popover hidden" aria-label="Currency Glossary">
           <div class="popover-header">
-            <span class="popover-title">18-Currency &amp; Suffix Guide</span>
+            <span class="popover-title">30-Currency &amp; Suffix Guide</span>
             <button id="btn-close-glossary" class="popover-close" type="button" aria-label="Close">×</button>
           </div>
           <div id="glossary-pop-body" class="popover-body glossary-scroll"></div>
@@ -72,9 +72,14 @@
                 <div id="silo-bar-fill" class="progress-fill silo-fill" style="width: 0%;"></div>
               </div>
             </div>
-            <button id="btn-silo-upgrade" class="btn btn-silo" type="button" title="Increase maximum Bean storage capacity">
-              +Cap (12.00K)
-            </button>
+            <div class="boiler-btn-group">
+              <button id="btn-silo-upgrade" class="btn btn-silo-compact" type="button" title="Increase maximum Bean storage capacity">
+                +Cap (17.5K)
+              </button>
+              <button id="btn-auto-silo" class="btn btn-toggle hidden" type="button" title="Auto-upgrade Silo at 95% full">
+                AUTO
+              </button>
+            </div>
           </div>
 
           <!-- Espresso Boiler Temperature Row -->
@@ -82,13 +87,13 @@
             <div class="meter-column">
               <div id="boiler-text" class="meter-label heat-cold">Boiler: 70°C (Normal)</div>
               <div class="progress-track stabilizer-track">
-                <div class="boiler-sweet-zone" title="Sweet Spot (85°C–95°C): +50% Extraction Bonus!"></div>
+                <div id="boiler-sweet-zone" class="boiler-sweet-zone" title="Sweet Spot (85°C–95°C): +50% Extraction & distills Velvet Crema Essence!"></div>
                 <div id="boiler-bar-fill" class="progress-fill heat-cold-fill" style="width: 40%;"></div>
               </div>
             </div>
             <div class="boiler-btn-group">
               <button id="btn-vent" class="btn btn-vent" type="button" title="Cool boiler by 25°C (Hotkey: V)">Vent</button>
-              <button id="btn-auto-vent" class="btn btn-toggle" type="button" title="Automatically vent at 95°C">AUTO</button>
+              <button id="btn-auto-vent" class="btn btn-toggle" type="button" title="Automatically vent before overheating">AUTO</button>
             </div>
           </div>
         </div>
@@ -137,7 +142,7 @@
           <!-- 1. MENU TAB (30 Regular Upgrades) -->
           <div id="tab-menu" class="tab-pane active">
             <div class="pane-helper-banner">
-              Buy cafe equipment to increase <strong>Beans/sec</strong> and <strong>Beans/sip</strong>. Every 25, 50, 100, 250, 500 &amp; 1,000 owned doubles that item's output!
+              Buy cafe equipment to increase <strong>Beans/sec</strong> and <strong>Beans/sip</strong>. Every 25, 50, 100, 250, 500 &amp; 1,000 owned multiplies that item's output!
             </div>
             <div class="pane-toolbar">
               <span class="toolbar-label">Buy Quantity:</span>
@@ -157,7 +162,7 @@
           <!-- 2. STAFF TAB (5 Cafe Companions) -->
           <div id="tab-staff" class="tab-pane">
             <div class="pane-helper-banner">
-              Hire cozy companions to automate mug sips, catch flying Golden Croissants, auto-buy upgrades, and boost offline &amp; tip income.
+              Hire cozy companions to automate mug sips, catch flying Golden Croissants &amp; Shimmering Raindrops, auto-buy upgrades, and boost offline &amp; tip income.
             </div>
             <div class="pane-header-row">
               <h2 class="pane-title">Cafe Staff &amp; Companions</h2>
@@ -181,13 +186,19 @@
             <div class="pane-helper-banner">
               Research specialty drinks to unlock permanent cafe-wide multipliers and fulfill higher-paying Customer Orders.
             </div>
+            <div class="pane-header-row">
+              <h2 class="pane-title">Specialty Brew Lab</h2>
+              <button id="btn-auto-brew" class="btn btn-secondary btn-sm hidden" type="button">
+                Auto-Brew: OFF
+              </button>
+            </div>
             <div id="brew-list" class="card-list"></div>
           </div>
 
-          <!-- 5. ORDERS TAB (Customer Counter) -->
+          <!-- 5. ORDERS TAB (Customer Counter & VIP Food Critics) -->
           <div id="tab-orders" class="tab-pane">
             <div class="pane-helper-banner">
-              Serve freshly brewed drinks to customers to earn <strong>Customer Stars ★</strong> (+2% global multiplier each) and huge bean tips.
+              Serve freshly brewed drinks to earn <strong>Customer Stars ★</strong>. Every 5th order spawns a <strong>VIP Food Critic</strong> who awards <strong>Royal Coffee Seals</strong>!
             </div>
             <div class="pane-header-row">
               <h2 class="pane-title">Customer Counter</h2>
@@ -196,9 +207,10 @@
               </button>
             </div>
             <p id="customer-stars-display" class="sub-stat-star">
-              Customer Stars Collected: 0 ★ (+0% Multiplier)
+              Customer Stars Collected: 0 ★ (+0% Multiplier) &nbsp;|&nbsp; Next VIP Critic in 5 orders
             </p>
             <div id="order-card" class="game-card order-box">
+              <div id="order-vip-badge" class="vip-critic-badge hidden">👑 VIP FOOD CRITIC ORDER (Awards Royal Coffee Seal!)</div>
               <div id="order-title" class="card-title">Waiting for next customer...</div>
               <div id="order-timer" class="card-desc"></div>
               <button id="btn-serve-order" class="btn btn-serve hidden" type="button">
@@ -300,16 +312,16 @@
             <div id="arcade-shop-list" class="card-list compact-list"></div>
           </div>
 
-          <!-- 7. PLINKO TAB (18-Currency Physics Simulator) -->
+          <!-- 7. PLINKO TAB (30-Currency Physics Simulator) -->
           <div id="tab-plinko" class="tab-pane">
             <div class="pane-helper-banner">
-              Select any of your <strong>18 Currencies</strong> below, set your wager (up to 10% of balance), and click the top strip or <strong>DROP</strong> to aim!
+              Select any of your <strong>30 Currencies</strong> below, set your wager (up to 10% of balance), and click the top strip or <strong>DROP</strong> to aim!
             </div>
             <div id="plinko-currency-grid" class="plinko-curr-grid"></div>
             <div id="plinko-risk-label" class="plinko-risk-text">
               Coffee Beans: Bias Handicap 0%
             </div>
-            <canvas id="plinko-canvas" width="545" height="365"></canvas>
+            <canvas id="plinko-canvas" width="545" height="350"></canvas>
             <div class="plinko-controls">
               <div class="plinko-bal-col">
                 <div id="plinko-bal-label" class="plinko-bal-text">Bal: 0</div>
@@ -330,7 +342,7 @@
             </div>
           </div>
 
-          <!-- 8. RNG TAB (15-Tier Grindy Aura Roller, Craftable Gear & 5-Star Mastery) -->
+          <!-- 8. RNG TAB (15-Tier Grindy Aura Roller, Craftable Gear, Paradox Salvage & Dual Auras) -->
           <div id="tab-rng" class="tab-pane">
             <div class="pane-header-row">
               <div>
@@ -363,6 +375,11 @@
                 <div id="rng-current-aura-name" class="rng-aura-name">Click Roll to Test Your Fate</div>
                 <div id="rng-current-odds" class="rng-aura-odds">15 Rarities Available (Up to 1 in 2.50B)</div>
                 <div id="rng-current-buff" class="rng-aura-buff">Farm duplicate auras to craft Gear &amp; reach 5★ Mastery!</div>
+              </div>
+
+              <!-- Active Equipped Aura(s) Bar -->
+              <div id="rng-equipped-bar" class="rng-equipped-bar">
+                Primary Aura: None &nbsp;|&nbsp; Sub-Aura: Locked (Requires Void-Rift Relics)
               </div>
 
               <!-- Roll Progress Bar -->
@@ -405,6 +422,15 @@
               </div>
             </div>
 
+            <!-- Paradox Dust Salvage & Trait Lab -->
+            <div class="pane-header-row section-spacer">
+              <h3 class="pane-subtitle">Paradox Dust Salvage &amp; Aura Traits</h3>
+              <button id="btn-rng-dissolve" class="btn btn-pantheon btn-sm" type="button" title="Dissolve excess Common–Epic duplicates into Paradox Dust">
+                Salvage Duplicates → Dust
+              </button>
+            </div>
+            <div id="rng-traits-list" class="card-list compact-list"></div>
+
             <!-- Craftable RNG Gear & Gauntlets (Consumes Rolled Auras + Currencies) -->
             <h3 class="pane-subtitle section-spacer">Craftable RNG Gear (Sacrifice Duplicate Auras)</h3>
             <div id="rng-gear-list" class="card-list compact-list"></div>
@@ -436,10 +462,10 @@
             <div id="milestones-list" class="card-list"></div>
           </div>
 
-          <!-- 10. SINKS TAB (Altar, Transmutation & Endless Crucible) -->
+          <!-- 10. SINKS TAB (Altar, Specialty Rule-Changers, Transmutation & Endless Crucible) -->
           <div id="tab-sinks" class="tab-pane">
             <div class="pane-helper-banner">
-              Convert excess Coffee Beans into higher-tier currencies or dump resources into uncapped multipliers.
+              Spend your <strong>12 Specialty &amp; Ultra-Endgame Currencies</strong> on permanent rule-changing upgrades, or dump excess resources into uncapped multipliers.
             </div>
             <div class="game-card card-altar">
               <div class="card-accent accent-gold"></div>
@@ -452,6 +478,9 @@
               </button>
             </div>
 
+            <h2 class="pane-title section-spacer">Specialty Alchemy &amp; Endgame Rule-Changers</h2>
+            <div id="specialty-alchemy-list" class="card-list compact-list"></div>
+
             <h2 class="pane-title section-spacer">Transmutation Forge (Currency Exchange)</h2>
             <div id="transmute-list" class="card-list compact-list"></div>
 
@@ -459,18 +488,37 @@
             <div id="sinks-list" class="card-list"></div>
           </div>
 
-          <!-- 11. COSMOS TAB (12 Celestial Forges, Pinnacle Sanctuary & God-Tier Perks) -->
+          <!-- 11. COSMOS TAB (12 Celestial Forges, Sanctuary, Tier 4 Omniverse & God-Tier Perks) -->
           <div id="tab-cosmos" class="tab-pane">
             <div class="pane-helper-banner">
               Forge <strong>12 Endgame Celestial Currencies</strong> using full resource recipes—every forged currency grants a massive permanent multiplier!
             </div>
-            <h2 class="pane-title">The Celestial Forge (12 Endgame Currencies)</h2>
+            <div class="pane-header-row">
+              <h2 class="pane-title">The Celestial Forge (12 Currencies)</h2>
+              <button id="btn-auto-forge" class="btn btn-secondary btn-sm hidden" type="button">
+                Auto-Forge: OFF
+              </button>
+            </div>
             <div id="cosmic-forges-list" class="card-list compact-list"></div>
 
-            <!-- Pinnacle Goal Banner -->
+            <!-- Pinnacle Sanctuary Goal Banner -->
             <button id="sanctuary-goal-banner" class="sanctuary-banner" type="button">
               GOAL: Lv.100, 12 Recipes, Silo 45, 10 Omega Singularity, 3 Genesis Crema &amp; 1 Eternal Bean
             </button>
+
+            <!-- Tier 4 Endgame Reset: Omniversal Transcendence -->
+            <div id="omniverse-section" class="section-spacer">
+              <div id="omniverse-bal-header" class="prestige-bal text-omniverse">
+                Omniverse Seeds: 0 (Requires Omniversal Sanctuary Awakened)
+              </div>
+              <button id="btn-trigger-omniverse" class="prestige-banner banner-omniverse" type="button">
+                <span class="banner-accent accent-omniverse"></span>
+                <span class="banner-content">
+                  <strong class="banner-title">Perform Omniversal Transcendence (Tier 4 Endgame)</strong>
+                  <span id="omniverse-status-text" class="banner-sub">Awaken the Sanctuary first to harvest Omniverse Seeds</span>
+                </span>
+              </button>
+            </div>
 
             <h2 class="pane-title section-spacer">God-Tier Cosmic Perks</h2>
             <div id="cosmic-perks-list" class="card-list"></div>
@@ -481,10 +529,15 @@
             <div class="pane-helper-banner">
               Reset your Coffee Beans and Menu Upgrades to claim <strong>Golden Beans</strong> (+5% global multiplier each + Roastery perks).
             </div>
-            <div id="roast-bal-header" class="prestige-bal text-gold">
-              Available: 0 Golden Beans
+            <div class="pane-header-row">
+              <div id="roast-bal-header" class="prestige-bal text-gold" style="margin-bottom:0;">
+                Available: 0 Golden Beans
+              </div>
+              <button id="btn-auto-rebirth" class="btn btn-secondary btn-sm hidden" type="button">
+                Auto-Rebirth: OFF
+              </button>
             </div>
-            <button id="btn-trigger-rebirth" class="prestige-banner banner-gold" type="button">
+            <button id="btn-trigger-rebirth" class="prestige-banner banner-gold" type="button" style="margin-top:8px;">
               <span class="banner-accent accent-gold"></span>
               <span class="banner-content">
                 <strong class="banner-title">Perform Roastery Rebirth (Tier 1)</strong>
@@ -553,7 +606,12 @@
             <div class="pane-helper-banner">
               Complete contracts for Coffee Beans, Customer Stars ★, and Arcade Tokens 🪙. Claimed contracts automatically upgrade to the next tier!
             </div>
-            <h2 class="pane-title">Daily Cafe Contracts &amp; Quests</h2>
+            <div class="pane-header-row">
+              <h2 class="pane-title">Daily Cafe Contracts &amp; Quests</h2>
+              <button id="btn-claim-all-quests" class="btn btn-success btn-sm" type="button">
+                Claim All Ready
+              </button>
+            </div>
             <div id="quests-list" class="card-list"></div>
           </div>
 
@@ -594,17 +652,31 @@
               </div>
 
               <div class="game-card config-row">
-                <span class="card-title">Manual Game Save (LocalStorage)</span>
+                <div>
+                  <div class="card-title">Auto-Save &amp; Manual Save</div>
+                  <div id="cfg-last-saved" class="card-desc">Auto-saved just now ✓</div>
+                </div>
                 <button id="btn-cfg-save" class="btn btn-success btn-cfg-wide" type="button">
                   Save Progress Now
                 </button>
+              </div>
+
+              <div class="game-card config-row">
+                <div>
+                  <div class="card-title">Backup / Transfer Save Code</div>
+                  <div class="card-desc">Copy or paste your Base64 save string across devices.</div>
+                </div>
+                <div class="sink-btn-group">
+                  <button id="btn-cfg-export" class="btn btn-astral btn-sm" type="button">Copy Save</button>
+                  <button id="btn-cfg-import" class="btn btn-gold btn-sm" type="button">Import Save</button>
+                </div>
               </div>
 
               <div class="game-card config-danger">
                 <div class="card-accent accent-danger"></div>
                 <div class="card-main">
                   <div class="card-title text-danger">Remove Data / Wipe Save</div>
-                  <div class="card-desc">Deletes local save data and resets all currencies to 0.</div>
+                  <div class="card-desc">Deletes local save data and resets all 30 currencies to 0.</div>
                 </div>
                 <button id="btn-cfg-wipe" class="btn btn-danger btn-wipe" type="button">
                   Wipe All Save Data
