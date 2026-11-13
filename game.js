@@ -3559,6 +3559,27 @@ class GameState {
           if (this.arcade.shopUpgrades[i]) this.arcade.shopUpgrades[i].level = lvl;
         });
       }
+      // Sanitize Infinity / NaN values and repair Tier 1043 Brew Master loop
+      if (!Number.isFinite(this.beans) || this.beans < 0) {
+        this.beans = this.getMaxStorage();
+      }
+      if (!Number.isFinite(this.lifetimeBeansRun) || this.lifetimeBeansRun < 0) {
+        this.lifetimeBeansRun = this.beans;
+      }
+      if (!Number.isFinite(this.lifetimeBeansAll) || this.lifetimeBeansAll < 0) {
+        this.lifetimeBeansAll = this.beans;
+      }
+      const brewQuest = this.quests.find((q) => q.qid === "q05");
+      if (brewQuest && (!Number.isFinite(brewQuest.rewardBeans) || brewQuest.tier > 12)) {
+        brewQuest.tier = 1;
+        brewQuest.targetVal = 12;
+        brewQuest.currentVal = 12;
+        brewQuest.rewardBeans = 200000;
+        brewQuest.rewardStars = 6;
+        brewQuest.rewardTokens = 10;
+        brewQuest.completed = true;
+        brewQuest.retired = this.recipes.every((r) => r.crafted);
+      }
 
       const lastTs = data.lastSaveTimestamp ?? 0;
       if (lastTs > 0) {
@@ -4706,16 +4727,27 @@ class GameState {
       }
     }
 
+    // Only auto-complete Tier 1 Brew Master if all 12 recipes were already finished
+    if (this.recipes.every((r) => r.crafted) && !this.quests[4].completed && this.quests[4].tier === 1) {
+      this.quests[4].currentVal = this.quests[4].targetVal;
+    }
+
+    // Refresh completed quests (retire q05 once all 12 recipes are mastered)
     for (const q of this.quests) {
-      if (q.completed) {
+      if (q.completed && !q.retired) {
+        if (q.qid === "q05" && this.recipes.every((r) => r.crafted)) {
+          q.retired = true;
+          continue;
+        }
         q.refreshTimer += dt;
         if (q.refreshTimer >= 10.0) {
           q.completed = false;
           q.refreshTimer = 0.0;
           q.currentVal = 0;
           q.tier += 1;
-          q.targetVal = Math.ceil(q.targetVal * 1.45);
-          q.rewardBeans = Math.max(q.rewardBeans * 2.5, this.bps * 60.0);
+          q.targetVal = Math.min(1e12, Math.ceil(q.targetVal * 1.45));
+          const scaledReward = Math.max(q.rewardBeans * 2.5, this.bps * 60.0);
+          q.rewardBeans = Number.isFinite(scaledReward) ? Math.min(1e300, scaledReward) : 1e300;
           q.rewardStars += 1;
           q.rewardTokens = (q.rewardTokens || 5) + 3;
         }
@@ -5391,7 +5423,10 @@ class GameState {
           ? `Refreshing in ${Math.ceil(10 - q.refreshTimer)}s...`
           : `Progress: ${formatNum(q.currentVal, nm)} / ${formatNum(q.targetVal, nm)}`;
         const btn = document.getElementById(`btn-${q.qid}`);
-        if (q.completed) {
+        if (q.retired) {
+          btn.textContent = "ALL MASTERED"; btn.className = "btn btn-sm btn-disabled"; btn.disabled = true;
+          document.getElementById(`prog-${q.qid}`).textContent = "All 12 Brew Lab recipes completed!";
+        } else if (q.completed) {
           btn.textContent = "CLAIMED"; btn.className = "btn btn-sm btn-disabled"; btn.disabled = true;
         } else if (ready) {
           btn.textContent = "CLAIM!"; btn.className = "btn btn-sm btn-success"; btn.disabled = false;
