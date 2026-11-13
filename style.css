@@ -73,16 +73,16 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: auto;
 }
 
 #app-wrapper {
-  padding: 12px;
+  padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 #game-container {
@@ -95,6 +95,7 @@ body {
   grid-template-columns: 480px 580px;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .hidden {
@@ -122,54 +123,73 @@ body {
   z-index: 1;
 }
 
-/* Top HUD Overlay */
+/* Top HUD Overlay (Frosted Pill Backdrop Prevents Decor Collision) */
 #hud-overlay {
   position: absolute;
-  left: 30px;
-  top: 28px;
-  width: 440px;
+  left: 48px;
+  top: 32px;
+  width: 404px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background-color: rgba(238, 232, 224, 0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   text-align: center;
   pointer-events: none;
   z-index: 2;
 }
 
 #beans-display {
-  font-size: 25px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 800;
   color: var(--color-text);
   line-height: 1.15;
 }
 
 #rates-display {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--color-text-light);
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
+/* Clickable Multiplier Pill */
 #multiplier-display {
+  pointer-events: auto;
+  cursor: pointer;
+  display: inline-block;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-accent);
   margin-top: 4px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  background-color: rgba(252, 249, 246, 0.85);
+  border: 1px solid rgba(198, 108, 68, 0.38);
+  transition: background-color 0.12s, transform 0.08s;
+}
+
+#multiplier-display:hover {
+  background-color: var(--color-card);
+  transform: translateY(-1px);
 }
 
 #multiplier-display.frenzy-active {
   color: var(--color-gold);
-  font-weight: 700;
+  border-color: var(--color-gold);
 }
 
 /* Level & XP Bar */
 #level-dashboard {
   width: 250px;
-  margin: 10px auto 0;
+  margin: 6px auto 0;
 }
 
 #level-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--color-text);
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .progress-track {
@@ -181,7 +201,7 @@ body {
 }
 
 .xp-track {
-  height: 12px;
+  height: 11px;
   border: 1px solid var(--color-accent);
 }
 
@@ -198,7 +218,7 @@ body {
 #xp-text {
   font-size: 11px;
   color: var(--color-text-light);
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 #xp-text.has-points {
@@ -206,45 +226,48 @@ body {
   font-weight: 700;
 }
 
-/* 2-Column Active Prestige/Cosmic Currency Grid */
+/* Compact 3-Column Currency Grid (Never Overflows Into Coffee Mug) */
 #currency-grid {
-  width: 300px;
-  margin: 6px auto 0;
+  width: 100%;
+  max-height: 54px;
+  margin: 5px auto 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  column-gap: 6px;
   row-gap: 2px;
   text-align: left;
-  padding-left: 24px;
+  padding: 0 4px;
+  overflow: hidden;
 }
 
 .curr-badge {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   white-space: nowrap;
 }
 
 .curr-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 2px;
   display: inline-block;
   transform: rotate(45deg);
+  flex-shrink: 0;
 }
 
-/* Stabilizer Meters (Silo & Boiler) */
+/* Stabilizer Meters (Positioned Below Saucer Hitbox) */
 #stabilizer-panel {
   position: absolute;
   left: 45px;
-  top: 465px;
+  top: 484px;
   width: 395px;
   z-index: 3;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 9px;
 }
 
 .stabilizer-row {
@@ -293,19 +316,20 @@ body {
   gap: 4px;
 }
 
-/* Achievement Slide-In Toast */
+/* Achievement Slide-In Toast (pointer-events: none so it NEVER blocks Mochi the Cat) */
 .toast {
   position: absolute;
-  left: 35px;
-  bottom: 20px;
-  width: 330px;
-  height: 60px;
+  right: 22px;
+  bottom: 18px;
+  width: 285px;
+  height: 56px;
   background-color: var(--color-card);
   border-radius: 10px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
   display: flex;
   overflow: hidden;
   z-index: 10;
+  pointer-events: none;
   animation: toastSlideIn 0.25s ease-out;
 }
 
@@ -320,14 +344,14 @@ body {
 }
 
 .toast-body {
-  padding: 8px 12px;
+  padding: 6px 12px;
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
 .toast-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--color-text);
 }
@@ -811,7 +835,7 @@ body {
 }
 
 #plinko-bet-input {
-  width: 95px;
+  width: 90px;
   border: none;
   background: transparent;
   font-family: var(--font-main);
@@ -827,7 +851,8 @@ body {
 }
 
 .chip-btn {
-  width: 44px;
+  min-width: 44px;
+  padding: 0 6px;
   height: 34px;
   border: none;
   border-radius: 6px;
@@ -941,7 +966,6 @@ body {
   outline: none;
 }
 
-/* Rolling Stage Box */
 .rng-stage {
   background: linear-gradient(180deg, rgb(42, 32, 28) 0%, rgb(28, 20, 18) 100%);
   border-radius: 12px;
@@ -1024,8 +1048,8 @@ body {
 .btn-rng-main {
   flex: 1.4;
   height: 38px;
-  font-size: 13px;
-  letter-spacing: 0.5px;
+  font-size: 12px;
+  letter-spacing: 0.4px;
 }
 
 .btn-rng-toggle {
@@ -1151,7 +1175,6 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
-/* Screen Shake for Mythic+ Pulls */
 .screen-shake {
   animation: shakeAnim 0.45s ease-in-out;
 }
@@ -1163,29 +1186,14 @@ body {
   60% { transform: translate(-5px, -4px); }
   80% { transform: translate(5px, 6px); }
 }
+
 /* =============================================================================
-   9. CLICKABLE MULTIPLIER DISPLAY & BREAKDOWN POPOVER
+   9. CLICKABLE MULTIPLIER BREAKDOWN POPOVER
    ============================================================================= */
-#multiplier-display {
-  pointer-events: auto;
-  cursor: pointer;
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 12px;
-  background-color: rgba(252, 249, 246, 0.72);
-  border: 1px solid rgba(198, 108, 68, 0.35);
-  transition: background-color 0.12s, transform 0.08s;
-}
-
-#multiplier-display:hover {
-  background-color: var(--color-card);
-  transform: translateY(-1px);
-}
-
 .mult-popover {
   position: absolute;
   left: 55px;
-  top: 108px;
+  top: 110px;
   width: 390px;
   background-color: var(--color-card);
   border: 2px solid var(--color-accent);
