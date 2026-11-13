@@ -1,17 +1,29 @@
 /**
- * Cozy Rainy Cafe: Grand Master Edition — Complete Rebalanced Web Engine
- * Includes 12-Currency Progression, Multi-Currency Plinko, 10-Rarity RNG & Cutscenes
+ * Cozy Rainy Cafe: Grand Master Edition — Web Engine (game.js — Part 1 of 2)
+ * Sections 1–7: Formatters, Icons, Audio Synth, Weather, Plinko, Models & RNG Engine
  */
 
-// Polyfill roundRect for older browsers on GitHub Pages
+// 4-Corner roundRect Polyfill (Supports [tl, tr, br, bl] arrays for rounded mug base)
 if (typeof CanvasRenderingContext2D !== "undefined" && !CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
-    const rad = Array.isArray(r) ? r[0] : (r || 0);
-    this.moveTo(x + rad, y);
-    this.arcTo(x + w, y, x + w, y + h, rad);
-    this.arcTo(x + w, y + h, x, y + h, rad);
-    this.arcTo(x, y + h, x, y, rad);
-    this.arcTo(x, y, x + w, y, rad);
+    let tl = 0, tr = 0, br = 0, bl = 0;
+    if (Array.isArray(r)) {
+      tl = r[0] || 0;
+      tr = r[1] ?? tl;
+      br = r[2] ?? tl;
+      bl = r[3] ?? tr;
+    } else if (typeof r === "number") {
+      tl = tr = br = bl = r;
+    }
+    this.moveTo(x + tl, y);
+    this.lineTo(x + w - tr, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + tr);
+    this.lineTo(x + w, y + h - br);
+    this.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+    this.lineTo(x + bl, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - bl);
+    this.lineTo(x, y + tl);
+    this.quadraticCurveTo(x, y, x + tl, y);
     this.closePath();
     return this;
   };
@@ -27,21 +39,27 @@ const SUFFIXES = [
 ];
 
 function formatNum(val, notation = "suffix") {
+  if (!Number.isFinite(val)) return "Infinity";
   if (val < 0) return "-" + formatNum(-val, notation);
   if (val < 1000.0) {
-    if (Number.isInteger(val) || Math.abs(val - Math.round(val)) < 1e-6) {
-      return Math.floor(val).toString();
+    if (Math.abs(val - Math.round(val)) < 1e-6) {
+      return Math.round(val).toString();
     }
-    return val.toFixed(1);
+    return val < 10 ? val.toFixed(2) : val.toFixed(1);
   }
   if (notation === "scientific") {
     return val.toExponential(2);
   }
-  const exp = Math.floor(Math.log10(Math.max(val, 1.0)) / 3.0);
+  let exp = Math.floor(Math.log10(Math.max(val, 1.0)) / 3.0);
   if (exp >= SUFFIXES.length) {
     return val.toExponential(2);
   }
-  const scaled = val / Math.pow(1000.0, exp);
+  let scaled = val / Math.pow(1000.0, exp);
+  // Prevent "1000.0K" rounding glitch right below 1,000,000
+  if (scaled >= 999.95 && exp + 1 < SUFFIXES.length) {
+    exp += 1;
+    scaled = val / Math.pow(1000.0, exp);
+  }
   return scaled >= 100.0
     ? `${scaled.toFixed(1)}${SUFFIXES[exp]}`
     : `${scaled.toFixed(2)}${SUFFIXES[exp]}`;
@@ -441,7 +459,7 @@ class GoldenCroissantEvent {
     this.active = true;
     this.timer = 0.0;
     this.x = -35;
-    this.y = 90 + Math.random() * (height - 220);
+    this.y = 140 + Math.random() * (height - 280);
     this.vx = 55.0 + Math.random() * 30.0;
     this.vy = -15.0 + Math.random() * 30.0;
   }
@@ -465,7 +483,7 @@ class GoldenCroissantEvent {
 }
 
 // =============================================================================
-// 5. MULTI-CURRENCY PLINKO PHYSICS SIMULATOR (WITH 10% BET CAP)
+// 5. MULTI-CURRENCY PLINKO PHYSICS SIMULATOR
 // =============================================================================
 
 class MultiCurrencyPlinko {
@@ -492,7 +510,6 @@ class MultiCurrencyPlinko {
     }
 
     this.binY = this.yTop + 62 + (this.numRows - 1) * this.dy + 30;
-    // Balanced 10x edge bins (prevents infinite exponential exploits on prestige currencies)
     this.multipliers = [10.0, 4.0, 1.8, 0.6, 0.25, 0.25, 0.6, 1.8, 4.0, 10.0];
     this.numBins = this.multipliers.length;
     const totalSpan = this.numBins * this.dx;
@@ -501,6 +518,7 @@ class MultiCurrencyPlinko {
     this.currencyType = "beans";
     this.balls = [];
     this.popups = [];
+    this.lastPegSoundMs = 0;
   }
 
   getCurrencyBias(talentReduction = 0.0) {
@@ -516,7 +534,7 @@ class MultiCurrencyPlinko {
   getMaxBet(currentBalance) {
     if (currentBalance < 1) return 0;
     if (currentBalance < 10) return 1;
-    return Math.floor(currentBalance * 0.10); // Capped at 10% of balance
+    return Math.floor(currentBalance * 0.10);
   }
 
   parseBetAmount(str, currentBalance) {
@@ -525,12 +543,24 @@ class MultiCurrencyPlinko {
 
     let s = (str || "").trim().toLowerCase();
     let mult = 1.0;
-    if (s.endsWith("k")) { mult = 1e3; s = s.slice(0, -1); }
-    else if (s.endsWith("m")) { mult = 1e6; s = s.slice(0, -1); }
-    else if (s.endsWith("b")) { mult = 1e9; s = s.slice(0, -1); }
+
+    // Parse all suffix tiers (longest first so "qd" matches before "d")
+    const orderedSuffixes = SUFFIXES
+      .map((suf, idx) => ({ suf: suf.toLowerCase(), idx }))
+      .filter((item) => item.suf.length > 0)
+      .sort((a, b) => b.suf.length - a.suf.length);
+
+    for (const { suf, idx } of orderedSuffixes) {
+      if (s.endsWith(suf)) {
+        mult = Math.pow(1000.0, idx);
+        s = s.slice(0, -suf.length);
+        break;
+      }
+    }
+
     let val = parseFloat(s) * mult;
-    if (isNaN(val) || val <= 0) val = 1.0;
-    return Math.max(1.0, Math.min(maxAllowed, val));
+    if (!Number.isFinite(val) || val <= 0) val = 1.0;
+    return Math.max(1.0, Math.min(maxAllowed, Math.floor(val)));
   }
 
   dropBall(xPos, betStr, currentBalance, talentReduction = 0.0) {
@@ -548,6 +578,15 @@ class MultiCurrencyPlinko {
       bias: this.getCurrencyBias(talentReduction)
     });
     return { success: true, amount: betAmt };
+  }
+
+  // Refund any in-flight balls if player reloads/closes tab before landing
+  getPendingRefundsByCurrency() {
+    const refunds = {};
+    for (const b of this.balls) {
+      refunds[b.currency] = (refunds[b.currency] || 0) + b.bet;
+    }
+    return refunds;
   }
 
   update(dt, sfx, sfxEnabled, sfxVol) {
@@ -577,7 +616,13 @@ class MultiCurrencyPlinko {
             const inwardNudge = -sign * (b.bias * 16.0);
             b.vx = b.vx - (1.0 + restitution) * dot * nx + (-12 + Math.random() * 24) + inwardNudge;
             b.vy = b.vy - (1.0 + restitution) * dot * ny;
-            sfx.playTap(sfxEnabled, sfxVol * 0.55);
+
+            // 45ms audio cooldown prevents Web Audio clipping on multi-ball drops
+            const nowMs = performance.now();
+            if (nowMs - this.lastPegSoundMs > 45) {
+              this.lastPegSoundMs = nowMs;
+              sfx.playTap(sfxEnabled, sfxVol * 0.5);
+            }
           }
         }
       }
@@ -612,8 +657,7 @@ class MultiCurrencyPlinko {
   draw(ctx) {
     ctx.clearRect(0, 0, this.width, this.height);
 
-    // Top Aim Strip
-    const stripW = 260, stripH = 26;
+    const stripW = 280, stripH = 26;
     const stripX = this.xCenter - stripW / 2;
     const stripY = this.yTop + 8;
     ctx.fillStyle = COLORS.card;
@@ -629,7 +673,6 @@ class MultiCurrencyPlinko {
     ctx.textAlign = "center";
     ctx.fillText("CLICK STRIP TO AIM LAUNCH (10% MAX BET)", this.xCenter, stripY + 17);
 
-    // Pegs
     for (const p of this.pegs) {
       ctx.fillStyle = "rgb(190, 160, 120)";
       ctx.beginPath();
@@ -642,7 +685,6 @@ class MultiCurrencyPlinko {
       ctx.fill();
     }
 
-    // Multiplier Bins
     for (let idx = 0; idx < this.multipliers.length; idx++) {
       const mult = this.multipliers[idx];
       const bx = this.binStartX + idx * this.dx;
@@ -665,7 +707,6 @@ class MultiCurrencyPlinko {
       ctx.fillText(`${mult}x`, bx + this.dx / 2, this.binY + 20);
     }
 
-    // Active Balls
     for (const b of this.balls) {
       const { x: bx, y: by, currency: curr } = b;
       if (curr === "beans") {
@@ -867,13 +908,13 @@ class RNGManager {
     this.rollTimer = 0.0;
     this.rollDuration = 1.35;
     this.lastTickStep = -1;
+    this.pendingCost = 0;
     this.pendingResult = null;
     this.batchResults = [];
     this.autoRoll = false;
     this.fastRoll = false;
     this.cutsceneThreshold = 4;
 
-    // Tempered Luck & Speed Upgrades
     this.upgrades = [
       { id: "ru1", name: "Four-Leaf Clover Syrup", curr: "beans", baseCost: 500, scale: 1.65, level: 0, max: 50, desc: "+10% RNG Luck per level" },
       { id: "ru2", name: "Turbo Steam Bearings", curr: "beans", baseCost: 2500, scale: 1.85, level: 0, max: 20, desc: "+8% Roll Animation Speed per level" },
@@ -897,8 +938,8 @@ class RNGManager {
   }
 
   getTotalLuck() {
-    let luck = 1.0 + this.upgrades[0].level * 0.10; // Up to 6.0x
-    luck *= Math.pow(1.20, Math.min(25, this.upgrades[2].level)); // Up to 95.4x
+    let luck = 1.0 + this.upgrades[0].level * 0.10;
+    luck *= Math.pow(1.20, Math.min(25, this.upgrades[2].level));
     if (this.counts[4] > 0) luck *= 1.15;
     if (this.counts[6] > 0) luck *= 1.35;
     if (this.counts[9] > 0) luck *= 2.00;
@@ -922,11 +963,10 @@ class RNGManager {
     const owned = this.counts[idx];
     if (owned <= 0) return 0.0;
     const dupBonus = 1.0 + Math.log10(owned) * 0.5 + Math.min(owned - 1, 50) * 0.05;
-    const equipMult = this.equippedIndex === idx ? 2.0 : 1.0; // Equipping doubles that aura's buff
+    const equipMult = this.equippedIndex === idx ? 2.0 : 1.0;
     return r.baseBuff * dupBonus * equipMult;
   }
 
-  // Additive Compendium stacking so collecting all 10 tiers scales cleanly into the soft-cap
   getCombinedBuffs() {
     let globalBonus = 0.0;
     let clickBonus = 0.0;
@@ -947,14 +987,18 @@ class RNGManager {
     };
   }
 
+  // Normalized weighted probability pool prevents high luck from starving mid-tier auras
   pickRandomRarity() {
     const luck = this.getTotalLuck();
-    for (let i = RNG_RARITIES.length - 1; i >= 1; i--) {
-      const r = RNG_RARITIES[i];
-      const chance = Math.min(0.45, luck / r.odds);
-      if (Math.random() < chance) {
-        return r;
-      }
+    const weights = RNG_RARITIES.map((r) => {
+      if (r.index === 0) return Math.max(0.15, 1.0 / Math.pow(luck, 0.35));
+      return Math.min(0.65, luck / r.odds);
+    });
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    let roll = Math.random() * totalWeight;
+    for (let i = RNG_RARITIES.length - 1; i >= 0; i--) {
+      roll -= weights[i];
+      if (roll <= 0) return RNG_RARITIES[i];
     }
     return RNG_RARITIES[0];
   }
@@ -971,6 +1015,7 @@ class RNGManager {
     }
 
     this.game.beans -= cost;
+    this.pendingCost = cost;
     this.isRolling = true;
     this.rollTimer = 0.0;
     this.rollDuration = this.getRollDuration();
@@ -990,11 +1035,14 @@ class RNGManager {
   completeRoll() {
     this.isRolling = false;
     this.rollTimer = 0.0;
+    this.pendingCost = 0;
 
     for (const res of this.batchResults) {
+      const isFirstDiscovery = this.counts[res.index] === 0;
       this.totalRolls += 1;
       this.counts[res.index] += 1;
-      if (this.equippedIndex < res.index) {
+      // Only auto-equip on first discovery of a rarer tier so manual equips are respected
+      if (this.equippedIndex === -1 || (isFirstDiscovery && res.index > this.equippedIndex)) {
         this.equippedIndex = res.index;
       }
     }
@@ -1011,6 +1059,21 @@ class RNGManager {
     } else {
       this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.7);
     }
+  }
+
+  resetStageDisplay() {
+    const badge = document.getElementById("rng-current-tier-badge");
+    const nameEl = document.getElementById("rng-current-aura-name");
+    const oddsEl = document.getElementById("rng-current-odds");
+    const buffEl = document.getElementById("rng-current-buff");
+    if (!badge) return;
+    badge.className = "rng-tier-badge tier-common";
+    badge.textContent = "READY TO ROLL";
+    nameEl.textContent = "Click Roll to Test Your Fate";
+    nameEl.style.color = "#ffffff";
+    oddsEl.textContent = "10 Rarities Available";
+    buffEl.textContent = "Every roll levels up your Compendium permanently!";
+    document.getElementById("rng-roll-bar").style.width = "0%";
   }
 
   setStageDisplay(r, isRollingPreview = false) {
@@ -1370,6 +1433,23 @@ class RNGManager {
     document.getElementById("btn-skip-cutscene").addEventListener("click", () => this.closeCutscene());
   }
 
+  syncToggleButtons() {
+    const autoBtn = document.getElementById("btn-rng-auto");
+    const fastBtn = document.getElementById("btn-rng-fast");
+    const threshSel = document.getElementById("rng-cutscene-threshold");
+    if (autoBtn) {
+      autoBtn.textContent = `Auto-Roll: ${this.autoRoll ? "ON" : "OFF"}`;
+      autoBtn.classList.toggle("active", this.autoRoll);
+    }
+    if (fastBtn) {
+      fastBtn.textContent = `Fast Roll: ${this.fastRoll ? "ON" : "OFF"}`;
+      fastBtn.classList.toggle("active", this.fastRoll);
+    }
+    if (threshSel) {
+      threshSel.value = String(this.cutsceneThreshold);
+    }
+  }
+
   refreshDOM() {
     if (this.game.activeTab !== "rng") return;
     const nm = this.game.notationMode;
@@ -1422,9 +1502,8 @@ class RNGManager {
     }
   }
 }
-
 // =============================================================================
-// 8. MASTER GAME ENGINE
+// 8. MASTER GAME ENGINE (game.js — Part 2 of 2)
 // =============================================================================
 
 class GameState {
@@ -1437,10 +1516,11 @@ class GameState {
     this.notationMode = "suffix";
     this.buyMode = "1";
     this.wipeConfirmActive = false;
+    this.wipeConfirmTimer = 0.0;
 
     // QoL Automation
     this.autoVent = false;
-    this.autoServe = true;
+    this.autoServe = false;
 
     // Stabilizers
     this.siloLevel = 0;
@@ -1496,9 +1576,10 @@ class GameState {
     this.totalMultiplier = 1.0;
     this.frenzyTimer = 0.0;
     this.frenzyMult = 1.0;
+    this.multBreakdown = null;
 
-    // Canvas Entities
-    this.catCenter = { x: 85, y: 576 };
+    // Canvas Entities (Mochi seated flush on y=630 sill line)
+    this.catCenter = { x: 85, y: 606 };
     this.catScaleX = 1.0;
     this.catScaleY = 1.0;
     this.purrBlissTimer = 0.0;
@@ -1526,16 +1607,22 @@ class GameState {
     this.croissant = new GoldenCroissantEvent();
 
     this.activeOrder = null;
-    this.orderTimer = 5.0;
+    this.orderTimer = 4.0;
     this.toastQueue = [];
     this.activeToast = null;
     this.toastTimer = 0.0;
+
+    // DOM Diff Caches
+    this._lastCurrencyGridHtml = "";
+    this._lastMultPopHtml = "";
 
     this.initCatalogs();
     this.loadGame();
     this.recalculateRates();
     this.buildStaticDOM();
     this.rng.buildDOM();
+    this.rng.syncToggleButtons();
+    this.syncBuyModeButtons();
     this.bindEvents();
   }
 
@@ -1643,11 +1730,11 @@ class GameState {
       { uid: "r01", name: "Master Roaster Certification", baseCost: 1, maxLvl: 15, desc: "+25% total BPS and Click Power per level", count: 0 },
       { uid: "r02", name: "Direct Sourcing Contracts", baseCost: 2, maxLvl: 10, desc: "-5% regular upgrade prices per level (max -50%)", count: 0 },
       { uid: "r03", name: "Heavy Stoneware Ceramic", baseCost: 3, maxLvl: 8, desc: "+15 permanent flat click power per level", count: 0 },
-      { uid: "r04", name: "Self-Stirring Brass Spoons", baseCost: 4, maxLvl: 8, desc: "Converts 5% of click power directly into passive BPS", count: 0 },
+      { uid: "r04", name: "Self-Stirring Brass Spoons", baseCost: 4, maxLvl: 8, desc: "Converts 5% of total click power directly into passive BPS", count: 0 },
       { uid: "r05", name: "Golden Aroma Resonance", baseCost: 5, maxLvl: 12, desc: "+2% multiplier per unspent Golden Bean held", count: 0 },
       { uid: "r06", name: "Raindrop Melodic Harmony", baseCost: 6, maxLvl: 10, desc: "+6% multiplier bonus per completed Rebirth", count: 0 },
       { uid: "r07", name: "Caramelized Crema Infusion", baseCost: 8, maxLvl: 8, desc: "x1.40 click power multiplier per level", count: 0 },
-      { uid: "r08", name: "Perpetual Steam Generator", baseCost: 12, maxLvl: 6, desc: "Passively generates +0.06% of current bean balance/sec", count: 0 }
+      { uid: "r08", name: "Perpetual Steam Generator", baseCost: 12, maxLvl: 6, desc: "+0.06% of bean balance/sec (up to 5x BPS)", count: 0 }
     ];
 
     this.dynastyPerks = [
@@ -1667,12 +1754,12 @@ class GameState {
     ];
 
     this.quests = [
-      { qid: "q01", title: "Sip the Morning Roast", desc: "Manually click the coffee mug 150 times.", targetVal: 150, rewardBeans: 25000, rewardStars: 2, currentVal: 0, completed: false },
-      { qid: "q02", title: "Pamper Mochi", desc: "Pet the sleeping window cat 15 times.", targetVal: 15, rewardBeans: 50000, rewardStars: 3, currentVal: 0, completed: false },
-      { qid: "q03", title: "Order Fulfillment", desc: "Serve 5 customer orders at the counter.", targetVal: 5, rewardBeans: 120000, rewardStars: 5, currentVal: 0, completed: false },
-      { qid: "q04", title: "Bean Slinger", desc: "Drop 10 balls through Plinko.", targetVal: 10, rewardBeans: 80000, rewardStars: 3, currentVal: 0, completed: false },
-      { qid: "q05", title: "Brew Master", desc: "Complete 2 recipes in the Brew Lab.", targetVal: 2, rewardBeans: 200000, rewardStars: 6, currentVal: 0, completed: false },
-      { qid: "q06", title: "Steam Operator", desc: "Vent the espresso boiler 3 times.", targetVal: 3, rewardBeans: 150000, rewardStars: 4, currentVal: 0, completed: false }
+      { qid: "q01", title: "Sip the Morning Roast", desc: "Manually click the coffee mug.", targetVal: 150, rewardBeans: 25000, rewardStars: 2, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
+      { qid: "q02", title: "Pamper Mochi", desc: "Pet the sleeping window cat.", targetVal: 15, rewardBeans: 50000, rewardStars: 3, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
+      { qid: "q03", title: "Order Fulfillment", desc: "Serve customer orders at the counter.", targetVal: 5, rewardBeans: 120000, rewardStars: 5, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
+      { qid: "q04", title: "Bean Slinger", desc: "Drop balls through Plinko.", targetVal: 10, rewardBeans: 80000, rewardStars: 3, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
+      { qid: "q05", title: "Brew Master", desc: "Complete recipes in the Brew Lab.", targetVal: 2, rewardBeans: 200000, rewardStars: 6, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 },
+      { qid: "q06", title: "Steam Operator", desc: "Vent the espresso boiler.", targetVal: 3, rewardBeans: 150000, rewardStars: 4, currentVal: 0, completed: false, tier: 1, refreshTimer: 0 }
     ];
 
     this.achievements = [
@@ -1705,72 +1792,14 @@ class GameState {
   }
 
   // --- Economy & Multiplier Calculations ---
-  renderMultiplierBreakdown() {
-    const pop = document.getElementById("multiplier-popover");
-    if (!pop || pop.classList.contains("hidden") || !this.multBreakdown) return;
 
-    const nm = this.notationMode;
-    const b = this.multBreakdown;
-    const body = document.getElementById("mult-pop-body");
-
-    const row = (label, valStr, color = "var(--color-text)") => `
-      <div class="mult-row">
-        <span class="mult-row-label">${label}</span>
-        <span class="mult-row-val" style="color: ${color};">${valStr}</span>
-      </div>
-    `;
-
-    let softCapHtml = "";
-    if (b.isSoftCapped) {
-      const retentionPct = (b.finalMult / b.rawMult) * 100;
-      const pctStr = retentionPct >= 0.01 ? `${retentionPct.toFixed(2)}%` : `${retentionPct.toExponential(2)}%`;
-      softCapHtml = `
-        <div class="mult-softcap-box mult-softcap-active">
-          <strong style="color: var(--color-danger);">Soft-Cap Active (Above ${formatNum(b.softCapStart, nm)}x)</strong><br/>
-          Raw Total: <strong>${formatNum(b.rawMult, nm)}x</strong> &rarr; Compressed: <strong>${formatNum(b.finalMult, nm)}x</strong><br/>
-          Formula: <code>Cap × (Raw / Cap)^0.65</code> (${pctStr} retained)
-        </div>
-      `;
-    } else {
-      softCapHtml = `
-        <div class="mult-softcap-box">
-          <strong style="color: var(--color-success);">Soft-Cap Inactive (100% Efficiency)</strong><br/>
-          Compression begins above <strong>${formatNum(b.softCapStart, nm)}x</strong>
-        </div>
-      `;
-    }
-
-    body.innerHTML = `
-      <div class="mult-section-label">Prestige &amp; Ascension</div>
-      ${row("Rebirth, Golden & Roastery", `${formatNum(b.rebirthAndGolden, nm)}x`, "var(--color-gold)")}
-      ${row("Dynasty & Pantheon Tiers", `${formatNum(b.dynastyAndPantheon, nm)}x`, "var(--color-pantheon)")}
-      ${row("Total Prestige Multiplier", `${formatNum(b.prestigeTotal, nm)}x`, "var(--color-astral)")}
-
-      <div class="mult-section-label">Cosmic &amp; Transcendent</div>
-      ${row("Cosmic Currencies & Sanctuary", `${formatNum(b.cosmicCurrencyMult, nm)}x`, "var(--color-omega)")}
-      ${row("God-Tier Cosmic Perks", `${formatNum(b.cosmicPerksMult, nm)}x`, "var(--color-aether)")}
-      ${row("Total Cosmic Multiplier", `${formatNum(b.cosmicTotal, nm)}x`, "var(--color-omega)")}
-
-      <div class="mult-section-label">RNG Compendium &amp; Cafe</div>
-      ${row("RNG Global Aura Mult", `${formatNum(b.rngGlobal, nm)}x`, "var(--color-supernova)")}
-      ${row("RNG Dedicated BPS / Click", `${formatNum(b.rngBps, nm)}x / ${formatNum(b.rngClick, nm)}x`, "var(--color-text-light)")}
-      ${row("Cafe Level, Stars, Decor & Sinks", `${formatNum(b.cafePermanent, nm)}x`, "var(--color-accent)")}
-      ${row("Boiler Temp, Frenzy & Mochi Purr", `${formatNum(b.activeTempAndEvents, nm)}x`, "var(--color-success)")}
-
-      <div class="mult-divider"></div>
-      <div class="mult-row mult-row-total">
-        <span class="mult-row-label">Effective Global Multiplier</span>
-        <span class="mult-row-val" style="color: var(--color-gold);">${formatNum(b.finalMult, nm)}x</span>
-      </div>
-      ${softCapHtml}
-    `;
-  }
   getMaxStorage() { return 50000.0 * Math.pow(4.5, this.siloLevel); }
-  getSiloUpgradeCost() { return 12000.0 * Math.pow(4.0, this.siloLevel); }
+  // Cost scales slightly faster (4.6x) than capacity (4.5x) to prevent runaway self-funding
+  getSiloUpgradeCost() { return 12000.0 * Math.pow(4.6, this.siloLevel); }
   getStaffCost(st) { return Math.max(10.0, st.baseCost * Math.pow(1.30, st.level)); }
-  getRoasteryCost(upg) { return Math.max(1, Math.floor(upg.baseCost * Math.pow(1.40, upg.count) * Math.pow(1.15, this.rebirthCount))); }
+  // Removed rebirthCount cost penalty so players are never punished for rebirthing
+  getRoasteryCost(upg) { return Math.max(1, Math.floor(upg.baseCost * Math.pow(1.40, upg.count))); }
 
-  // Dynasty d04: Halves the 0.22 upgrade scaling exponent at Lv. 5 (1.22 -> 1.11)
   getUpgradeExponent() {
     const d04Count = this.dynastyPerks ? this.dynastyPerks[3].count : 0;
     return 1.0 + 0.22 * (1.0 - 0.10 * d04Count);
@@ -1830,23 +1859,36 @@ class GameState {
     return map[cType] ?? this.beans;
   }
 
+  // Probabilistic integer rounding eliminates the risk-free "Bet 1" Plinko exploit
   addCurrency(cType, amount) {
-    const amt = Math.max(1, Math.floor(amount));
     if (cType === "beans") {
+      const prev = this.beans;
       this.beans = Math.min(this.getMaxStorage(), this.beans + amount);
-      this.lifetimeBeansAll += amount;
-    } else if (cType === "golden") { this.goldenBeans += amt; this.lifetimeGolden += amt; }
-    else if (cType === "astral") { this.astralCrystals += amt; this.lifetimeCrystals += amt; }
-    else if (cType === "shards") { this.starlightShards += amt; }
-    else if (cType === "dark_matter") { this.darkMatter += amt; }
-    else if (cType === "supernova") { this.supernovaBeans += amt; }
-    else if (cType === "chronos") { this.chronosCrystals += amt; }
-    else if (cType === "aether") { this.aetherEssence += amt; }
-    else if (cType === "omega") { this.omegaSingularity += amt; }
-    else if (cType === "dew") { this.celestialDew += amt; }
-    else if (cType === "quasar") { this.quasarNectar += amt; }
-    else if (cType === "eternal") { this.eternalBeans += amt; }
-    this.recalculateRates();
+      const actual = Math.max(0, this.beans - prev);
+      this.lifetimeBeansAll += actual;
+      this.recalculateRates();
+      return actual;
+    }
+
+    const whole = Math.floor(amount);
+    const frac = amount - whole;
+    const amt = whole + (frac > 0 && Math.random() < frac ? 1 : 0);
+
+    if (amt > 0) {
+      if (cType === "golden") { this.goldenBeans += amt; this.lifetimeGolden += amt; }
+      else if (cType === "astral") { this.astralCrystals += amt; this.lifetimeCrystals += amt; }
+      else if (cType === "shards") { this.starlightShards += amt; }
+      else if (cType === "dark_matter") { this.darkMatter += amt; }
+      else if (cType === "supernova") { this.supernovaBeans += amt; }
+      else if (cType === "chronos") { this.chronosCrystals += amt; }
+      else if (cType === "aether") { this.aetherEssence += amt; }
+      else if (cType === "omega") { this.omegaSingularity += amt; }
+      else if (cType === "dew") { this.celestialDew += amt; }
+      else if (cType === "quasar") { this.quasarNectar += amt; }
+      else if (cType === "eternal") { this.eternalBeans += amt; }
+      this.recalculateRates();
+    }
+    return amt;
   }
 
   deductCurrency(cType, amount) {
@@ -1931,9 +1973,8 @@ class GameState {
     }
 
     baseClicks += this.roasteryUpgrades[2].count * 15.0;
-    baseBps += this.roasteryUpgrades[3].count * 0.05 * baseClicks;
 
-    // 1. Prestige Tiers (Rebirth, Golden, Roastery, Dynasty, Pantheon)
+    // 1. Prestige Tiers
     const rMult = 1.0 + this.rebirthCount * (0.10 + this.roasteryUpgrades[5].count * 0.06);
     const gMult = 1.0 + this.goldenBeans * (0.05 + this.roasteryUpgrades[4].count * 0.02);
     const mMult = 1.0 + this.roasteryUpgrades[0].count * 0.25;
@@ -1945,7 +1986,7 @@ class GameState {
       : 1.0;
     const prestigeTotal = rMult * gMult * mMult * dMult * d06Mult * pMult * harmonyMult;
 
-    // 2. Cafe, Staff, Crucible Sinks & Active Buffs
+    // 2. Cafe, Sinks & Active Buffs
     const starMult = 1.0 + this.customerStars * 0.02;
     const frenzy = this.frenzyTimer > 0 ? this.frenzyMult : 1.0;
     const catBliss = this.purrBlissTimer > 0 ? 1.0 + this.purrCombo * 0.10 : 1.0;
@@ -1969,7 +2010,18 @@ class GameState {
         else if (dec.buffType === "total_mult") decorTot *= dec.buffVal;
       }
     }
-    const cafeActiveTotal = starMult * frenzy * catBliss * tempMult * levelMult * altarMult * crucibleMult * decorTot;
+
+    // Recipes (Including b12 total_mult fix!)
+    let rBps = 1.0, rClick = 1.0, rTot = 1.0;
+    for (const r of this.recipes) {
+      if (r.crafted) {
+        if (r.buffType === "bps_mult") rBps *= r.buffVal;
+        else if (r.buffType === "click_mult") rClick *= r.buffVal;
+        else if (r.buffType === "total_mult") rTot *= r.buffVal;
+      }
+    }
+
+    const cafeActiveTotal = starMult * frenzy * catBliss * tempMult * levelMult * altarMult * crucibleMult * decorTot * rTot;
 
     // 3. Cosmic & Transcendent Currencies + God-Tier Perks
     let cosmicCurrencyMult =
@@ -2012,12 +2064,11 @@ class GameState {
       this.totalMultiplier = rawMult;
     }
 
-    // Store snapshot for the HUD Multiplier Breakdown popover
     this.multBreakdown = {
       rebirthAndGolden: rMult * gMult * mMult,
       dynastyAndPantheon: dMult * d06Mult * pMult * harmonyMult,
       prestigeTotal,
-      cafePermanent: levelMult * starMult * altarMult * decorTot * crucibleMult,
+      cafePermanent: levelMult * starMult * altarMult * decorTot * crucibleMult * rTot,
       activeTempAndEvents: tempMult * frenzy * catBliss,
       cosmicCurrencyMult,
       cosmicPerksMult,
@@ -2031,18 +2082,13 @@ class GameState {
       finalMult: this.totalMultiplier
     };
 
-    let rBps = 1.0, rClick = 1.0;
-    for (const r of this.recipes) {
-      if (r.crafted) {
-        if (r.buffType === "bps_mult") rBps *= r.buffVal;
-        else if (r.buffType === "click_mult") rClick *= r.buffVal;
-      }
-    }
-
-    this.bps = baseBps * this.totalMultiplier * rBps * decorBps * talentBpsMult * rngBps;
+    // Compute Click Power first so r04 (Self-Stirring Brass Spoons) converts actual total Click Power into BPS!
     this.clickPower =
       baseClicks * this.totalMultiplier * rClick * decorClick *
       sinkClickMult * rngClick * Math.pow(1.40, this.roasteryUpgrades[6].count);
+
+    const spoonBonusBps = this.roasteryUpgrades[3].count * 0.05 * this.clickPower;
+    this.bps = baseBps * this.totalMultiplier * rBps * decorBps * talentBpsMult * rngBps + spoonBonusBps;
 
     if (this.lifetimeBeansAll >= 1e15) this.latteStage = 5;
     else if (this.lifetimeBeansAll >= 1e11) this.latteStage = 4;
@@ -2091,16 +2137,20 @@ class GameState {
 
   serveCurrentOrder() {
     if (!this.activeOrder) return false;
+    const isStarterOrder = this.activeOrder.recipeName === "House Drip Coffee";
     const rec = this.recipes.find((r) => r.name === this.activeOrder.recipeName);
-    if (rec && rec.crafted) {
-      let payout = Math.max(500.0, this.bps * 40.0 * this.activeOrder.rewardMult);
+    if (isStarterOrder || (rec && rec.crafted)) {
+      let payout = Math.max(250.0, this.bps * 40.0 * this.activeOrder.rewardMult);
       const tipDecor = this.decor[3].bought ? this.decor[3].buffVal : 1.0;
       const talentTip = 1.0 + this.talents[3].rank * 0.15;
       payout *= (1.0 + this.staff[4].level * 0.25) * tipDecor * talentTip;
 
+      const prev = this.beans;
       this.beans = Math.min(this.getMaxStorage(), this.beans + payout);
-      this.lifetimeBeansRun += payout;
-      this.lifetimeBeansAll += payout;
+      const actualGain = Math.max(0, this.beans - prev);
+      this.lifetimeBeansRun += actualGain;
+      this.lifetimeBeansAll += actualGain;
+
       this.customerStars += 1;
       this.ordersCompleted += 1;
       this.quests[2].currentVal += 1;
@@ -2269,6 +2319,7 @@ class GameState {
     this.beans = 0.0;
     this.goldenBeans = 0;
     this.lifetimeBeansRun = 0.0;
+    this.lifetimeGolden = 0; // Reset so Dynasty cannot be spammed back-to-back
     this.rebirthCount = 0;
     for (const u of this.upgrades) u.count = 0;
     for (const r of this.roasteryUpgrades) r.count = 0;
@@ -2290,6 +2341,8 @@ class GameState {
     this.goldenBeans = 0;
     this.astralCrystals = 0;
     this.lifetimeBeansRun = 0.0;
+    this.lifetimeGolden = 0;
+    this.lifetimeCrystals = 0; // Reset so Pantheon cannot be spammed back-to-back
     this.rebirthCount = 0;
     this.dynastyCount = 0;
     for (const u of this.upgrades) u.count = 0;
@@ -2301,7 +2354,6 @@ class GameState {
     this.popups.push(new FloatingPopup(`+${earned} STARLIGHT SHARDS!`, 240, 235, COLORS.pantheon));
   }
 
-  // Updated to Silo Lv. 45 so storage physically holds the 10 Dc Eternal Bean requirement
   checkGoalCompletion() {
     return (
       this.level >= 100 &&
@@ -2323,14 +2375,25 @@ class GameState {
     }
   }
 
-  // --- Save & Load (LocalStorage) ---
+  syncBuyModeButtons() {
+    document.querySelectorAll(".mode-btn").forEach((b) => {
+      b.classList.toggle("active", b.dataset.mode === this.buyMode);
+    });
+  }
+
+  // --- Save & Load (LocalStorage with Refund & Session Preservation) ---
 
   saveGame() {
+    // Refund any in-flight Plinko balls or mid-roll RNG wager on unload/save so reload never eats bets
+    const plinkoRefunds = this.plinko ? this.plinko.getPendingRefundsByCurrency() : {};
+    const rngPendingBeans = this.rng && this.rng.isRolling ? this.rng.pendingCost : 0;
+
     const data = {
       autoVent: this.autoVent,
       autoServe: this.autoServe,
       level: this.level,
       xp: this.xp,
+      playTime: this.playTime,
       siloLevel: this.siloLevel,
       boilerTemp: this.boilerTemp,
       altarBlessings: this.altarBlessings,
@@ -2343,29 +2406,32 @@ class GameState {
       talents: Object.fromEntries(this.talents.map((t) => [t.uid, t.rank])),
       milestones: this.milestones.filter((m) => m.claimed).map((m) => m.targetLvl),
       achievements: this.achievements.filter((a) => a.unlocked).map((a) => a.aid),
-      quests: this.quests.map((q) => ({ qid: q.qid, cur: q.currentVal, done: q.completed })),
+      quests: this.quests.map((q) => ({
+        qid: q.qid, cur: q.currentVal, done: q.completed,
+        target: q.targetVal, rwBeans: q.rewardBeans, rwStars: q.rewardStars, tier: q.tier
+      })),
       sfxEnabled: this.sfxEnabled,
       sfxVolume: this.sfxVolume,
       rainEnabled: this.rainEnabled,
       particlesEnabled: this.particlesEnabled,
       notationMode: this.notationMode,
       buyMode: this.buyMode,
-      beans: this.beans,
+      beans: this.beans + (plinkoRefunds.beans || 0) + rngPendingBeans,
       lifetimeBeansRun: this.lifetimeBeansRun,
       lifetimeBeansAll: this.lifetimeBeansAll,
-      goldenBeans: this.goldenBeans,
+      goldenBeans: this.goldenBeans + (plinkoRefunds.golden || 0),
       lifetimeGolden: this.lifetimeGolden,
-      astralCrystals: this.astralCrystals,
+      astralCrystals: this.astralCrystals + (plinkoRefunds.astral || 0),
       lifetimeCrystals: this.lifetimeCrystals,
-      starlightShards: this.starlightShards,
-      darkMatter: this.darkMatter,
-      supernovaBeans: this.supernovaBeans,
-      chronosCrystals: this.chronosCrystals,
-      aetherEssence: this.aetherEssence,
-      omegaSingularity: this.omegaSingularity,
-      celestialDew: this.celestialDew,
-      quasarNectar: this.quasarNectar,
-      eternalBeans: this.eternalBeans,
+      starlightShards: this.starlightShards + (plinkoRefunds.shards || 0),
+      darkMatter: this.darkMatter + (plinkoRefunds.dark_matter || 0),
+      supernovaBeans: this.supernovaBeans + (plinkoRefunds.supernova || 0),
+      chronosCrystals: this.chronosCrystals + (plinkoRefunds.chronos || 0),
+      aetherEssence: this.aetherEssence + (plinkoRefunds.aether || 0),
+      omegaSingularity: this.omegaSingularity + (plinkoRefunds.omega || 0),
+      celestialDew: this.celestialDew + (plinkoRefunds.dew || 0),
+      quasarNectar: this.quasarNectar + (plinkoRefunds.quasar || 0),
+      eternalBeans: this.eternalBeans + (plinkoRefunds.eternal || 0),
       customerStars: this.customerStars,
       manualClicks: this.manualClicks,
       rebirthCount: this.rebirthCount,
@@ -2379,11 +2445,14 @@ class GameState {
       roastery: Object.fromEntries(this.roasteryUpgrades.map((r) => [r.uid, r.count])),
       dynasty: Object.fromEntries(this.dynastyPerks.map((d) => [d.uid, d.count])),
       pantheon: Object.fromEntries(this.pantheonPerks.map((p) => [p.uid, p.count])),
-      recipes: Object.fromEntries(this.recipes.map((r) => [r.uid, r.crafted])),
+      recipes: Object.fromEntries(this.recipes.map((r) => [r.uid, { crafted: r.crafted, brewing: r.brewing, progress: r.progress }])),
       rng: {
         totalRolls: this.rng.totalRolls,
         counts: this.rng.counts,
         equippedIndex: this.rng.equippedIndex,
+        autoRoll: this.rng.autoRoll,
+        fastRoll: this.rng.fastRoll,
+        cutsceneThreshold: this.rng.cutsceneThreshold,
         upgrades: this.rng.upgrades.map((u) => u.level)
       }
     };
@@ -2402,6 +2471,7 @@ class GameState {
 
       this.level = data.level ?? 1;
       this.xp = data.xp ?? 0.0;
+      this.playTime = data.playTime ?? 0.0;
       this.siloLevel = data.siloLevel ?? 0;
       this.boilerTemp = data.boilerTemp ?? 70.0;
       this.altarBlessings = data.altarBlessings ?? 0;
@@ -2410,7 +2480,7 @@ class GameState {
       this.croissantsCaught = data.croissantsCaught ?? 0;
       this.sanctuaryUnlocked = data.sanctuaryUnlocked ?? false;
       this.autoVent = data.autoVent ?? false;
-      this.autoServe = data.autoServe ?? true;
+      this.autoServe = data.autoServe ?? false;
 
       for (const s of this.sinks) s.level = data.sinks?.[s.uid] ?? 0;
       for (const c of this.cosmicPerks) c.level = data.cosmicPerks?.[c.uid] ?? 0;
@@ -2428,6 +2498,10 @@ class GameState {
           if (q) {
             q.currentVal = qData.cur ?? 0;
             q.completed = qData.done ?? false;
+            if (qData.target) q.targetVal = qData.target;
+            if (qData.rwBeans) q.rewardBeans = qData.rwBeans;
+            if (qData.rwStars) q.rewardStars = qData.rwStars;
+            if (qData.tier) q.tier = qData.tier;
           }
         }
       }
@@ -2470,12 +2544,25 @@ class GameState {
       for (const r of this.roasteryUpgrades) r.count = data.roastery?.[r.uid] ?? 0;
       for (const dyn of this.dynastyPerks) dyn.count = data.dynasty?.[dyn.uid] ?? 0;
       for (const p of this.pantheonPerks) p.count = data.pantheon?.[p.uid] ?? 0;
-      for (const rec of this.recipes) rec.crafted = data.recipes?.[rec.uid] ?? false;
+
+      for (const rec of this.recipes) {
+        const savedRec = data.recipes?.[rec.uid];
+        if (typeof savedRec === "boolean") {
+          rec.crafted = savedRec;
+        } else if (savedRec && typeof savedRec === "object") {
+          rec.crafted = !!savedRec.crafted;
+          rec.brewing = !!savedRec.brewing && !rec.crafted;
+          rec.progress = savedRec.progress ?? 0;
+        }
+      }
 
       if (data.rng) {
         this.rng.totalRolls = data.rng.totalRolls ?? 0;
         if (Array.isArray(data.rng.counts)) this.rng.counts = data.rng.counts;
         this.rng.equippedIndex = data.rng.equippedIndex ?? -1;
+        this.rng.autoRoll = !!data.rng.autoRoll;
+        this.rng.fastRoll = !!data.rng.fastRoll;
+        this.rng.cutsceneThreshold = data.rng.cutsceneThreshold ?? 4;
         if (Array.isArray(data.rng.upgrades)) {
           data.rng.upgrades.forEach((lvl, i) => {
             if (this.rng.upgrades[i]) this.rng.upgrades[i].level = lvl;
@@ -2490,8 +2577,11 @@ class GameState {
           let offlinePct = 0.20 + this.staff[3].level * 0.10;
           if (this.decor[4].bought) offlinePct += 0.30;
           this.recalculateRates();
-          const offlineEarned = Math.min(this.getMaxStorage(), this.bps * elapsed * offlinePct);
-          this.beans = Math.min(this.getMaxStorage(), this.beans + offlineEarned);
+          const prev = this.beans;
+          const rawOffline = this.bps * elapsed * offlinePct;
+          this.beans = Math.min(this.getMaxStorage(), this.beans + rawOffline);
+          const offlineEarned = Math.max(0, this.beans - prev);
+          this.lifetimeBeansRun += offlineEarned; // Counts toward next Rebirth!
           this.lifetimeBeansAll += offlineEarned;
           this.addXp(Math.max(10, Math.floor(Math.log10(Math.max(10.0, offlineEarned)) * 18.0)));
           this.popups.push(new FloatingPopup(`Welcome back! +${formatNum(offlineEarned, this.notationMode)}`, 240, 215, COLORS.gold));
@@ -2507,6 +2597,7 @@ class GameState {
     localStorage.removeItem("rainy_cafe_rng_save");
     this.level = 1;
     this.xp = 0.0;
+    this.playTime = 0.0;
     this.siloLevel = 0;
     this.boilerTemp = 70.0;
     this.overheatLockout = false;
@@ -2540,6 +2631,7 @@ class GameState {
     this.dynastySynthTimer = 0.0;
     this.guildAutoBuyTimer = 0.0;
     this.chronosWarpTimer = 0.0;
+    this.activeOrder = null;
 
     for (const s of [...this.sinks, ...this.cosmicPerks]) s.level = 0;
     for (const t of this.talents) t.rank = 0;
@@ -2551,15 +2643,20 @@ class GameState {
     for (const dyn of this.dynastyPerks) dyn.count = 0;
     for (const p of this.pantheonPerks) p.count = 0;
     for (const rec of this.recipes) { rec.crafted = false; rec.brewing = false; rec.progress = 0; }
-    for (const q of this.quests) { q.currentVal = 0; q.completed = false; }
     for (const a of this.achievements) a.unlocked = false;
 
+    this.initCatalogs();
     this.rng.totalRolls = 0;
     this.rng.counts.fill(0);
     this.rng.equippedIndex = -1;
+    this.rng.autoRoll = false;
+    this.rng.fastRoll = false;
     for (const ru of this.rng.upgrades) ru.level = 0;
+    this.rng.syncToggleButtons();
+    this.rng.resetStageDisplay();
 
     this.wipeConfirmActive = false;
+    this.wipeConfirmTimer = 0.0;
     this.recalculateRates();
     this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     this.popups.push(new FloatingPopup("DATA WIPED CLEAN", 240, 255, COLORS.danger));
@@ -2682,7 +2779,6 @@ class GameState {
           rec.brewing = true;
           rec.progress = 0.0;
           this.addXp(80);
-          this.quests[4].currentVal += 1;
           this.sfx.playBrew(this.sfxEnabled, this.sfxVolume);
         } else {
           this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
@@ -2763,7 +2859,9 @@ class GameState {
       card.querySelector(`#btn-ms-${m.targetLvl}`).addEventListener("click", () => {
         if (this.level >= m.targetLvl && !m.claimed) {
           m.claimed = true;
-          this.beans = Math.min(this.getMaxStorage(), this.beans + m.beans);
+          // Milestone crates allow Silo overflow so rewards are never deleted
+          this.beans += m.beans;
+          this.lifetimeBeansAll += m.beans;
           this.goldenBeans += m.golden;
           this.astralCrystals += m.crystals;
           this.starlightShards += m.shards;
@@ -3047,8 +3145,8 @@ class GameState {
       card.innerHTML = `
         <div class="card-accent" id="acc-${q.qid}"></div>
         <div class="card-main">
-          <div class="card-title">${q.title}</div>
-          <div class="card-desc">${q.desc}</div>
+          <div class="card-title" id="qtitle-${q.qid}">${q.title} (Tier ${q.tier})</div>
+          <div class="card-desc" id="qdesc-${q.qid}">${q.desc}</div>
           <div class="card-cost" id="prog-${q.qid}">Progress: 0 / ${q.targetVal}</div>
         </div>
         <button class="btn btn-sm" id="btn-${q.qid}" type="button">IN PROGRESS</button>
@@ -3056,11 +3154,14 @@ class GameState {
       card.querySelector(`#btn-${q.qid}`).addEventListener("click", () => {
         if (q.currentVal >= q.targetVal && !q.completed) {
           q.completed = true;
-          this.beans = Math.min(this.getMaxStorage(), this.beans + q.rewardBeans);
+          q.refreshTimer = 10.0; // Refreshes into next tier after 10 seconds
+          this.beans += q.rewardBeans; // Overflows Silo cap safely
+          this.lifetimeBeansAll += q.rewardBeans;
           this.customerStars += q.rewardStars;
-          this.addXp(250);
+          this.addXp(250 * q.tier);
           this.recalculateRates();
           this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
+          this.popups.push(new FloatingPopup(`+${formatNum(q.rewardBeans, this.notationMode)} Contract Reward!`, 240, 235, COLORS.gold));
         }
       });
       questsList.appendChild(card);
@@ -3079,6 +3180,7 @@ class GameState {
       const y = (e.clientY - rect.top) * scaleY;
       this.handleSceneClick(x, y);
     });
+
     // Multiplier Breakdown Popover Toggle & Close
     const multDisplay = document.getElementById("multiplier-display");
     const multPopover = document.getElementById("multiplier-popover");
@@ -3087,7 +3189,7 @@ class GameState {
       const opening = multPopover.classList.contains("hidden");
       multPopover.classList.toggle("hidden", !opening);
       this.sfx.playTap(this.sfxEnabled, this.sfxVolume * 0.8);
-      if (opening) this.renderMultiplierBreakdown();
+      if (opening) this.renderMultiplierBreakdown(true);
     };
 
     multDisplay.addEventListener("click", (e) => {
@@ -3107,10 +3209,9 @@ class GameState {
     });
     multPopover.addEventListener("mousedown", (e) => e.stopPropagation());
     sceneCanvas.addEventListener("mousedown", () => {
-      if (!multPopover.classList.contains("hidden")) {
-        multPopover.classList.add("hidden");
-      }
+      if (!multPopover.classList.contains("hidden")) multPopover.classList.add("hidden");
     });
+
     document.getElementById("btn-silo-upgrade").addEventListener("click", () => this.upgradeSilo());
     document.getElementById("btn-vent").addEventListener("click", () => this.ventBoiler());
     document.getElementById("btn-auto-vent").addEventListener("click", () => {
@@ -3120,6 +3221,7 @@ class GameState {
 
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
+        if (!multPopover.classList.contains("hidden")) multPopover.classList.add("hidden");
         this.switchTab(btn.dataset.tab);
         this.sfx.playTap(this.sfxEnabled, this.sfxVolume * 0.7);
       });
@@ -3128,7 +3230,7 @@ class GameState {
     document.querySelectorAll(".mode-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         this.buyMode = btn.dataset.mode;
-        document.querySelectorAll(".mode-btn").forEach((b) => b.classList.toggle("active", b.dataset.mode === this.buyMode));
+        this.syncBuyModeButtons();
         this.sfx.playTap(this.sfxEnabled, this.sfxVolume * 0.8);
       });
     });
@@ -3147,7 +3249,7 @@ class GameState {
       if (!this.serveCurrentOrder()) this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     });
 
-    // Plinko Controls (with 10% Max Bet Cap)
+    // Plinko Controls
     const betInput = document.getElementById("plinko-bet-input");
     document.querySelectorAll(".chip-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -3244,15 +3346,18 @@ class GameState {
     document.getElementById("btn-cfg-wipe").addEventListener("click", () => {
       if (!this.wipeConfirmActive) {
         this.wipeConfirmActive = true;
+        this.wipeConfirmTimer = 4.0;
         this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
       } else {
         this.wipeAllData();
       }
     });
 
-    // Global Keyboard Hotkeys
+    // Global Keyboard Hotkeys (Ignores Ctrl/Cmd/Alt browser shortcuts like Ctrl+R)
     window.addEventListener("keydown", (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (document.activeElement === betInput) return;
+
       if (this.rng && this.rng.cutsceneActive && e.code === "Space") {
         e.preventDefault();
         this.rng.closeCutscene();
@@ -3322,32 +3427,41 @@ class GameState {
     // 3. Coffee Mug Hitbox
     const { x: cx, y: cy } = this.mugCenter;
     if (x >= cx - 95 && x <= cx + 95 && y >= cy - 80 && y <= cy + 80) {
-      const { chance, mult } = this.getCritStats();
-      const isCrit = Math.random() < chance;
-      let gained = this.clickPower * (isCrit ? mult : 1.0);
-
-      // Dynasty d03: 5%/rank chance on click to award 10 seconds of full BPS
-      const d03Chance = this.dynastyPerks[2].count * 0.05;
-      const isCremaSurge = d03Chance > 0 && this.bps > 0 && Math.random() < d03Chance;
-      if (isCremaSurge) {
-        gained += this.bps * 10.0;
-      }
-
-      this.beans = Math.min(this.getMaxStorage(), this.beans + gained);
-      this.lifetimeBeansRun += gained;
-      this.lifetimeBeansAll += gained;
-      this.manualClicks += 1;
-      this.scaleX = isCrit ? 1.20 : 1.14;
-      this.scaleY = isCrit ? 0.80 : 0.86;
-
-      this.quests[0].currentVal += 1;
+      const prevTemp = this.boilerTemp;
       this.boilerTemp = Math.min(100.0, this.boilerTemp + 1.2);
       if (this.boilerTemp >= 100.0) {
         this.overheatLockout = true;
         this.overheatTimer = 5.0;
         this.recalculateRates();
         this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
+      } else if (
+        (prevTemp < 85.0 && this.boilerTemp >= 85.0) ||
+        (prevTemp <= 95.0 && this.boilerTemp > 95.0)
+      ) {
+        // Recalculate immediately when entering or leaving the 85-95C Sweet Spot
+        this.recalculateRates();
       }
+
+      const { chance, mult } = this.getCritStats();
+      const isCrit = Math.random() < chance;
+      let gained = this.clickPower * (isCrit ? mult : 1.0);
+
+      const d03Chance = this.dynastyPerks[2].count * 0.05;
+      const isCremaSurge = d03Chance > 0 && this.bps > 0 && Math.random() < d03Chance;
+      if (isCremaSurge) {
+        gained += this.bps * 10.0;
+      }
+
+      const prevBeans = this.beans;
+      this.beans = Math.min(this.getMaxStorage(), this.beans + gained);
+      const actualGain = Math.max(0, this.beans - prevBeans);
+      this.lifetimeBeansRun += actualGain;
+      this.lifetimeBeansAll += actualGain;
+      this.manualClicks += 1;
+      this.scaleX = isCrit ? 1.20 : 1.14;
+      this.scaleY = isCrit ? 0.80 : 0.86;
+
+      this.quests[0].currentVal += 1;
 
       if (isCremaSurge) {
         this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
@@ -3379,6 +3493,14 @@ class GameState {
   update(dt) {
     this.playTime += dt;
 
+    // Auto-timeout Wipe Data confirmation after 4s
+    if (this.wipeConfirmActive) {
+      this.wipeConfirmTimer -= dt;
+      if (this.wipeConfirmTimer <= 0) {
+        this.wipeConfirmActive = false;
+      }
+    }
+
     if (this.overheatLockout) {
       this.overheatTimer -= dt;
       if (this.overheatTimer <= 0) {
@@ -3394,13 +3516,16 @@ class GameState {
     const maxCap = this.getMaxStorage();
     if (this.beans < maxCap) {
       let gained = this.bps * dt;
-      // Roastery r08: Perpetual Steam Generator (+0.06%/lvl of current balance/sec)
-      if (this.roasteryUpgrades[7].count > 0) {
-        gained += this.beans * (this.roasteryUpgrades[7].count * 0.0006) * dt;
+      // Roastery r08: Capped at 5x BPS so compound interest cannot bypass building progression
+      if (this.roasteryUpgrades[7].count > 0 && this.bps > 0) {
+        const interest = Math.min(this.bps * 5.0, this.beans * (this.roasteryUpgrades[7].count * 0.0006));
+        gained += interest * dt;
       }
+      const prev = this.beans;
       this.beans = Math.min(maxCap, this.beans + gained);
-      this.lifetimeBeansRun += gained;
-      this.lifetimeBeansAll += gained;
+      const actual = Math.max(0, this.beans - prev);
+      this.lifetimeBeansRun += actual;
+      this.lifetimeBeansAll += actual;
     }
 
     if (this.bps > 0) {
@@ -3421,7 +3546,7 @@ class GameState {
       }
     }
 
-    // Dynasty d05: Celestial Barista Guild (Auto-buys cheapest upgrade every 2s / level)
+    // Dynasty d05: Celestial Barista Guild
     if (this.dynastyPerks[4].count > 0) {
       this.guildAutoBuyTimer += dt;
       const interval = 2.0 / this.dynastyPerks[4].count;
@@ -3440,37 +3565,40 @@ class GameState {
       }
     }
 
-    // Cosmic cos3: Chronos Warp Engine (Grants 1 hour of BPS every 300s / level)
+    // Cosmic cos3: Chronos Warp Engine (Respects Silo Cap)
     if (this.cosmicPerks[2].level > 0 && this.bps > 0) {
       this.chronosWarpTimer += dt;
       const warpInterval = 300.0 / this.cosmicPerks[2].level;
       if (this.chronosWarpTimer >= warpInterval) {
         this.chronosWarpTimer = 0.0;
-        const warpGain = this.bps * 3600.0;
-        this.beans = Math.min(maxCap, this.beans + warpGain);
-        this.lifetimeBeansRun += warpGain;
-        this.lifetimeBeansAll += warpGain;
+        const prev = this.beans;
+        this.beans = Math.min(maxCap, this.beans + this.bps * 3600.0);
+        const actualWarp = Math.max(0, this.beans - prev);
+        this.lifetimeBeansRun += actualWarp;
+        this.lifetimeBeansAll += actualWarp;
         this.sfx.playCosmic(this.sfxEnabled, this.sfxVolume);
-        this.popups.push(new FloatingPopup(`CHRONOS WARP! +${formatNum(warpGain, this.notationMode)}`, 240, 220, COLORS.chronos));
+        this.popups.push(new FloatingPopup(`CHRONOS WARP! +${formatNum(actualWarp, this.notationMode)}`, 240, 220, COLORS.chronos));
       }
     }
 
     // Plinko Update
     const payouts = this.plinko.update(dt, this.sfx, this.sfxEnabled, this.sfxVolume);
     for (const p of payouts) {
-      this.addCurrency(p.currency, p.payout);
+      const awarded = this.addCurrency(p.currency, p.payout);
       const cName = p.currency.replace("_", " ").toUpperCase();
-      if (p.mult >= 10.0) {
+      if (awarded <= 0) {
+        this.plinko.popups.push(new FloatingPopup(`0 ${cName} (${p.mult}x)`, p.x, p.y - 15, COLORS.danger));
+      } else if (p.mult >= 10.0) {
         this.addXp(600);
         this.sfx.playFrenzy(this.sfxEnabled, this.sfxVolume);
-        this.plinko.popups.push(new FloatingPopup(`+${formatNum(p.payout, this.notationMode)} ${cName} (10x JACKPOT)!`, p.x, p.y - 25, COLORS.gold));
+        this.plinko.popups.push(new FloatingPopup(`+${formatNum(awarded, this.notationMode)} ${cName} (10x JACKPOT)!`, p.x, p.y - 25, COLORS.gold));
       } else if (p.mult >= 1.8) {
         this.addXp(75);
         this.sfx.playBuy(this.sfxEnabled, this.sfxVolume);
-        this.plinko.popups.push(new FloatingPopup(`+${formatNum(p.payout, this.notationMode)} (${p.mult}x)`, p.x, p.y - 20, COLORS.success));
+        this.plinko.popups.push(new FloatingPopup(`+${formatNum(awarded, this.notationMode)} (${p.mult}x)`, p.x, p.y - 20, COLORS.success));
       } else {
         this.addXp(10);
-        this.plinko.popups.push(new FloatingPopup(`+${formatNum(p.payout, this.notationMode)} (${p.mult}x)`, p.x, p.y - 15, COLORS.textMuted));
+        this.plinko.popups.push(new FloatingPopup(`+${formatNum(awarded, this.notationMode)} (${p.mult}x)`, p.x, p.y - 15, COLORS.textMuted));
       }
     }
 
@@ -3483,12 +3611,13 @@ class GameState {
       }
     }
 
-    // Staff 1: Mochi Auto-Sip
-    if (this.staff[0].level > 0) {
-      const mochiGain = this.clickPower * this.staff[0].level * dt;
-      this.beans = Math.min(maxCap, this.beans + mochiGain);
-      this.lifetimeBeansRun += mochiGain;
-      this.lifetimeBeansAll += mochiGain;
+    // Staff 1: Mochi Auto-Sip (Respects Silo Cap)
+    if (this.staff[0].level > 0 && this.beans < maxCap) {
+      const prev = this.beans;
+      this.beans = Math.min(maxCap, this.beans + this.clickPower * this.staff[0].level * dt);
+      const actualMochi = Math.max(0, this.beans - prev);
+      this.lifetimeBeansRun += actualMochi;
+      this.lifetimeBeansAll += actualMochi;
       const mochiXp = Math.max(0.2, Math.log10(Math.max(10.0, this.clickPower)) * 0.6) * this.staff[0].level * dt;
       this.addXp(mochiXp);
     }
@@ -3528,7 +3657,7 @@ class GameState {
       }
     }
 
-    // Brew Lab Progress
+    // Brew Lab Progress (Increments Quest q05 on completion)
     const speedMult = Math.pow(2.0, this.pantheonPerks[2].count);
     for (const r of this.recipes) {
       if (r.brewing) {
@@ -3536,6 +3665,7 @@ class GameState {
         if (r.progress >= r.brewTime) {
           r.brewing = false;
           r.crafted = true;
+          this.quests[4].currentVal += 1;
           this.addXp(500);
           this.recalculateRates();
           this.sfx.playBrew(this.sfxEnabled, this.sfxVolume);
@@ -3543,13 +3673,20 @@ class GameState {
         }
       }
     }
+    // Prevent q05 soft-lock if all 12 recipes are already mastered
+    if (this.recipes.every((r) => r.crafted) && !this.quests[4].completed) {
+      this.quests[4].currentVal = this.quests[4].targetVal;
+    }
 
-    // Customer Orders
+    // Customer Orders (Always fulfills from mastered recipes or starter House Drip Coffee)
     if (this.activeOrder) {
       this.activeOrder.timeRemaining -= dt;
+      this.activeOrder.age = (this.activeOrder.age || 0) + dt;
       if (this.activeOrder.timeRemaining <= 0) {
         this.activeOrder = null;
         this.orderTimer = 6.0;
+      } else if (this.autoServe && this.activeOrder.age >= 1.5) {
+        this.serveCurrentOrder();
       }
     } else {
       this.orderTimer -= dt;
@@ -3557,20 +3694,34 @@ class GameState {
         const craftedNames = this.recipes.filter((r) => r.crafted).map((r) => r.name);
         const target = craftedNames.length > 0
           ? craftedNames[Math.floor(Math.random() * craftedNames.length)]
-          : "Classic Espresso";
+          : "House Drip Coffee";
         this.activeOrder = {
           recipeName: target,
           rewardMult: 1.2 + Math.random() * 1.3,
-          timeRemaining: 35.0
+          timeRemaining: 35.0,
+          age: 0.0
         };
+      }
+    }
+
+    // Auto-Refresh Claimed Daily Quests into Next Tier
+    for (const q of this.quests) {
+      if (q.completed) {
+        q.refreshTimer += dt;
+        if (q.refreshTimer >= 10.0) {
+          q.completed = false;
+          q.refreshTimer = 0.0;
+          q.currentVal = 0;
+          q.tier += 1;
+          q.targetVal = Math.ceil(q.targetVal * 1.45);
+          q.rewardBeans = Math.max(q.rewardBeans * 2.5, this.bps * 60.0);
+          q.rewardStars += 1;
+        }
       }
     }
 
     if (this.autoVent && this.boilerTemp >= 95.0 && !this.overheatLockout) {
       this.ventBoiler();
-    }
-    if (this.autoServe && this.activeOrder) {
-      this.serveCurrentOrder();
     }
 
     // Spring Physics for Mug & Cat
@@ -3581,7 +3732,6 @@ class GameState {
 
     if (this.rainEnabled) this.weather.update(dt);
 
-    // Croissant Spawn Rate Buffs (dec3, b06, t05)
     let cRate = 1.0 + this.talents[4].rank * 0.08;
     if (this.decor[2].bought) cRate *= this.decor[2].buffVal;
     if (this.recipes[5].crafted) cRate *= this.recipes[5].buffVal;
@@ -3686,6 +3836,7 @@ class GameState {
 
     if (this.rainEnabled) this.weather.drawRain(ctx);
 
+    // Window Sill Line at y = 630
     ctx.strokeStyle = "rgb(200, 190, 180)";
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -3693,13 +3844,13 @@ class GameState {
     ctx.lineTo(440, 630);
     ctx.stroke();
 
-    // Sleeping Cat Mochi
+    // Sleeping Cat Mochi seated flush on y = 630 sill
     const { x: catX, y: catY } = this.catCenter;
     const rx = 34 * this.catScaleX;
     const ry = 22 * this.catScaleY;
     ctx.fillStyle = "rgb(210, 200, 195)";
     ctx.beginPath();
-    ctx.ellipse(catX, catY + 8, rx + 4, ry, 0, 0, Math.PI * 2);
+    ctx.ellipse(catX, catY + 4, rx + 4, ry, 0, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = COLORS.catFur;
@@ -3810,6 +3961,71 @@ class GameState {
     for (const p of this.popups) p.draw(ctx);
   }
 
+  renderMultiplierBreakdown(force = false) {
+    const pop = document.getElementById("multiplier-popover");
+    if (!pop || pop.classList.contains("hidden") || !this.multBreakdown) return;
+
+    const nm = this.notationMode;
+    const b = this.multBreakdown;
+
+    const row = (label, valStr, color = "var(--color-text)") => `
+      <div class="mult-row">
+        <span class="mult-row-label">${label}</span>
+        <span class="mult-row-val" style="color: ${color};">${valStr}</span>
+      </div>
+    `;
+
+    let softCapHtml = "";
+    if (b.isSoftCapped) {
+      const retentionPct = (b.finalMult / b.rawMult) * 100;
+      const pctStr = retentionPct >= 0.01 ? `${retentionPct.toFixed(2)}%` : `${retentionPct.toExponential(2)}%`;
+      softCapHtml = `
+        <div class="mult-softcap-box mult-softcap-active">
+          <strong style="color: var(--color-danger);">Soft-Cap Active (Above ${formatNum(b.softCapStart, nm)}x)</strong><br/>
+          Raw Total: <strong>${formatNum(b.rawMult, nm)}x</strong> &rarr; Compressed: <strong>${formatNum(b.finalMult, nm)}x</strong><br/>
+          Formula: <code>Cap × (Raw / Cap)^0.65</code> (${pctStr} retained)
+        </div>
+      `;
+    } else {
+      softCapHtml = `
+        <div class="mult-softcap-box">
+          <strong style="color: var(--color-success);">Soft-Cap Inactive (100% Efficiency)</strong><br/>
+          Compression begins above <strong>${formatNum(b.softCapStart, nm)}x</strong>
+        </div>
+      `;
+    }
+
+    const html = `
+      <div class="mult-section-label">Prestige &amp; Ascension</div>
+      ${row("Rebirth, Golden & Roastery", `${formatNum(b.rebirthAndGolden, nm)}x`, "var(--color-gold)")}
+      ${row("Dynasty & Pantheon Tiers", `${formatNum(b.dynastyAndPantheon, nm)}x`, "var(--color-pantheon)")}
+      ${row("Total Prestige Multiplier", `${formatNum(b.prestigeTotal, nm)}x`, "var(--color-astral)")}
+
+      <div class="mult-section-label">Cosmic &amp; Transcendent</div>
+      ${row("Cosmic Currencies & Sanctuary", `${formatNum(b.cosmicCurrencyMult, nm)}x`, "var(--color-omega)")}
+      ${row("God-Tier Cosmic Perks", `${formatNum(b.cosmicPerksMult, nm)}x`, "var(--color-aether)")}
+      ${row("Total Cosmic Multiplier", `${formatNum(b.cosmicTotal, nm)}x`, "var(--color-omega)")}
+
+      <div class="mult-section-label">RNG Compendium &amp; Cafe</div>
+      ${row("RNG Global Aura Mult", `${formatNum(b.rngGlobal, nm)}x`, "var(--color-supernova)")}
+      ${row("RNG Dedicated BPS / Click", `${formatNum(b.rngBps, nm)}x / ${formatNum(b.rngClick, nm)}x`, "var(--color-text-light)")}
+      ${row("Cafe Level, Stars, Brew & Sinks", `${formatNum(b.cafePermanent, nm)}x`, "var(--color-accent)")}
+      ${row("Boiler Temp, Frenzy & Mochi Purr", `${formatNum(b.activeTempAndEvents, nm)}x`, "var(--color-success)")}
+
+      <div class="mult-divider"></div>
+      <div class="mult-row mult-row-total">
+        <span class="mult-row-label">Effective Global Multiplier</span>
+        <span class="mult-row-val" style="color: var(--color-gold);">${formatNum(b.finalMult, nm)}x</span>
+      </div>
+      ${softCapHtml}
+    `;
+
+    if (force || html !== this._lastMultPopHtml) {
+      this._lastMultPopHtml = html;
+      document.getElementById("mult-pop-body").innerHTML = html;
+    }
+  }
+
   refreshDOM() {
     const nm = this.notationMode;
 
@@ -3826,7 +4042,7 @@ class GameState {
     const mEl = document.getElementById("multiplier-display");
     mEl.textContent = `${mStr} ▾`;
     mEl.classList.toggle("frenzy-active", this.frenzyTimer > 0 || this.sanctuaryUnlocked);
-    this.renderMultiplierBreakdown();
+    this.renderMultiplierBreakdown(false);
 
     const neededXp = this.getXpNeeded(this.level);
     const xpPct = Math.max(0, Math.min(100, (this.xp / neededXp) * 100));
@@ -3840,6 +4056,7 @@ class GameState {
     xpTextEl.textContent = xpStr;
     xpTextEl.classList.toggle("has-points", availPts > 0);
 
+    // Diff-cached Currency Grid update (avoids 60 FPS DOM churn)
     const currs = [
       [this.goldenBeans, "Golden", COLORS.gold],
       [this.astralCrystals, "Crystals", COLORS.astral],
@@ -3849,15 +4066,18 @@ class GameState {
       [this.chronosCrystals, "Chronos", COLORS.chronos],
       [this.aetherEssence, "Aether", COLORS.aether],
       [this.omegaSingularity, "Omega Void", COLORS.omega],
-      [this.celestialDew, "Dew Drops", COLORS.dew],
+      [this.celestialDew, "Dew", COLORS.dew],
       [this.quasarNectar, "Q-Nectar", COLORS.quasar],
       [this.eternalBeans, "Eternal", COLORS.eternal]
     ].filter(([amt]) => amt > 0);
 
-    const gridEl = document.getElementById("currency-grid");
-    gridEl.innerHTML = currs
+    const nextGridHtml = currs
       .map(([amt, name, col]) => `<div class="curr-badge" style="color:${col}"><span class="curr-dot" style="background:${col}"></span>${formatNum(amt, nm)} ${name}</div>`)
       .join("");
+    if (nextGridHtml !== this._lastCurrencyGridHtml) {
+      this._lastCurrencyGridHtml = nextGridHtml;
+      document.getElementById("currency-grid").innerHTML = nextGridHtml;
+    }
 
     const maxCap = this.getMaxStorage();
     const siloPct = Math.max(0, Math.min(100, (this.beans / maxCap) * 100));
@@ -3965,8 +4185,9 @@ class GameState {
       if (this.activeOrder) {
         titleEl.textContent = `Current Order: ${this.activeOrder.recipeName}`;
         timerEl.textContent = `Time Remaining: ${Math.ceil(this.activeOrder.timeRemaining)}s`;
+        const isStarter = this.activeOrder.recipeName === "House Drip Coffee";
         const rec = this.recipes.find((r) => r.name === this.activeOrder.recipeName);
-        const canServe = rec && rec.crafted;
+        const canServe = isStarter || (rec && rec.crafted);
         serveBtn.classList.remove("hidden");
         serveBtn.textContent = canServe ? "Serve Drink!" : "Recipe Not Mastered";
         serveBtn.disabled = !canServe;
@@ -4126,7 +4347,11 @@ class GameState {
     } else if (this.activeTab === "quests") {
       for (const q of this.quests) {
         const ready = q.currentVal >= q.targetVal && !q.completed;
-        document.getElementById(`prog-${q.qid}`).textContent = q.completed ? "COMPLETED" : `Progress: ${q.currentVal} / ${q.targetVal}`;
+        document.getElementById(`qtitle-${q.qid}`).textContent = `${q.title} (Tier ${q.tier})`;
+        document.getElementById(`qdesc-${q.qid}`).textContent = `${q.desc} — Reward: +${formatNum(q.rewardBeans, nm)} Beans & +${q.rewardStars} ★`;
+        document.getElementById(`prog-${q.qid}`).textContent = q.completed
+          ? `Refreshing in ${Math.ceil(10 - q.refreshTimer)}s...`
+          : `Progress: ${formatNum(q.currentVal, nm)} / ${formatNum(q.targetVal, nm)}`;
         const btn = document.getElementById(`btn-${q.qid}`);
         if (q.completed) {
           btn.textContent = "CLAIMED"; btn.className = "btn btn-sm btn-disabled"; btn.disabled = true;
