@@ -346,7 +346,7 @@ body {
 }
 
 /* =============================================================================
-   3. HUD POPOVERS (MULTIPLIER BREAKDOWN & 18-CURRENCY GLOSSARY)
+   3. HUD POPOVERS (MULTIPLIER BREAKDOWN & 30-CURRENCY GLOSSARY)
    ============================================================================= */
 .hud-popover {
   position: absolute;
@@ -737,6 +737,7 @@ body {
 .accent-danger { background-color: #af4b4b; }
 .accent-star { background-color: #e1a52d; }
 .accent-omega { background-color: #e63c8c; }
+.accent-omniverse { background: linear-gradient(180deg, #ff007f, #00dfd8, #ffd700); }
 
 .card-main {
   flex: 1;
@@ -812,12 +813,14 @@ body {
   padding: 0 12px;
 }
 
-.btn-silo {
-  width: 124px;
+.btn-silo-compact {
+  min-width: 96px;
   height: 30px;
-  font-size: 11px;
+  font-size: 10.5px;
+  padding: 0 6px;
   background-color: #417d50;
   color: #ffffff;
+  white-space: nowrap;
 }
 
 .btn-vent {
@@ -829,9 +832,10 @@ body {
 }
 
 .btn-toggle {
-  width: 52px;
+  width: 48px;
   height: 30px;
-  font-size: 11px;
+  font-size: 10.5px;
+  padding: 0 4px;
   background-color: #dcd2c6;
   color: #5e493e;
   border: 1px solid #c7baab;
@@ -859,7 +863,7 @@ body {
   gap: 5px;
 }
 
-/* Prestige Banners */
+/* Prestige & Omniverse Banners */
 .prestige-bal {
   font-size: 14px;
   font-weight: 700;
@@ -869,6 +873,7 @@ body {
 .text-gold { color: #b88014; }
 .text-astral { color: #436cc2; }
 .text-pantheon { color: #8c44bf; }
+.text-omniverse { color: #d62b7c; }
 .text-danger { color: #af4b4b; }
 
 .prestige-banner {
@@ -888,6 +893,10 @@ body {
 .prestige-banner.ready.banner-gold { background-color: #fff9eb; }
 .prestige-banner.ready.banner-astral { background-color: #eef4ff; }
 .prestige-banner.ready.banner-pantheon { background-color: #faf0ff; }
+.prestige-banner.ready.banner-omniverse {
+  background: linear-gradient(90deg, #fff0f7, #f0faff, #fff9eb);
+  border-color: #e63c8c;
+}
 
 .banner-accent {
   position: absolute;
@@ -1111,22 +1120,22 @@ body {
 }
 
 /* =============================================================================
-   7. PLINKO SIMULATOR STYLES (18 Currencies)
+   7. PLINKO SIMULATOR STYLES (30 Currencies — 5 Rows x 6 Columns)
    ============================================================================= */
 .plinko-curr-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 4px;
-  margin-bottom: 6px;
+  gap: 3px;
+  margin-bottom: 5px;
 }
 
 .plinko-curr-btn {
-  height: 22px;
+  height: 20px;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   background-color: #dcd2c6;
   color: #3a2a22;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
@@ -1221,18 +1230,28 @@ body {
 }
 
 /* =============================================================================
-   8. ORDERS & CONFIG STYLES
+   8. ORDERS, VIP CRITICS & CONFIG STYLES
    ============================================================================= */
 .order-box {
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   gap: 8px;
-  min-height: 120px;
+  min-height: 124px;
+}
+
+.vip-critic-badge {
+  background: linear-gradient(90deg, #d49a2a, #f39c12);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 12px;
+  letter-spacing: 0.4px;
 }
 
 .btn-serve {
-  width: 200px;
+  width: 220px;
   height: 38px;
   background-color: #417d50;
 }
@@ -1326,7 +1345,7 @@ body {
 }
 
 .rng-reel-window {
-  min-height: 108px;
+  min-height: 104px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1340,6 +1359,17 @@ body {
 
 .rng-reel-window.rolling-tick {
   transform: scale(0.985) translateY(2px);
+}
+
+.rng-equipped-bar {
+  margin-top: 7px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #e1d2c3;
+  text-align: center;
 }
 
 .rng-tier-badge {
@@ -1388,7 +1418,6 @@ body {
   transition: width 0.04s linear;
 }
 
-/* Charged Luck Pity Meter */
 .rng-pity-row {
   display: flex;
   align-items: center;
@@ -1421,7 +1450,6 @@ body {
   transition: width 0.12s ease-out;
 }
 
-/* 3 Tiered Roll Mode Buttons */
 .rng-roll-modes {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1453,14 +1481,13 @@ body {
   color: #ffffff;
 }
 
-/* Star Mastery Tag in Compendium */
 .rng-star-rank {
   color: #d49a2a;
   font-weight: 800;
   margin-left: 5px;
 }
 
-/* 15 Rarity Color Themes (10 Original + 5 New Ultra-Rare Tiers) */
+/* 15 Rarity Color Themes */
 .tier-common { background: #8c7b70; color: #ffffff; }
 .tier-uncommon { background: #3e8e57; color: #ffffff; }
 .tier-rare { background: #3670c7; color: #ffffff; }
