@@ -19,7 +19,7 @@
 
         <!-- Single Clean Top Production & Level Overlay -->
         <header id="hud-overlay">
-          <h1 id="beans-display">0 Beans</h1>
+          <h1 id="beans-display">0 Coffee Beans</h1>
           <div id="rates-display">0.0/s &nbsp;|&nbsp; +1.0/sip</div>
           
           <div class="hud-pill-row">
@@ -82,7 +82,6 @@
             <div class="meter-column">
               <div id="boiler-text" class="meter-label heat-cold">Boiler: 70°C (Normal)</div>
               <div class="progress-track stabilizer-track">
-                <!-- Visual Sweet-Spot Zone Indicator (85°C to 95°C = 70% to 90% of 50-100°C track) -->
                 <div class="boiler-sweet-zone" title="Sweet Spot (85°C–95°C): +50% Extraction Bonus!"></div>
                 <div id="boiler-bar-fill" class="progress-fill heat-cold-fill" style="width: 40%;"></div>
               </div>
@@ -225,14 +224,14 @@
               </div>
             </div>
 
-            <!-- MINIGAME A: ESPRESSO SHOT-PULLER (Timing Precision) -->
+            <!-- MINIGAME A: ESPRESSO SHOT-PULLER -->
             <div id="mg-shot" class="minigame-panel active">
               <div class="mg-card">
                 <div class="mg-header">
                   <strong>Espresso Pressure Calibration (9-BAR Sweet Spot)</strong>
                   <span id="shot-streak-label" class="mg-badge">Streak: 0x</span>
                 </div>
-                <p class="mg-desc">Click <strong>PULL SHOT</strong> when the needle enters the green 9-BAR zone! Higher streaks award Arcade Tokens, Beans &amp; +20% Extraction Buffs.</p>
+                <p class="mg-desc">Click <strong>PULL SHOT</strong> when the needle enters the green 9-BAR zone! Higher streaks award Arcade Tokens, Beans &amp; +25% Extraction Buffs.</p>
                 <div class="shot-gauge-track">
                   <div id="shot-sweet-zone" class="shot-sweet-zone" style="left: 42%; width: 16%;"></div>
                   <div id="shot-needle" class="shot-needle" style="left: 0%;"></div>
@@ -244,7 +243,7 @@
               </div>
             </div>
 
-            <!-- MINIGAME B: RAINY BEAN CATCHER (25s Canvas Action Game) -->
+            <!-- MINIGAME B: RAINY BEAN CATCHER -->
             <div id="mg-catcher" class="minigame-panel">
               <div class="mg-card">
                 <div class="mg-header">
@@ -260,7 +259,7 @@
               </div>
             </div>
 
-            <!-- MINIGAME C: BARISTA LATTE MEMORY MATCH (4x3 Card Puzzle) -->
+            <!-- MINIGAME C: BARISTA LATTE MEMORY MATCH -->
             <div id="mg-memory" class="minigame-panel">
               <div class="mg-card">
                 <div class="mg-header">
@@ -276,7 +275,7 @@
               </div>
             </div>
 
-            <!-- MINIGAME D: ROAST PRESS-YOUR-LUCK ("Double or Burn") -->
+            <!-- MINIGAME D: ROAST PRESS-YOUR-LUCK -->
             <div id="mg-roastluck" class="minigame-panel">
               <div class="mg-card">
                 <div class="mg-header">
@@ -331,13 +330,13 @@
             </div>
           </div>
 
-          <!-- 8. RNG TAB (10-Tier Aura Roller & Compendium) -->
+          <!-- 8. RNG TAB (15-Tier Grindy Aura Roller, Craftable Gear & 5-Star Mastery) -->
           <div id="tab-rng" class="tab-pane">
             <div class="pane-header-row">
               <div>
-                <h2 class="pane-title">Celestial Aura RNG Roller</h2>
+                <h2 class="pane-title">Celestial Aura RNG &amp; Gear Forge</h2>
                 <div id="rng-stats-line" class="sub-stat-muted">
-                  Total Rolls: 0 &nbsp;|&nbsp; Luck: 1.00x &nbsp;|&nbsp; RNG Mult: 1.00x
+                  Rolls: 0 &nbsp;|&nbsp; Luck: 1.00x &nbsp;|&nbsp; Speed: 2.20s &nbsp;|&nbsp; Multi-Roll: 1x
                 </div>
               </div>
               <div class="rng-top-controls">
@@ -346,43 +345,76 @@
                   <select id="rng-cutscene-threshold">
                     <option value="4">Legendary+</option>
                     <option value="5">Mythic+</option>
-                    <option value="6">Exotic+</option>
                     <option value="7">Secret+</option>
+                    <option value="9">Nearly Imp.+</option>
+                    <option value="10">Transcendent+</option>
+                    <option value="12">Dimensional+</option>
+                    <option value="98">New Discoveries Only</option>
                     <option value="99">Off</option>
                   </select>
                 </label>
               </div>
             </div>
 
+            <!-- Slot Reel / Rolling Stage -->
             <div id="rng-stage-box" class="rng-stage">
               <div id="rng-reel-window" class="rng-reel-window">
                 <div id="rng-current-tier-badge" class="rng-tier-badge tier-common">READY TO ROLL</div>
                 <div id="rng-current-aura-name" class="rng-aura-name">Click Roll to Test Your Fate</div>
-                <div id="rng-current-odds" class="rng-aura-odds">10 Rarities Available</div>
-                <div id="rng-current-buff" class="rng-aura-buff">Every roll levels up your Compendium permanently!</div>
+                <div id="rng-current-odds" class="rng-aura-odds">15 Rarities Available (Up to 1 in 2.50B)</div>
+                <div id="rng-current-buff" class="rng-aura-buff">Farm duplicate auras to craft Gear &amp; reach 5★ Mastery!</div>
               </div>
 
-              <div class="rng-progress-wrap">
+              <!-- Roll Progress Bar -->
+              <div class="rng-progress-wrap" title="Current Roll Progress">
                 <div id="rng-roll-bar" class="rng-roll-bar" style="width: 0%;"></div>
               </div>
 
-              <div class="rng-action-row">
-                <button id="btn-rng-roll" class="btn btn-gold btn-rng-main" type="button">
-                  ROLL AURA (R)
+              <!-- Charged Luck Pity Milestone Meter (50 = 2x, 250 = 5x, 1000 = 12x Overdrive) -->
+              <div class="rng-pity-row">
+                <span id="rng-pity-label" class="rng-pity-text">Next Luck Charge (2x) in 50 rolls</span>
+                <div class="rng-pity-track">
+                  <div id="rng-pity-bar" class="rng-pity-bar" style="width: 0%;"></div>
+                </div>
+              </div>
+
+              <!-- 3 Tiered Roll Mode Buttons (Standard Bean, Golden Bean, Astral Crystal) -->
+              <div class="rng-roll-modes">
+                <button id="btn-rng-roll" class="btn btn-gold btn-rng-mode" type="button">
+                  Standard Roll [R]
                 </button>
+                <button id="btn-rng-roll-golden" class="btn btn-accent btn-rng-mode" type="button" title="No Common drops + 2.0x Luck!">
+                  Golden Roll (2x Luck)
+                </button>
+                <button id="btn-rng-roll-astral" class="btn btn-astral btn-rng-mode" type="button" title="No Common/Uncommon drops + 4.0x Luck!">
+                  Astral Roll (4x Luck)
+                </button>
+              </div>
+
+              <!-- Speed & Automation Toggles (Gated by Roll Speed Upgrades / Gear) -->
+              <div class="rng-action-row">
                 <button id="btn-rng-auto" class="btn btn-secondary btn-rng-toggle" type="button">
                   Auto-Roll: OFF
                 </button>
-                <button id="btn-rng-fast" class="btn btn-secondary btn-rng-toggle" type="button">
-                  Fast Roll: OFF
+                <button id="btn-rng-fast" class="btn btn-secondary btn-rng-toggle" type="button" title="Requires Turbo Steam Bearings Lv. 10">
+                  🔒 Fast Roll (Lv.10)
+                </button>
+                <button id="btn-rng-turbo" class="btn btn-secondary btn-rng-toggle" type="button" title="Requires Turbo Steam Bearings Lv. 30">
+                  🔒 Turbo Roll (Lv.30)
                 </button>
               </div>
             </div>
 
-            <h3 class="pane-subtitle section-spacer">Fortune &amp; Roll Enhancers</h3>
+            <!-- Craftable RNG Gear & Gauntlets (Consumes Rolled Auras + Currencies) -->
+            <h3 class="pane-subtitle section-spacer">Craftable RNG Gear (Sacrifice Duplicate Auras)</h3>
+            <div id="rng-gear-list" class="card-list compact-list"></div>
+
+            <!-- Base Luck & Speed Upgrades -->
+            <h3 class="pane-subtitle section-spacer">Fortune &amp; Roll Speed Enhancers</h3>
             <div id="rng-upgrades-list" class="card-list compact-list"></div>
 
-            <h3 class="pane-subtitle section-spacer">10-Rarity Aura Compendium (Click to Equip / Preview)</h3>
+            <!-- 15-Rarity Aura Compendium with 1★-5★ Mastery -->
+            <h3 class="pane-subtitle section-spacer">15-Rarity Aura Compendium (1★–5★ Duplicate Mastery)</h3>
             <div id="rng-compendium-list" class="card-list"></div>
           </div>
 

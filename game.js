@@ -1,6 +1,6 @@
 /**
- * Cozy Rainy Cafe: Grand Master Edition — Upgraded Web Engine (game.js — Part 1 of 2)
- * Features: 18 Currencies, 6 Minigames (Arcade + Plinko + RNG), Full Glossary & Cutscenes
+ * Cozy Rainy Cafe: Grand Master Edition — Web Engine (game.js — Part 1 of 3)
+ * Sections 1–6: Formatters, 18-Currency Registry, Icons, Web Audio Synth, Weather, Plinko & Models
  */
 
 // 4-Corner roundRect Polyfill (Supports [tl, tr, br, bl] arrays for rounded mug base)
@@ -80,43 +80,43 @@ function formatNum(val, notation = "suffix") {
 }
 
 const COLORS = {
-  bg: "rgb(238, 232, 224)",
-  windowRain: "rgb(175, 188, 198)",
-  text: "rgb(58, 42, 34)",
-  textLight: "rgb(135, 115, 105)",
-  textMuted: "rgb(180, 165, 155)",
-  accent: "rgb(198, 108, 68)",
-  card: "rgb(252, 249, 246)",
-  cardLocked: "rgb(238, 234, 230)",
-  tokens: "rgb(230, 126, 34)",
-  gold: "rgb(212, 154, 42)",
-  goldHover: "rgb(235, 178, 65)",
-  goldBg: "rgb(255, 249, 235)",
-  astral: "rgb(90, 130, 210)",
-  pantheon: "rgb(165, 95, 215)",
-  darkMatter: "rgb(75, 45, 110)",
-  supernova: "rgb(245, 110, 35)",
-  chronos: "rgb(40, 170, 105)",
-  aether: "rgb(35, 175, 200)",
-  omega: "rgb(230, 60, 140)",
-  celestialDew: "rgb(75, 165, 235)",
-  quasarNectar: "rgb(235, 165, 25)",
-  voidTruffle: "rgb(110, 50, 85)",
-  nebulaHoney: "rgb(215, 135, 30)",
-  solarisAmber: "rgb(230, 95, 45)",
-  genesisCrema: "rgb(145, 70, 210)",
-  eternalBean: "rgb(240, 75, 165)",
-  mug: "rgb(248, 244, 238)",
-  mugShadow: "rgb(215, 208, 200)",
-  coffee: "rgb(52, 32, 20)",
-  crema: "rgb(225, 195, 170)",
-  saucer: "rgb(215, 205, 195)",
-  catFur: "rgb(242, 185, 130)",
-  catEars: "rgb(245, 145, 145)",
-  success: "rgb(65, 125, 80)",
-  danger: "rgb(175, 75, 75)",
-  star: "rgb(225, 165, 45)",
-  heatCold: "rgb(70, 130, 180)"
+  bg: "#eee8e0",
+  windowRain: "#afbcc6",
+  text: "#3a2a22",
+  textLight: "#7d685d",
+  textMuted: "#9e8b80",
+  accent: "#c66c44",
+  card: "#fcf9f6",
+  cardLocked: "#f2ece4",
+  tokens: "#e67e22",
+  gold: "#d49a2a",
+  goldHover: "#ebb241",
+  goldBg: "#fff9eb",
+  astral: "#5a82d2",
+  pantheon: "#a55fd7",
+  darkMatter: "#4b2d6e",
+  supernova: "#f56e23",
+  chronos: "#28aa69",
+  aether: "#23afc8",
+  omega: "#e63c8c",
+  celestialDew: "#4ba5eb",
+  quasarNectar: "#eba519",
+  voidTruffle: "#6e3255",
+  nebulaHoney: "#d7871e",
+  solarisAmber: "#e65f2d",
+  genesisCrema: "#9146d2",
+  eternalBean: "#f04ba5",
+  mug: "#f8f4ee",
+  mugShadow: "#d7d0c8",
+  coffee: "#342014",
+  crema: "#e1c3aa",
+  saucer: "#d7cdc3",
+  catFur: "#f2b982",
+  catEars: "#f59191",
+  success: "#417d50",
+  danger: "#af4b4b",
+  star: "#d99b26",
+  heatCold: "#4682b4"
 };
 
 // Complete 18-Currency Directory (Full Names, Short Labels & Descriptions)
@@ -136,7 +136,7 @@ const CURRENCY_META = [
   { key: "quasar", name: "Quasar Nectar", short: "Quasar", tier: "Cosmic 7", color: COLORS.quasarNectar, desc: "Forged from 100 No Beans + 3 Omega Singularity (+100,000% mult each)." },
   { key: "void_truffle", name: "Void Truffle", short: "Truffles", tier: "Cosmic 8", color: COLORS.voidTruffle, desc: "Forged from 500 Sp Beans + 5 Dark Matter (+150,000% mult & +10% Crit)." },
   { key: "nebula_honey", name: "Nebula Honey", short: "N-Honey", tier: "Cosmic 9", color: COLORS.nebulaHoney, desc: "Forged from 50 Oc Beans + 5 Supernova (+200,000% mult & +25% Tips)." },
-  { key: "solaris_amber", name: "Solaris Amber", short: "S-Amber", tier: "Cosmic 10", color: COLORS.solarisAmber, desc: "Forged from 5 No Beans + 10 Chronos (+300,000% mult & +15% Luck)." },
+  { key: "solaris_amber", name: "Solaris Amber", short: "S-Amber", tier: "Cosmic 10", color: COLORS.solarisAmber, desc: "Forged from 5 No Beans + 10 Chronos (+300,000% mult & +0.5x RNG Luck)." },
   { key: "genesis_crema", name: "Genesis Crema", short: "Genesis", tier: "Cosmic 11", color: COLORS.genesisCrema, desc: "Forged from 500 No Beans + 5 Aether + 5 Truffles (+400,000% mult each)." },
   { key: "eternal", name: "Eternal Bean", short: "Eternal", tier: "Pinnacle", color: COLORS.eternalBean, desc: "Ultimate Cosmic Currency (+500,000% mult; required for Sanctuary)." }
 ];
@@ -211,7 +211,7 @@ function drawCroissantIcon(ctx, cx, cy, size = 24) {
 }
 
 // =============================================================================
-// 3. WEB AUDIO API PROCEDURAL SYNTHESIZER
+// 3. WEB AUDIO API PROCEDURAL SYNTHESIZER (100% Procedural, Zero External Audio)
 // =============================================================================
 
 class PureSoundEngine {
@@ -874,36 +874,35 @@ class EndlessMoneySink {
     return { qty: k, cost: totalCost };
   }
 }
-
 // =============================================================================
-// 7. 10-TIER RNG AURA SYSTEM & PROCEDURAL CUTSCENE ENGINE
+// 7. 15-TIER GRINDY RNG AURA SYSTEM, GEAR FORGE & PROCEDURAL CUTSCENES
 // =============================================================================
 
 const RNG_RARITIES = [
   {
     index: 0, id: "common", tierName: "Common", auraName: "House Blend Steam",
     odds: 2, color: "#9e8c80", cssClass: "tier-common",
-    buffType: "bps", baseBuff: 0.05, desc: "+5% Passive BPS (+1% per dup)"
+    buffType: "bps", baseBuff: 0.05, desc: "+5% Passive BPS"
   },
   {
     index: 1, id: "uncommon", tierName: "Uncommon", auraName: "Velvet Crema Glow",
     odds: 5, color: "#3e8e57", cssClass: "tier-uncommon",
-    buffType: "click", baseBuff: 0.12, desc: "+12% Click Power (+2.5% per dup)"
+    buffType: "click", baseBuff: 0.12, desc: "+12% Click Power"
   },
   {
     index: 2, id: "rare", tierName: "Rare", auraName: "Raindrop Lo-Fi Pulse",
     odds: 15, color: "#3670c7", cssClass: "tier-rare",
-    buffType: "global", baseBuff: 0.25, desc: "+25% Global Multiplier (+5% per dup)"
+    buffType: "global", baseBuff: 0.25, desc: "+25% Global Multiplier"
   },
   {
     index: 3, id: "epic", tierName: "Epic", auraName: "Midnight Roast Vortex",
     odds: 50, color: "#9b59b6", cssClass: "tier-epic",
-    buffType: "global", baseBuff: 0.60, desc: "+60% Global Multiplier (+12% per dup)"
+    buffType: "global", baseBuff: 0.60, desc: "+60% Global Multiplier"
   },
   {
     index: 4, id: "legendary", tierName: "Legendary", auraName: "Golden Sovereign Crown",
     odds: 250, color: "#f39c12", cssClass: "tier-legendary",
-    buffType: "global", baseBuff: 1.50, desc: "+150% Global Mult & +15% Luck"
+    buffType: "global", baseBuff: 1.50, desc: "+150% Global Mult & +0.25 Base Luck"
   },
   {
     index: 5, id: "mythic", tierName: "Mythic", auraName: "Crimson Supernova Core",
@@ -913,22 +912,47 @@ const RNG_RARITIES = [
   {
     index: 6, id: "exotic", tierName: "Exotic", auraName: "Prismatic Nebula Brew",
     odds: 6000, color: "#00d2ff", cssClass: "tier-exotic",
-    buffType: "global", baseBuff: 15.00, desc: "+1,500% Global Mult & +35% Luck"
+    buffType: "global", baseBuff: 15.00, desc: "+1,500% Global Mult & +0.50 Base Luck"
   },
   {
     index: 7, id: "secret", tierName: "Secret", auraName: "Abyssal Cipher Espresso",
     odds: 25000, color: "#c266ff", cssClass: "tier-secret",
-    buffType: "global", baseBuff: 50.00, desc: "+5,000% Global Mult & +100% Crit Power"
+    buffType: "global", baseBuff: 50.00, desc: "+5,000% Global Mult & +1.5x Crit Mult"
   },
   {
     index: 8, id: "very_secret", tierName: "Very Secret", auraName: "Chronos Dimensional Rift",
     odds: 100000, color: "#00ffcc", cssClass: "tier-very-secret",
-    buffType: "global", baseBuff: 250.00, desc: "+25,000% Global Mult & +25% Roll Speed"
+    buffType: "global", baseBuff: 250.00, desc: "+25,000% Global Mult & +20% Roll Speed"
   },
   {
     index: 9, id: "nearly_impossible", tierName: "Nearly Impossible", auraName: "Omniversal Singularity Bean",
     odds: 1000000, color: "#ffdd44", cssClass: "tier-impossible",
-    buffType: "global", baseBuff: 2500.00, desc: "+250,000% Global Mult & +100% Luck"
+    buffType: "global", baseBuff: 2500.00, desc: "+250,000% Global Mult & +1.00 Base Luck"
+  },
+  {
+    index: 10, id: "transcendent", tierName: "Transcendent", auraName: "Astral Seraphim Pour",
+    odds: 5000000, color: "#ffd166", cssClass: "tier-transcendent",
+    buffType: "global", baseBuff: 10000.00, desc: "+1,000,000% Global Mult & +25% Roll Speed"
+  },
+  {
+    index: 11, id: "primordial", tierName: "Primordial", auraName: "Genesis Nebula Core",
+    odds: 25000000, color: "#ff9e00", cssClass: "tier-primordial",
+    buffType: "global", baseBuff: 50000.00, desc: "+5,000,000% Global Mult & +25% Forge Yields"
+  },
+  {
+    index: 12, id: "dimensional", tierName: "Dimensional", auraName: "Void-Shatter Paradox",
+    odds: 100000000, color: "#00f5d4", cssClass: "tier-dimensional",
+    buffType: "global", baseBuff: 250000.00, desc: "+25,000,000% Global Mult & +1 Multi-Roll"
+  },
+  {
+    index: 13, id: "omnipotent", tierName: "Omnipotent", auraName: "Sovereign Eclipse Crown",
+    odds: 500000000, color: "#ffd700", cssClass: "tier-omnipotent",
+    buffType: "global", baseBuff: 1000000.00, desc: "+100,000,000% Global Mult & 10x Soft-Cap"
+  },
+  {
+    index: 14, id: "beyond_reality", tierName: "Beyond Reality", auraName: "The Rainy Architect's True Roast",
+    odds: 2500000000, color: "#ff66cc", cssClass: "tier-beyond-reality",
+    buffType: "global", baseBuff: 10000000.00, desc: "+1,000,000,000% Global Mult & 1.5x Final Luck"
   }
 ];
 
@@ -941,20 +965,63 @@ class RNGManager {
 
     this.isRolling = false;
     this.rollTimer = 0.0;
-    this.rollDuration = 1.35;
+    this.rollDuration = 2.20;
     this.lastTickStep = -1;
-    this.pendingCost = 0;
+    this.activeRollMode = "standard";
+    this.pendingCosts = {};
     this.pendingResult = null;
     this.batchResults = [];
+
     this.autoRoll = false;
     this.fastRoll = false;
+    this.turboRoll = false;
     this.cutsceneThreshold = 4;
 
+    // Gated Speed & Tempered Luck Upgrades (Speed upgrades are now essential!)
     this.upgrades = [
-      { id: "ru1", name: "Four-Leaf Clover Syrup", curr: "beans", baseCost: 500, scale: 1.65, level: 0, max: 50, desc: "+10% RNG Luck per level" },
-      { id: "ru2", name: "Turbo Steam Bearings", curr: "beans", baseCost: 2500, scale: 1.85, level: 0, max: 20, desc: "+8% Roll Animation Speed per level" },
-      { id: "ru3", name: "Golden Dice Infuser", curr: "golden", baseCost: 5, scale: 1.60, level: 0, max: 25, desc: "x1.20 Compounding RNG Luck per level" },
-      { id: "ru4", name: "Astral Quantum Dice", curr: "astral", baseCost: 3, scale: 2.25, level: 0, max: 5, desc: "+1 Simultaneous Roll per spin (Multi-Roll)" }
+      { id: "ru1", name: "Four-Leaf Clover Syrup", curr: "beans", baseCost: 1000, scale: 1.75, level: 0, max: 50, desc: "+0.12 Base Luck per level" },
+      { id: "ru2", name: "Turbo Steam Bearings", curr: "beans", baseCost: 2500, scale: 1.65, level: 0, max: 50, desc: "+6% Roll Speed/lvl (Unlocks Fast at Lv.10, Turbo at Lv.30)" },
+      { id: "ru3", name: "Golden Dice Infuser", curr: "golden", baseCost: 10, scale: 1.65, level: 0, max: 30, desc: "+0.35 Base Luck per level" },
+      { id: "ru4", name: "Astral Quantum Dice", curr: "astral", baseCost: 5, scale: 2.35, level: 0, max: 5, desc: "+1 Simultaneous Roll per spin (Multi-Roll)" }
+    ];
+
+    // Craftable RNG Gear (Consumes duplicate rolled auras + currencies)
+    this.gear = [
+      {
+        id: "rg1", name: "Clover Tamp Charm", crafted: false,
+        luckBonus: 0.50, speedBonus: 0.0, multiRollBonus: 0,
+        currType: "beans", currCost: 2500,
+        auras: [{ idx: 0, qty: 25 }, { idx: 1, qty: 8 }, { idx: 2, qty: 2 }],
+        effectDesc: "+0.50 Base Luck permanently"
+      },
+      {
+        id: "rg2", name: "Brass Escapement Gear", crafted: false,
+        luckBonus: 0.75, speedBonus: 0.25, multiRollBonus: 0,
+        currType: "golden", currCost: 5,
+        auras: [{ idx: 0, qty: 80 }, { idx: 1, qty: 30 }, { idx: 2, qty: 10 }, { idx: 3, qty: 2 }],
+        effectDesc: "+25% Roll Speed & +0.75 Base Luck"
+      },
+      {
+        id: "rg3", name: "Twin-Spout Portafilter", crafted: false,
+        luckBonus: 1.25, speedBonus: 0.0, multiRollBonus: 1,
+        currType: "golden", currCost: 25,
+        auras: [{ idx: 1, qty: 100 }, { idx: 2, qty: 35 }, { idx: 3, qty: 10 }, { idx: 4, qty: 1 }],
+        effectDesc: "+1 Multi-Roll & +1.25 Base Luck"
+      },
+      {
+        id: "rg4", name: "Astral Astrolabe", crafted: false,
+        luckBonus: 2.50, speedBonus: 0.35, multiRollBonus: 0,
+        currType: "astral", currCost: 10,
+        auras: [{ idx: 2, qty: 150 }, { idx: 3, qty: 45 }, { idx: 4, qty: 8 }, { idx: 5, qty: 1 }],
+        effectDesc: "+35% Roll Speed & +2.50 Base Luck"
+      },
+      {
+        id: "rg5", name: "Omniversal Crown Gauntlet", crafted: false,
+        luckBonus: 5.00, speedBonus: 0.50, multiRollBonus: 1,
+        currType: "shards", currCost: 10,
+        auras: [{ idx: 3, qty: 100 }, { idx: 4, qty: 25 }, { idx: 5, qty: 5 }, { idx: 6, qty: 1 }],
+        effectDesc: "+1 Multi-Roll, +50% Roll Speed & +5.00 Base Luck"
+      }
     ];
 
     this.cutsceneActive = false;
@@ -968,40 +1035,143 @@ class RNGManager {
     return Math.max(1, Math.floor(u.baseCost * Math.pow(u.scale, u.level)));
   }
 
-  getRollCost() {
-    return Math.max(10, Math.floor(this.game.bps * 0.5 + this.game.clickPower * 2.0));
+  getRollCosts(mode = "standard") {
+    const beanBase = Math.max(15, Math.floor(this.game.bps * 0.6 + this.game.clickPower * 2.5));
+    if (mode === "golden") {
+      return { beans: beanBase * 5, golden: 2 };
+    }
+    if (mode === "astral") {
+      return { astral: 1, shards: 1 };
+    }
+    return { beans: beanBase };
   }
 
-  getTotalLuck() {
-    let luck = 1.0 + this.upgrades[0].level * 0.10;
-    luck *= Math.pow(1.20, Math.min(25, this.upgrades[2].level));
-    if (this.counts[4] > 0) luck *= 1.15;
-    if (this.counts[6] > 0) luck *= 1.35;
-    if (this.counts[9] > 0) luck *= 2.00;
-    luck *= 1.0 + this.game.talents[4].rank * 0.08;
-    if (this.game.solarisAmber > 0) luck *= 1.0 + this.game.solarisAmber * 0.15;
-    if (this.game.arcade) luck *= this.game.arcade.getArcadeLuckMult();
-    return luck;
+  canAffordRoll(mode = "standard") {
+    const costs = this.getRollCosts(mode);
+    for (const [curr, amt] of Object.entries(costs)) {
+      if (this.game.getCurrencyBalance(curr) < amt) return false;
+    }
+    return true;
+  }
+
+  getPendingRefunds() {
+    return this.isRolling ? { ...this.pendingCosts } : {};
+  }
+
+  // 1★ to 5★ Duplicate Mastery System
+  getStarRank(owned) {
+    if (owned >= 5000) return { stars: 5, mult: 5.00, next: null };
+    if (owned >= 1000) return { stars: 4, mult: 2.50, next: 5000 };
+    if (owned >= 250) return { stars: 3, mult: 1.60, next: 1000 };
+    if (owned >= 50) return { stars: 2, mult: 1.25, next: 250 };
+    if (owned >= 10) return { stars: 1, mult: 1.10, next: 50 };
+    return { stars: 0, mult: 1.00, next: 10 };
+  }
+
+  getMasteredFiveStarCount() {
+    let count = 0;
+    for (let i = 0; i < RNG_RARITIES.length; i++) {
+      if (this.counts[i] >= 5000) count += 1;
+    }
+    return count;
+  }
+
+  // Charged Luck Pity Milestone (Every 50th = 2x, 250th = 5x, 1000th = 12x Overdrive)
+  getNextPityInfo() {
+    const nextRoll = this.totalRolls + 1;
+    if (nextRoll % 1000 === 0) return { mult: 12.0, label: "OVERDRIVE CHARGE READY (12x Luck)!", pct: 100 };
+    if (nextRoll % 250 === 0) return { mult: 5.0, label: "SUPER CHARGE READY (5x Luck)!", pct: 100 };
+    if (nextRoll % 50 === 0) return { mult: 2.0, label: "LUCK CHARGE READY (2x Luck)!", pct: 100 };
+
+    const rem50 = 50 - (this.totalRolls % 50);
+    const pct = ((this.totalRolls % 50) / 50) * 100;
+    const upcomingMult = (this.totalRolls + rem50) % 1000 === 0 ? "12x"
+      : (this.totalRolls + rem50) % 250 === 0 ? "5x" : "2x";
+    return {
+      mult: 1.0,
+      label: `Next Luck Charge (${upcomingMult}) in ${rem50} rolls`,
+      pct
+    };
+  }
+
+  // Balanced, Non-OP Luck Formula (Additive Pool + Smooth Diminishing Curve past 12x)
+  getTotalLuck(modeMult = 1.0, includePity = false) {
+    let rawLuck = 1.0;
+    rawLuck += this.upgrades[0].level * 0.12;
+    rawLuck += this.upgrades[2].level * 0.35;
+
+    for (const g of this.gear) {
+      if (g.crafted) rawLuck += g.luckBonus;
+    }
+
+    if (this.counts[4] > 0) rawLuck += 0.25;
+    if (this.counts[6] > 0) rawLuck += 0.50;
+    if (this.counts[9] > 0) rawLuck += 1.00;
+    rawLuck += this.getMasteredFiveStarCount() * 0.10;
+
+    rawLuck += this.game.talents[4].rank * 0.15;
+    rawLuck += this.game.solarisAmber * 0.50;
+    if (this.game.arcade) {
+      rawLuck += this.game.arcade.shopUpgrades[2].level * 0.15;
+    }
+
+    // Smooth diminishing returns above 12x so Luck stays balanced & rewarding
+    let effectiveLuck = rawLuck > 12.0
+      ? 12.0 + Math.pow(rawLuck - 12.0, 0.72)
+      : rawLuck;
+
+    if (this.counts[14] > 0) effectiveLuck *= 1.50;
+    effectiveLuck *= modeMult;
+
+    if (includePity) {
+      effectiveLuck *= this.getNextPityInfo().mult;
+    }
+    return effectiveLuck;
+  }
+
+  isFastRollUnlocked() {
+    return this.upgrades[1].level >= 10;
+  }
+
+  isTurboRollUnlocked() {
+    return this.upgrades[1].level >= 30;
   }
 
   getRollDuration() {
-    let base = this.fastRoll ? 0.42 : 1.35;
-    base /= 1.0 + this.upgrades[1].level * 0.08;
-    if (this.counts[8] > 0) base *= 0.75;
-    return Math.max(0.15, base);
+    // Starts at 2.20s so Turbo Steam Bearings (ru2) is essential
+    let speedMult = 1.0 + this.upgrades[1].level * 0.06;
+    for (const g of this.gear) {
+      if (g.crafted) speedMult += g.speedBonus;
+    }
+    if (this.counts[8] > 0) speedMult += 0.20;
+    if (this.counts[10] > 0) speedMult += 0.25;
+
+    let dur = 2.20 / speedMult;
+    if (this.turboRoll && this.isTurboRollUnlocked()) {
+      dur *= 0.25;
+    } else if (this.fastRoll && this.isFastRollUnlocked()) {
+      dur *= 0.55;
+    }
+    return Math.max(0.08, dur);
   }
 
   getMultiRollCount() {
-    return 1 + this.upgrades[3].level;
+    let count = 1 + this.upgrades[3].level;
+    for (const g of this.gear) {
+      if (g.crafted) count += g.multiRollBonus;
+    }
+    if (this.counts[12] > 0) count += 1;
+    return count;
   }
 
   getTierMultiplier(idx) {
     const r = RNG_RARITIES[idx];
     const owned = this.counts[idx];
     if (owned <= 0) return 0.0;
-    const dupBonus = 1.0 + Math.log10(owned) * 0.5 + Math.min(owned - 1, 50) * 0.05;
+    const starBonus = this.getStarRank(owned).mult;
+    const logBonus = 1.0 + Math.log10(owned) * 0.35;
     const equipMult = this.equippedIndex === idx ? 2.0 : 1.0;
-    return r.baseBuff * dupBonus * equipMult;
+    return r.baseBuff * starBonus * logBonus * equipMult;
   }
 
   getCombinedBuffs() {
@@ -1020,38 +1190,54 @@ class RNGManager {
     return {
       globalMult: 1.0 + globalBonus,
       clickMult: 1.0 + clickBonus,
-      bpsMult: 1.0 + bpsBonus
+      bpsMult: 1.0 + bpsBonus,
+      softCapMult: this.counts[13] > 0 ? 10.0 : 1.0,
+      cosmicYieldMult: this.counts[11] > 0 ? 1.25 : 1.0
     };
   }
 
-  pickRandomRarity() {
-    const luck = this.getTotalLuck();
-    const weights = RNG_RARITIES.map((r) => {
-      if (r.index === 0) return Math.max(0.15, 1.0 / Math.pow(luck, 0.35));
-      return Math.min(0.65, luck / r.odds);
-    });
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-    let roll = Math.random() * totalWeight;
-    for (let i = RNG_RARITIES.length - 1; i >= 0; i--) {
-      roll -= weights[i];
-      if (roll <= 0) return RNG_RARITIES[i];
+  // True Proportional Rarity Selection (Rarest-to-Common, respects Golden/Astral floor)
+  pickRandomRarity(mode = "standard") {
+    const modeMult = mode === "astral" ? 4.0 : mode === "golden" ? 2.0 : 1.0;
+    const minIndex = mode === "astral" ? 2 : mode === "golden" ? 1 : 0;
+    const totalLuck = this.getTotalLuck(modeMult, true);
+
+    for (let i = RNG_RARITIES.length - 1; i >= minIndex + 1; i--) {
+      const r = RNG_RARITIES[i];
+      const chance = Math.min(0.45, totalLuck / r.odds);
+      if (Math.random() < chance) {
+        return r;
+      }
     }
-    return RNG_RARITIES[0];
+    return RNG_RARITIES[minIndex];
   }
 
-  startRoll(isAuto = false) {
+  startRoll(modeOrIsAuto = "standard", isAuto = false) {
+    let mode = "standard";
+    let autoFlag = isAuto;
+    if (typeof modeOrIsAuto === "boolean") {
+      autoFlag = modeOrIsAuto;
+      mode = this.activeRollMode || "standard";
+    } else {
+      mode = modeOrIsAuto || "standard";
+    }
+
     if (this.isRolling || this.cutsceneActive) return;
 
-    const cost = this.getRollCost();
-    if (this.game.beans < cost) {
-      if (!isAuto) {
+    if (!this.canAffordRoll(mode)) {
+      if (!autoFlag) {
         this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
       }
       return;
     }
 
-    this.game.beans -= cost;
-    this.pendingCost = cost;
+    const costs = this.getRollCosts(mode);
+    for (const [curr, amt] of Object.entries(costs)) {
+      this.game.deductCurrency(curr, amt);
+    }
+
+    this.activeRollMode = mode;
+    this.pendingCosts = costs;
     this.isRolling = true;
     this.rollTimer = 0.0;
     this.rollDuration = this.getRollDuration();
@@ -1061,7 +1247,7 @@ class RNGManager {
     let best = RNG_RARITIES[0];
     this.batchResults = [];
     for (let c = 0; c < rolls; c++) {
-      const picked = this.pickRandomRarity();
+      const picked = this.pickRandomRarity(mode);
       this.batchResults.push(picked);
       if (picked.index > best.index) best = picked;
     }
@@ -1071,10 +1257,12 @@ class RNGManager {
   completeRoll() {
     this.isRolling = false;
     this.rollTimer = 0.0;
-    this.pendingCost = 0;
+    this.pendingCosts = {};
 
+    let hadNewDiscovery = false;
     for (const res of this.batchResults) {
       const isFirstDiscovery = this.counts[res.index] === 0;
+      if (isFirstDiscovery) hadNewDiscovery = true;
       this.totalRolls += 1;
       this.counts[res.index] += 1;
       if (this.equippedIndex === -1 || (isFirstDiscovery && res.index > this.equippedIndex)) {
@@ -1084,16 +1272,44 @@ class RNGManager {
 
     const r = this.pendingResult;
     this.setStageDisplay(r, false);
-    this.game.addXp(15 * (r.index + 1));
+    this.game.addXp(18 * (r.index + 1));
     this.game.recalculateRates();
 
-    if (r.index >= this.cutsceneThreshold) {
+    const shouldPlayCutscene =
+      (this.cutsceneThreshold === 98 && hadNewDiscovery && r.index >= 4) ||
+      (this.cutsceneThreshold < 98 && r.index >= this.cutsceneThreshold);
+
+    if (shouldPlayCutscene) {
       this.triggerCutscene(r);
     } else if (r.index >= 2) {
       this.game.sfx.playBuy(this.game.sfxEnabled, this.game.sfxVolume);
     } else {
       this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.7);
     }
+  }
+
+  craftGear(gearObj) {
+    if (gearObj.crafted) return;
+    if (this.game.getCurrencyBalance(gearObj.currType) < gearObj.currCost) {
+      this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
+      return;
+    }
+    for (const req of gearObj.auras) {
+      if (this.counts[req.idx] < req.qty) {
+        this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
+        return;
+      }
+    }
+
+    this.game.deductCurrency(gearObj.currType, gearObj.currCost);
+    for (const req of gearObj.auras) {
+      this.counts[req.idx] -= req.qty;
+    }
+    gearObj.crafted = true;
+    this.game.addXp(400);
+    this.game.recalculateRates();
+    this.game.sfx.playLevelup(this.game.sfxEnabled, this.game.sfxVolume);
+    this.game.popups.push(new FloatingPopup(`CRAFTED GEAR: ${gearObj.name}!`, 245, 240, COLORS.gold));
   }
 
   resetStageDisplay() {
@@ -1106,8 +1322,8 @@ class RNGManager {
     badge.textContent = "READY TO ROLL";
     nameEl.textContent = "Click Roll to Test Your Fate";
     nameEl.style.color = "#ffffff";
-    oddsEl.textContent = "10 Rarities Available";
-    buffEl.textContent = "Every roll levels up your Compendium permanently!";
+    oddsEl.textContent = "15 Rarities Available (Up to 1 in 2.50B)";
+    buffEl.textContent = "Farm duplicate auras to craft Gear & reach 5★ Mastery!";
     document.getElementById("rng-roll-bar").style.width = "0%";
   }
 
@@ -1122,7 +1338,7 @@ class RNGManager {
     badge.textContent = isRollingPreview ? `ROLLING... (${r.tierName})` : r.tierName;
     nameEl.textContent = r.auraName;
     nameEl.style.color = r.color;
-    oddsEl.textContent = `1 in ${formatNum(r.odds, this.game.notationMode)}`;
+    oddsEl.textContent = `Base Odds: 1 in ${formatNum(r.odds, this.game.notationMode)}`;
     buffEl.textContent = r.desc;
 
     if (isRollingPreview) {
@@ -1145,25 +1361,30 @@ class RNGManager {
       6: [440.0, 554.37, 659.25, 880.0, 1108.73, 1318.51],
       7: [146.83, 155.56, 220.0, 293.66, 440.0],
       8: [261.63, 392.0, 523.25, 783.99, 1046.5, 1567.98],
-      9: [130.81, 261.63, 329.63, 392.0, 523.25, 659.25, 783.99, 1046.5, 1318.5]
+      9: [130.81, 261.63, 329.63, 392.0, 523.25, 659.25, 783.99, 1046.5, 1318.5],
+      10: [329.63, 415.30, 493.88, 659.25, 830.61, 987.77, 1318.51],
+      11: [110.0, 164.81, 220.0, 329.63, 440.0, 659.25, 880.0],
+      12: [293.66, 369.99, 440.0, 587.33, 739.99, 880.0, 1174.66],
+      13: [98.0, 146.83, 196.0, 293.66, 392.0, 587.33, 783.99, 1174.66],
+      14: [130.81, 196.0, 261.63, 329.63, 392.0, 523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98]
     };
     const notes = notesByTier[tierIndex] || notesByTier[4];
-    const dur = tierIndex >= 8 ? 3.8 : 2.4;
+    const dur = tierIndex >= 12 ? 4.5 : tierIndex >= 8 ? 3.6 : 2.4;
 
     notes.forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = tierIndex >= 7 ? "sawtooth" : "triangle";
-      osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+      osc.type = tierIndex >= 10 ? "sine" : tierIndex >= 7 ? "sawtooth" : "triangle";
+      osc.frequency.setValueAtTime(freq, now + idx * 0.08);
 
       const peak = (0.14 / Math.sqrt(notes.length)) * this.game.sfxVolume;
-      gain.gain.setValueAtTime(0.0001, now + idx * 0.09);
-      gain.gain.exponentialRampToValueAtTime(peak, now + idx * 0.09 + 0.08);
+      gain.gain.setValueAtTime(0.0001, now + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(peak, now + idx * 0.08 + 0.08);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.start(now + idx * 0.09);
+      osc.start(now + idx * 0.08);
       osc.stop(now + dur + 0.05);
     });
   }
@@ -1172,7 +1393,7 @@ class RNGManager {
     this.cutsceneActive = true;
     this.cutsceneTier = r;
     this.cutsceneTime = 0.0;
-    this.cutsceneDuration = r.index >= 9 ? 5.5 : r.index >= 7 ? 4.2 : 3.0;
+    this.cutsceneDuration = r.index >= 13 ? 6.0 : r.index >= 9 ? 5.0 : r.index >= 7 ? 4.0 : 3.0;
 
     const overlay = document.getElementById("rng-cutscene-overlay");
     const tierEl = document.getElementById("rng-cutscene-tier");
@@ -1194,10 +1415,10 @@ class RNGManager {
     }
 
     this.particles = [];
-    const count = 40 + r.index * 15;
+    const count = 45 + r.index * 12;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 60 + Math.random() * 280;
+      const speed = 60 + Math.random() * 290;
       this.particles.push({
         x: 560,
         y: 350,
@@ -1233,15 +1454,17 @@ class RNGManager {
     const idx = this.cutsceneTier.index;
 
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = idx >= 7 ? "rgba(5, 2, 12, 0.92)" : "rgba(18, 12, 10, 0.85)";
+    ctx.fillStyle = idx >= 7 ? "rgba(5, 2, 12, 0.93)" : "rgba(18, 12, 10, 0.85)";
     ctx.fillRect(0, 0, W, H);
 
     ctx.save();
+
+    // Tier 4: Legendary Sunburst
     if (idx === 4) {
       ctx.translate(cx, cy);
       for (let i = 0; i < 12; i++) {
         ctx.rotate(Math.PI / 6 + t * 0.05);
-        ctx.fillStyle = "rgba(243, 156, 18, 0.12)";
+        ctx.fillStyle = "rgba(243, 156, 18, 0.14)";
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(-35, -550);
@@ -1258,6 +1481,7 @@ class RNGManager {
       return;
     }
 
+    // Tier 5: Mythic Crimson Shockwaves
     if (idx === 5) {
       for (let ring = 0; ring < 3; ring++) {
         const rad = ((t * 320 + ring * 120) % 580);
@@ -1276,6 +1500,7 @@ class RNGManager {
       return;
     }
 
+    // Tier 6: Exotic Prismatic Geometry
     if (idx === 6) {
       ctx.translate(cx, cy);
       for (let i = 0; i < 24; i++) {
@@ -1291,6 +1516,7 @@ class RNGManager {
       return;
     }
 
+    // Tier 7: Secret Cipher Eclipse
     if (idx === 7) {
       for (const p of this.particles) {
         p.y += 140 * dt;
@@ -1310,6 +1536,7 @@ class RNGManager {
       return;
     }
 
+    // Tier 8: Very Secret Chronos Laser Constellation
     if (idx === 8) {
       ctx.strokeStyle = "rgba(0, 255, 204, 0.55)";
       ctx.lineWidth = 2;
@@ -1329,7 +1556,8 @@ class RNGManager {
       return;
     }
 
-    if (idx >= 9) {
+    // Tier 9: Nearly Impossible Singularity
+    if (idx === 9) {
       const phase = t < 1.1 ? (1.1 - t) / 1.1 : (t - 1.1) * 1.8;
       ctx.translate(cx, cy);
       for (let ring = 1; ring <= 6; ring++) {
@@ -1341,16 +1569,117 @@ class RNGManager {
         ctx.arc(0, 0, r, 0, Math.PI * 2);
         ctx.stroke();
       }
-      for (let b = 0; b < 20; b++) {
-        const a = (b / 20) * Math.PI * 2 - t * 1.2;
-        const hue = (b * 18 + t * 200) % 360;
-        ctx.fillStyle = `hsla(${hue}, 100%, 70%, 0.25)`;
+      ctx.restore();
+      return;
+    }
+
+    // Tier 10: Transcendent Seraphim Wings & Halos
+    if (idx === 10) {
+      ctx.translate(cx, cy);
+      for (let wing = -1; wing <= 1; wing += 2) {
+        for (let feather = 0; feather < 7; feather++) {
+          const ang = wing * (0.3 + feather * 0.16) + Math.sin(t * 3 + feather) * 0.06;
+          ctx.strokeStyle = "rgba(255, 243, 176, 0.75)";
+          ctx.lineWidth = 6 - feather * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(wing * 40, 20);
+          ctx.quadraticCurveTo(wing * (180 + feather * 35), -140 + feather * 25, wing * (320 + feather * 40), -60 + feather * 45);
+          ctx.stroke();
+        }
+      }
+      ctx.strokeStyle = "#ffd166";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.ellipse(0, -135, 110, 24, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    // Tier 11: Primordial Spiral Galaxy
+    if (idx === 11) {
+      ctx.translate(cx, cy);
+      ctx.rotate(t * 0.9);
+      for (let arm = 0; arm < 4; arm++) {
+        ctx.rotate(Math.PI / 2);
+        for (let d = 10; d < 420; d += 12) {
+          const spiralAng = d * 0.018;
+          const sx = Math.cos(spiralAng) * d;
+          const sy = Math.sin(spiralAng) * d;
+          ctx.fillStyle = d < 140 ? "rgba(255, 210, 100, 0.85)" : "rgba(155, 93, 229, 0.7)";
+          ctx.beginPath();
+          ctx.arc(sx, sy, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+      return;
+    }
+
+    // Tier 12: Dimensional Reality Fracture
+    if (idx === 12) {
+      ctx.strokeStyle = "#00f5d4";
+      ctx.lineWidth = 3;
+      for (let crack = 0; crack < 14; crack++) {
+        let px = cx, py = cy;
+        const baseAng = (crack / 14) * Math.PI * 2 + Math.floor(t * 4) * 0.1;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        for (let seg = 1; seg <= 6; seg++) {
+          px += Math.cos(baseAng + Math.sin(seg * 3 + t * 8) * 0.35) * 95;
+          py += Math.sin(baseAng + Math.cos(seg * 3 + t * 8) * 0.35) * 95;
+          ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
+
+    // Tier 13: Omnipotent Total Solar Eclipse
+    if (idx === 13) {
+      const grad = ctx.createRadialGradient(cx, cy, 110, cx, cy, 340);
+      grad.addColorStop(0, "rgba(255, 215, 0, 0.95)");
+      grad.addColorStop(0.4, "rgba(255, 140, 0, 0.45)");
+      grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 340, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#050308";
+      ctx.beginPath();
+      ctx.arc(cx, cy, 118, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#ffd700";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    // Tier 14: Beyond Reality — 4-Phase Omniversal Creation
+    if (idx >= 14) {
+      const phase = t < 1.4 ? (1.4 - t) / 1.4 : (t - 1.4) * 1.6;
+      ctx.translate(cx, cy);
+      for (let b = 0; b < 32; b++) {
+        const a = (b / 32) * Math.PI * 2 + t * 1.4;
+        const hue = (b * 12 + t * 240) % 360;
+        ctx.fillStyle = `hsla(${hue}, 100%, 68%, 0.28)`;
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(a - 0.08) * 680, Math.sin(a - 0.08) * 680);
-        ctx.lineTo(Math.cos(a + 0.08) * 680, Math.sin(a + 0.08) * 680);
+        ctx.lineTo(Math.cos(a - 0.06) * 700, Math.sin(a - 0.06) * 700);
+        ctx.lineTo(Math.cos(a + 0.06) * 700, Math.sin(a + 0.06) * 700);
         ctx.closePath();
         ctx.fill();
+      }
+      for (let ring = 1; ring <= 8; ring++) {
+        const hue = (ring * 45 + t * 220) % 360;
+        ctx.strokeStyle = `hsla(${hue}, 100%, 72%, 0.9)`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, Math.max(10, phase * 85 * ring), 0, Math.PI * 2);
+        ctx.stroke();
       }
       ctx.restore();
     }
@@ -1370,7 +1699,7 @@ class RNGManager {
       const tickStep = Math.floor(Math.pow(pct, 0.65) * 11);
       if (tickStep !== this.lastTickStep && pct < 0.96) {
         this.lastTickStep = tickStep;
-        const previewIdx = Math.floor(Math.random() * Math.min(RNG_RARITIES.length, 5 + Math.floor(pct * 5)));
+        const previewIdx = Math.floor(Math.random() * Math.min(RNG_RARITIES.length, 6 + Math.floor(pct * 9)));
         this.setStageDisplay(RNG_RARITIES[previewIdx], true);
         this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.35);
       }
@@ -1380,11 +1709,36 @@ class RNGManager {
         this.completeRoll();
       }
     } else if (this.autoRoll) {
-      this.startRoll(true);
+      this.startRoll(this.activeRollMode || "standard", true);
     }
   }
 
   buildDOM() {
+    // 1. Craftable RNG Gear Cards
+    const gearContainer = document.getElementById("rng-gear-list");
+    gearContainer.innerHTML = "";
+    this.gear.forEach((g) => {
+      const card = document.createElement("div");
+      card.className = "game-card";
+      card.id = `card-${g.id}`;
+      const reqList = g.auras.map((a) => `${a.qty}× ${RNG_RARITIES[a.idx].tierName}`).join(" + ");
+      card.innerHTML = `
+        <div class="card-accent accent-gold" id="acc-${g.id}"></div>
+        <div class="card-main">
+          <div class="card-top-line">
+            <span class="card-title">${g.name}</span>
+            <span class="card-count" id="st-${g.id}">Uncrafted</span>
+          </div>
+          <div class="card-desc">${g.effectDesc}</div>
+          <div class="card-cost" id="req-${g.id}">Recipe: ${reqList} + ${formatNum(g.currCost)} ${getCurrencyName(g.currType)}</div>
+        </div>
+        <button class="btn btn-sm btn-gold" id="btn-${g.id}" type="button">Craft Gear</button>
+      `;
+      card.querySelector(`#btn-${g.id}`).addEventListener("click", () => this.craftGear(g));
+      gearContainer.appendChild(card);
+    });
+
+    // 2. Luck & Speed Upgrades
     const upgContainer = document.getElementById("rng-upgrades-list");
     upgContainer.innerHTML = "";
     this.upgrades.forEach((u) => {
@@ -1417,6 +1771,7 @@ class RNGManager {
       upgContainer.appendChild(card);
     });
 
+    // 3. 15-Rarity Compendium with 1★–5★ Mastery
     const compContainer = document.getElementById("rng-compendium-list");
     compContainer.innerHTML = "";
     RNG_RARITIES.forEach((r) => {
@@ -1427,7 +1782,7 @@ class RNGManager {
         <div class="card-accent" style="background: ${r.color};"></div>
         <div class="card-main">
           <div class="card-top-line">
-            <span class="card-title" id="rng-cname-${r.index}">??? (${r.tierName})</span>
+            <span class="card-title"><span id="rng-cname-${r.index}">??? (${r.tierName})</span><span id="rng-cstars-${r.index}" class="rng-star-rank"></span></span>
             <span class="card-count" id="rng-ccount-${r.index}" style="color: ${r.color};">1 in ${formatNum(r.odds)}</span>
           </div>
           <div class="card-desc" id="rng-cdesc-${r.index}">${r.desc}</div>
@@ -1451,17 +1806,34 @@ class RNGManager {
       compContainer.appendChild(card);
     });
 
-    document.getElementById("btn-rng-roll").addEventListener("click", () => this.startRoll(false));
-    document.getElementById("btn-rng-auto").addEventListener("click", (e) => {
+    // 4. 3 Tiered Roll Buttons & Gated Speed Toggles
+    document.getElementById("btn-rng-roll").addEventListener("click", () => this.startRoll("standard", false));
+    document.getElementById("btn-rng-roll-golden").addEventListener("click", () => this.startRoll("golden", false));
+    document.getElementById("btn-rng-roll-astral").addEventListener("click", () => this.startRoll("astral", false));
+
+    document.getElementById("btn-rng-auto").addEventListener("click", () => {
       this.autoRoll = !this.autoRoll;
-      e.currentTarget.textContent = `Auto-Roll: ${this.autoRoll ? "ON" : "OFF"}`;
-      e.currentTarget.classList.toggle("active", this.autoRoll);
+      this.syncToggleButtons();
     });
-    document.getElementById("btn-rng-fast").addEventListener("click", (e) => {
+    document.getElementById("btn-rng-fast").addEventListener("click", () => {
+      if (!this.isFastRollUnlocked()) {
+        this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
+        return;
+      }
       this.fastRoll = !this.fastRoll;
-      e.currentTarget.textContent = `Fast Roll: ${this.fastRoll ? "ON" : "OFF"}`;
-      e.currentTarget.classList.toggle("active", this.fastRoll);
+      if (this.fastRoll) this.turboRoll = false;
+      this.syncToggleButtons();
     });
+    document.getElementById("btn-rng-turbo").addEventListener("click", () => {
+      if (!this.isTurboRollUnlocked()) {
+        this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
+        return;
+      }
+      this.turboRoll = !this.turboRoll;
+      if (this.turboRoll) this.fastRoll = false;
+      this.syncToggleButtons();
+    });
+
     document.getElementById("rng-cutscene-threshold").addEventListener("change", (e) => {
       this.cutsceneThreshold = parseInt(e.target.value, 10);
     });
@@ -1471,14 +1843,22 @@ class RNGManager {
   syncToggleButtons() {
     const autoBtn = document.getElementById("btn-rng-auto");
     const fastBtn = document.getElementById("btn-rng-fast");
+    const turboBtn = document.getElementById("btn-rng-turbo");
     const threshSel = document.getElementById("rng-cutscene-threshold");
+
     if (autoBtn) {
       autoBtn.textContent = `Auto-Roll: ${this.autoRoll ? "ON" : "OFF"}`;
       autoBtn.classList.toggle("active", this.autoRoll);
     }
     if (fastBtn) {
-      fastBtn.textContent = `Fast Roll: ${this.fastRoll ? "ON" : "OFF"}`;
-      fastBtn.classList.toggle("active", this.fastRoll);
+      const unlocked = this.isFastRollUnlocked();
+      fastBtn.textContent = unlocked ? `Fast Roll: ${this.fastRoll ? "ON" : "OFF"}` : "🔒 Fast (Bearings Lv.10)";
+      fastBtn.classList.toggle("active", unlocked && this.fastRoll);
+    }
+    if (turboBtn) {
+      const unlocked = this.isTurboRollUnlocked();
+      turboBtn.textContent = unlocked ? `Turbo Roll: ${this.turboRoll ? "ON" : "OFF"}` : "🔒 Turbo (Bearings Lv.30)";
+      turboBtn.classList.toggle("active", unlocked && this.turboRoll);
     }
     if (threshSel) {
       threshSel.value = String(this.cutsceneThreshold);
@@ -1488,17 +1868,56 @@ class RNGManager {
   refreshDOM() {
     if (this.game.activeTab !== "rng") return;
     const nm = this.game.notationMode;
-    const luck = this.getTotalLuck();
-    const { globalMult } = this.getCombinedBuffs();
-    const rollCost = this.getRollCost();
+    const luck = this.getTotalLuck(1.0, false);
+    const dur = this.getRollDuration();
+    const multi = this.getMultiRollCount();
 
     document.getElementById("rng-stats-line").innerHTML =
-      `Total Rolls: ${formatNum(this.totalRolls, nm)} &nbsp;|&nbsp; Luck: ${luck.toFixed(2)}x &nbsp;|&nbsp; RNG Mult: ${formatNum(globalMult, nm)}x`;
+      `Rolls: ${formatNum(this.totalRolls, nm)} &nbsp;|&nbsp; Luck: ${luck.toFixed(2)}x &nbsp;|&nbsp; Speed: ${dur.toFixed(2)}s &nbsp;|&nbsp; Multi: ${multi}x`;
 
-    const rollBtn = document.getElementById("btn-rng-roll");
-    rollBtn.textContent = `ROLL AURA (${formatNum(rollCost, nm)} Beans) [R]`;
-    rollBtn.disabled = this.isRolling || this.game.beans < rollCost;
+    // Pity Meter
+    const pity = this.getNextPityInfo();
+    document.getElementById("rng-pity-label").textContent = pity.label;
+    document.getElementById("rng-pity-bar").style.width = `${pity.pct}%`;
 
+    // 3 Roll Mode Buttons
+    const stdCost = this.getRollCosts("standard");
+    const stdBtn = document.getElementById("btn-rng-roll");
+    stdBtn.textContent = `Standard (${formatNum(stdCost.beans, nm)} Beans) [R]`;
+    stdBtn.disabled = this.isRolling || !this.canAffordRoll("standard");
+
+    const gldCost = this.getRollCosts("golden");
+    const gldBtn = document.getElementById("btn-rng-roll-golden");
+    gldBtn.textContent = `Golden (2 Golden + ${formatNum(gldCost.beans, nm)})`;
+    gldBtn.disabled = this.isRolling || !this.canAffordRoll("golden");
+
+    const astBtn = document.getElementById("btn-rng-roll-astral");
+    astBtn.textContent = `Astral (1 Crystal + 1 Shard)`;
+    astBtn.disabled = this.isRolling || !this.canAffordRoll("astral");
+
+    this.syncToggleButtons();
+
+    // Refresh Craftable Gear
+    for (const g of this.gear) {
+      const hasCurr = this.game.getCurrencyBalance(g.currType) >= g.currCost;
+      const hasAuras = g.auras.every((a) => this.counts[a.idx] >= a.qty);
+      const canCraft = !g.crafted && hasCurr && hasAuras;
+      document.getElementById(`st-${g.id}`).textContent = g.crafted ? "EQUIPPED ✓" : canCraft ? "READY!" : "Locked";
+      const reqEl = document.getElementById(`req-${g.id}`);
+      reqEl.className = `card-cost ${g.crafted || canCraft ? "cost-afford" : "cost-locked"}`;
+      const btn = document.getElementById(`btn-${g.id}`);
+      if (g.crafted) {
+        btn.textContent = "CRAFTED";
+        btn.className = "btn btn-sm btn-success";
+        btn.disabled = true;
+      } else {
+        btn.textContent = "Craft Gear";
+        btn.className = `btn btn-sm ${canCraft ? "btn-gold" : "btn-disabled"}`;
+        btn.disabled = !canCraft;
+      }
+    }
+
+    // Refresh Upgrades
     for (const u of this.upgrades) {
       const cost = this.getUpgradeCost(u);
       const bal = this.game.getCurrencyBalance(u.curr);
@@ -1510,16 +1929,24 @@ class RNGManager {
       btn.disabled = !can;
     }
 
+    // Refresh 15-Tier Compendium with 1★-5★ Mastery & Effective Odds
     for (const r of RNG_RARITIES) {
       const owned = this.counts[r.index];
       const unlocked = owned > 0;
       const isEq = this.equippedIndex === r.index;
+      const starInfo = this.getStarRank(owned);
+      const effOdds = Math.max(1, Math.round(r.odds / luck));
+
       document.getElementById(`rng-cname-${r.index}`).textContent = unlocked
         ? `${r.auraName} [${r.tierName}]`
         : `??? [${r.tierName}]`;
+      document.getElementById(`rng-cstars-${r.index}`).textContent = starInfo.stars > 0
+        ? ` ${"★".repeat(starInfo.stars)}`
+        : "";
       document.getElementById(`rng-ccount-${r.index}`).textContent = unlocked
-        ? `Owned: ${formatNum(owned, nm)} (+${formatNum(this.getTierMultiplier(r.index) * 100, nm)}%)`
-        : `1 in ${formatNum(r.odds, nm)}`;
+        ? `Owned: ${formatNum(owned, nm)}${starInfo.next ? `/${starInfo.next}` : " (MAX)"} | +${formatNum(this.getTierMultiplier(r.index) * 100, nm)}%`
+        : `~1 in ${formatNum(effOdds, nm)}`;
+
       const eqBtn = document.getElementById(`rng-equip-${r.index}`);
       if (!unlocked) {
         eqBtn.textContent = "Locked";
@@ -1579,11 +2006,11 @@ class ArcadeManager {
     this.roastMultipliers = [1.5, 2.5, 4.0, 7.0, 12.0, 25.0];
     this.roastChances = [0.85, 0.72, 0.60, 0.48, 0.36, 0.25];
 
-    // Arcade Token Prize Counter (Permanent Upgrades)
+    // Arcade Token Prize Counter
     this.shopUpgrades = [
       { id: "arc1", name: "Golden Arcade Membership", baseCost: 15, scale: 1.45, level: 0, max: 50, desc: "+25% Global Multiplier per level" },
       { id: "arc2", name: "Double-Shot Token Magnet", baseCost: 25, scale: 1.65, level: 0, max: 20, desc: "+15% more Arcade Tokens won from all minigames" },
-      { id: "arc3", name: "Four-Leaf Token Charm", baseCost: 40, scale: 1.75, level: 0, max: 25, desc: "+12% RNG Aura Luck per level" },
+      { id: "arc3", name: "Four-Leaf Token Charm", baseCost: 40, scale: 1.75, level: 0, max: 25, desc: "+0.15 Base RNG Luck per level" },
       { id: "arc4", name: "Precision Pressure Valve", baseCost: 30, scale: 1.80, level: 0, max: 10, desc: "Widens the Espresso Shot-Puller sweet spot" }
     ];
   }
@@ -1602,17 +2029,12 @@ class ArcadeManager {
     return m;
   }
 
-  getArcadeLuckMult() {
-    return 1.0 + this.shopUpgrades[2].level * 0.12;
-  }
-
   awardTokens(baseAmt) {
     const gained = Math.max(1, Math.round(baseAmt * this.getTokenGainMult()));
     this.game.arcadeTokens += gained;
     return gained;
   }
 
-  // --- Minigame A: Shot-Puller ---
   pullEspressoShot() {
     const needleCenter = this.shotPos;
     const end = this.shotSweetStart + this.shotSweetWidth;
@@ -1635,13 +2057,11 @@ class ArcadeManager {
       document.getElementById("shot-result-text").textContent =
         needleCenter < this.shotSweetStart ? "Under-extracted! Too early." : "Over-extracted! Too late.";
     }
-    // Randomize next sweet spot position
     const baseW = 16.0 + this.shopUpgrades[3].level * 1.5;
     this.shotSweetWidth = Math.min(34.0, baseW);
     this.shotSweetStart = 15.0 + Math.random() * (70.0 - this.shotSweetWidth);
   }
 
-  // --- Minigame B: Rainy Window Bean Catcher ---
   startBeanCatcher() {
     this.catcherActive = true;
     this.catcherTime = 25.0;
@@ -1668,7 +2088,6 @@ class ArcadeManager {
       `Finished! Score ${this.catcherScore} -> +${tokens} Tokens & +${formatNum(beansWon, this.game.notationMode)} Beans!`;
   }
 
-  // --- Minigame C: Latte Art Memory Match ---
   resetMemoryBoard() {
     const deck = [...this.memorySymbols, ...this.memorySymbols];
     for (let i = deck.length - 1; i > 0; i--) {
@@ -1747,7 +2166,6 @@ class ArcadeManager {
     }
   }
 
-  // --- Minigame D: Dark Roast Press-Your-Luck ---
   startRoastRisk() {
     const wager = Math.max(50, Math.floor(this.game.beans * 0.10));
     if (this.game.beans < wager) {
@@ -1777,7 +2195,6 @@ class ArcadeManager {
         return;
       }
     } else {
-      // Scorched!
       this.roastActive = false;
       this.roastPotBeans = 0;
       this.roastPotTokens = 0;
@@ -1831,13 +2248,11 @@ class ArcadeManager {
       }
     }
 
-    // Shot-Puller Needle Oscillation
     const speed = 75.0 + this.shotStreak * 12.0;
     this.shotPos += this.shotDir * speed * dt;
     if (this.shotPos >= 100.0) { this.shotPos = 100.0; this.shotDir = -1; }
     else if (this.shotPos <= 0.0) { this.shotPos = 0.0; this.shotDir = 1; }
 
-    // Bean Catcher Physics
     if (this.catcherActive) {
       this.catcherTime -= dt;
       if (this.catcherTime <= 0) {
@@ -1878,7 +2293,6 @@ class ArcadeManager {
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Rain lines
     ctx.strokeStyle = COLORS.windowRain;
     ctx.lineWidth = 1;
     for (let x = 20; x < 520; x += 45) {
@@ -1888,7 +2302,6 @@ class ArcadeManager {
       ctx.stroke();
     }
 
-    // Falling items
     for (const it of this.catcherItems) {
       if (it.type === "bean") {
         ctx.fillStyle = COLORS.coffee;
@@ -1905,7 +2318,6 @@ class ArcadeManager {
       }
     }
 
-    // Player Mug
     ctx.fillStyle = COLORS.mug;
     ctx.strokeStyle = COLORS.accent;
     ctx.lineWidth = 2;
@@ -1942,7 +2354,6 @@ class ArcadeManager {
     document.getElementById("btn-roastluck-push").addEventListener("click", () => this.pushRoastRisk());
     document.getElementById("btn-roastluck-cash").addEventListener("click", () => this.cashOutRoastRisk());
 
-    // Build Arcade Token Prize Shop
     const shopList = document.getElementById("arcade-shop-list");
     shopList.innerHTML = "";
     this.shopUpgrades.forEach((u) => {
@@ -1954,7 +2365,7 @@ class ArcadeManager {
         <div class="card-main">
           <div class="card-top-line">
             <span class="card-title">${u.name}</span>
-            <span class="card-count" id="lvl-${u.id}" style="color: var(--color-tokens);">Lv. 0/${u.max}</span>
+            <span class="card-count" id="lvl-${u.id}" style="color: #e67e22;">Lv. 0/${u.max}</span>
           </div>
           <div class="card-desc">${u.desc}</div>
         </div>
@@ -2007,7 +2418,7 @@ class ArcadeManager {
   }
 }
 // =============================================================================
-// 9. MASTER GAME ENGINE (game.js — Part 2 of 2: 18 Currencies & Full UI)
+// 9. MASTER GAME ENGINE (game.js — Part 3 of 3: 18 Currencies, 15 RNG Tiers & Loop)
 // =============================================================================
 
 class GameState {
@@ -2090,7 +2501,7 @@ class GameState {
     this.frenzyMult = 1.0;
     this.multBreakdown = null;
 
-    // Canvas Entities (450x652 #scene-canvas, sill at y=650, Mochi flush on sill)
+    // Canvas Entities
     this.catCenter = { x: 88, y: 626 };
     this.catScaleX = 1.0;
     this.catScaleY = 1.0;
@@ -2125,7 +2536,6 @@ class GameState {
     this.activeToast = null;
     this.toastTimer = 0.0;
 
-    // DOM Diff Caches
     this._lastCurrencyGridHtml = "";
     this._lastMultPopHtml = "";
 
@@ -2211,7 +2621,7 @@ class GameState {
       { uid: "t02", name: "Rich Crema Strike", desc: "+1.5x Critical Sip bean multiplier per rank", maxRank: 10, rank: 0 },
       { uid: "t03", name: "Atmospheric Diffusion", desc: "+6% global passive BPS boost per rank", maxRank: 10, rank: 0 },
       { uid: "t04", name: "Customer Magnet", desc: "+15% Customer tips & faster customer order queue", maxRank: 10, rank: 0 },
-      { uid: "t05", name: "Fortune Bean Shaker", desc: "+8% Croissant spawns, +8% RNG Luck & -3% Plinko bias", maxRank: 10, rank: 0 },
+      { uid: "t05", name: "Fortune Bean Shaker", desc: "+8% Croissant spawns, +0.15 Base RNG Luck & -3% Plinko bias", maxRank: 10, rank: 0 },
       { uid: "t06", name: "Cosmic Roasting Lineage", desc: "-5% Rebirth & Dynasty cost requirements", maxRank: 10, rank: 0 }
     ];
 
@@ -2232,7 +2642,6 @@ class GameState {
       new EndlessMoneySink("snk4", "Astral Overdrive Core", 25, 1.40, "astral", "+25% Global Multiplier per level", "total_mult", 0.25)
     ];
 
-    // God-Tier Cosmic Perks using full currency names in descriptions
     this.cosmicPerks = [
       new EndlessMoneySink("cos1", "Abyssal Matter Infuser", 1, 1.25, "dark_matter", "+100% Global Multiplier per Dark Matter Roast", "total_mult", 1.00),
       new EndlessMoneySink("cos2", "Supernova Click Corona", 1, 1.30, "supernova", "+5.0x Crit Sip Multiplier per Supernova Bean", "click_mult", 5.00),
@@ -2302,7 +2711,7 @@ class GameState {
       { aid: "a21", title: "Order Specialist", desc: "Complete 25 customer orders.", check: (s) => s.ordersCompleted >= 25, unlocked: false },
       { aid: "a22", title: "Master Sommelier", desc: "Craft all 12 coffee recipes.", check: (s) => s.recipes.every((r) => r.crafted), unlocked: false },
       { aid: "a23", title: "Arcade Regular", desc: "Collect 50 Arcade Tokens.", check: (s) => s.arcadeTokens >= 50, unlocked: false },
-      { aid: "a24", title: "Genesis Alchemist", desc: "Forge your first Genesis Crema.", check: (s) => s.genesisCrema >= 1, unlocked: false },
+      { aid: "a24", title: "Transcendent Roller", desc: "Roll a Transcendent or rarer Aura.", check: (s) => s.rng && s.rng.counts.slice(10).some((c) => c > 0), unlocked: false },
       { aid: "a25", title: "Sanctuary Guardian", desc: "Awaken the Omniversal Rainy Haven.", check: (s) => s.sanctuaryUnlocked, unlocked: false }
     ];
   }
@@ -2348,7 +2757,7 @@ class GameState {
   }
 
   getCritStats() {
-    const rngCritBonus = this.rng && this.rng.counts[7] > 0 ? 1.0 : 0.0;
+    const rngCritBonus = this.rng && this.rng.counts[7] > 0 ? 1.5 : 0.0;
     const truffleCritBonus = this.voidTruffle * 0.10;
     const chance = Math.min(0.65, 0.01 + this.level * 0.001 + this.talents[0].rank * 0.03);
     const mult = 3.0 + this.talents[1].rank * 1.5 + this.cosmicPerks[1].level * 5.0 + rngCritBonus + truffleCritBonus;
@@ -2363,7 +2772,6 @@ class GameState {
     return Math.max(0.20, d);
   }
 
-  // Unified Balance Getter for all 18 Currencies
   getCurrencyBalance(cType) {
     const map = {
       beans: this.beans,
@@ -2388,7 +2796,6 @@ class GameState {
     return map[cType] ?? this.beans;
   }
 
-  // Unified Currency Adder with Probabilistic Rounding
   addCurrency(cType, amount) {
     if (cType === "beans") {
       const prev = this.beans;
@@ -2588,19 +2995,20 @@ class GameState {
     }
     const cosmicTotal = cosmicCurrencyMult * cosmicPerksMult;
 
-    // 4. RNG Compendium & Equipped Aura
-    let rngGlobal = 1.0, rngClick = 1.0, rngBps = 1.0;
+    // 4. 15-Tier RNG Compendium & Equipped Aura
+    let rngGlobal = 1.0, rngClick = 1.0, rngBps = 1.0, rngSoftCapMult = 1.0;
     if (this.rng) {
       const buffs = this.rng.getCombinedBuffs();
       rngGlobal = buffs.globalMult;
       rngClick = buffs.clickMult;
       rngBps = buffs.bpsMult;
+      rngSoftCapMult = buffs.softCapMult;
       if (this.rng.counts[5] > 0) rngClick *= 1.50;
     }
 
     // 5. Raw Total & Soft-Cap Compression
     const rawMult = prestigeTotal * cafeActiveTotal * cosmicTotal * rngGlobal;
-    const softCapStart = this.sanctuaryUnlocked ? 1e24 : 1e18;
+    const softCapStart = (this.sanctuaryUnlocked ? 1e24 : 1e18) * rngSoftCapMult;
     const isSoftCapped = rawMult > softCapStart;
 
     if (isSoftCapped) {
@@ -2927,11 +3335,13 @@ class GameState {
     });
   }
 
-  // --- Save & Load (LocalStorage for all 18 Currencies & Minigames) ---
+  // --- Save & Load (LocalStorage with 15-Tier RNG & Crafted Gear Support) ---
 
   saveGame() {
     const plinkoRefunds = this.plinko ? this.plinko.getPendingRefundsByCurrency() : {};
-    const rngPendingBeans = this.rng && this.rng.isRolling ? this.rng.pendingCost : 0;
+    const rngRefunds = this.rng ? this.rng.getPendingRefunds() : {};
+
+    const sumRefund = (k) => (plinkoRefunds[k] || 0) + (rngRefunds[k] || 0);
 
     const data = {
       autoVent: this.autoVent,
@@ -2961,28 +3371,28 @@ class GameState {
       particlesEnabled: this.particlesEnabled,
       notationMode: this.notationMode,
       buyMode: this.buyMode,
-      beans: this.beans + (plinkoRefunds.beans || 0) + rngPendingBeans,
+      beans: this.beans + sumRefund("beans"),
       lifetimeBeansRun: this.lifetimeBeansRun,
       lifetimeBeansAll: this.lifetimeBeansAll,
-      customerStars: this.customerStars + (plinkoRefunds.stars || 0),
-      arcadeTokens: this.arcadeTokens + (plinkoRefunds.tokens || 0),
-      goldenBeans: this.goldenBeans + (plinkoRefunds.golden || 0),
+      customerStars: this.customerStars + sumRefund("stars"),
+      arcadeTokens: this.arcadeTokens + sumRefund("tokens"),
+      goldenBeans: this.goldenBeans + sumRefund("golden"),
       lifetimeGolden: this.lifetimeGolden,
-      astralCrystals: this.astralCrystals + (plinkoRefunds.astral || 0),
+      astralCrystals: this.astralCrystals + sumRefund("astral"),
       lifetimeCrystals: this.lifetimeCrystals,
-      starlightShards: this.starlightShards + (plinkoRefunds.shards || 0),
-      darkMatter: this.darkMatter + (plinkoRefunds.dark_matter || 0),
-      supernovaBeans: this.supernovaBeans + (plinkoRefunds.supernova || 0),
-      chronosCrystals: this.chronosCrystals + (plinkoRefunds.chronos || 0),
-      aetherEssence: this.aetherEssence + (plinkoRefunds.aether || 0),
-      omegaSingularity: this.omegaSingularity + (plinkoRefunds.omega || 0),
-      celestialDew: this.celestialDew + (plinkoRefunds.dew || 0),
-      quasarNectar: this.quasarNectar + (plinkoRefunds.quasar || 0),
-      voidTruffle: this.voidTruffle + (plinkoRefunds.void_truffle || 0),
-      nebulaHoney: this.nebulaHoney + (plinkoRefunds.nebula_honey || 0),
-      solarisAmber: this.solarisAmber + (plinkoRefunds.solaris_amber || 0),
-      genesisCrema: this.genesisCrema + (plinkoRefunds.genesis_crema || 0),
-      eternalBeans: this.eternalBeans + (plinkoRefunds.eternal || 0),
+      starlightShards: this.starlightShards + sumRefund("shards"),
+      darkMatter: this.darkMatter + sumRefund("dark_matter"),
+      supernovaBeans: this.supernovaBeans + sumRefund("supernova"),
+      chronosCrystals: this.chronosCrystals + sumRefund("chronos"),
+      aetherEssence: this.aetherEssence + sumRefund("aether"),
+      omegaSingularity: this.omegaSingularity + sumRefund("omega"),
+      celestialDew: this.celestialDew + sumRefund("dew"),
+      quasarNectar: this.quasarNectar + sumRefund("quasar"),
+      voidTruffle: this.voidTruffle + sumRefund("void_truffle"),
+      nebulaHoney: this.nebulaHoney + sumRefund("nebula_honey"),
+      solarisAmber: this.solarisAmber + sumRefund("solaris_amber"),
+      genesisCrema: this.genesisCrema + sumRefund("genesis_crema"),
+      eternalBeans: this.eternalBeans + sumRefund("eternal"),
       manualClicks: this.manualClicks,
       rebirthCount: this.rebirthCount,
       dynastyCount: this.dynastyCount,
@@ -3002,8 +3412,10 @@ class GameState {
         equippedIndex: this.rng.equippedIndex,
         autoRoll: this.rng.autoRoll,
         fastRoll: this.rng.fastRoll,
+        turboRoll: this.rng.turboRoll,
         cutsceneThreshold: this.rng.cutsceneThreshold,
-        upgrades: this.rng.upgrades.map((u) => u.level)
+        upgrades: this.rng.upgrades.map((u) => u.level),
+        gear: Object.fromEntries(this.rng.gear.map((g) => [g.id, g.crafted]))
       },
       arcadeShop: this.arcade.shopUpgrades.map((u) => u.level)
     };
@@ -3115,15 +3527,26 @@ class GameState {
 
       if (data.rng) {
         this.rng.totalRolls = data.rng.totalRolls ?? 0;
-        if (Array.isArray(data.rng.counts)) this.rng.counts = data.rng.counts;
+        if (Array.isArray(data.rng.counts)) {
+          // Safely migrate 10-tier saves to 15-tier array
+          for (let i = 0; i < Math.min(data.rng.counts.length, RNG_RARITIES.length); i++) {
+            this.rng.counts[i] = data.rng.counts[i] || 0;
+          }
+        }
         this.rng.equippedIndex = data.rng.equippedIndex ?? -1;
         this.rng.autoRoll = !!data.rng.autoRoll;
         this.rng.fastRoll = !!data.rng.fastRoll;
+        this.rng.turboRoll = !!data.rng.turboRoll;
         this.rng.cutsceneThreshold = data.rng.cutsceneThreshold ?? 4;
         if (Array.isArray(data.rng.upgrades)) {
           data.rng.upgrades.forEach((lvl, i) => {
             if (this.rng.upgrades[i]) this.rng.upgrades[i].level = lvl;
           });
+        }
+        if (data.rng.gear) {
+          for (const g of this.rng.gear) {
+            g.crafted = !!data.rng.gear[g.id];
+          }
         }
       }
 
@@ -3206,7 +3629,9 @@ class GameState {
     this.rng.equippedIndex = -1;
     this.rng.autoRoll = false;
     this.rng.fastRoll = false;
+    this.rng.turboRoll = false;
     for (const ru of this.rng.upgrades) ru.level = 0;
+    for (const rg of this.rng.gear) rg.crafted = false;
     this.rng.syncToggleButtons();
     this.rng.resetStageDisplay();
 
@@ -3272,7 +3697,7 @@ class GameState {
         <div class="card-main">
           <div class="card-title">${st.name} (${st.role})</div>
           <div class="card-desc">${st.desc}</div>
-          <div class="card-cost" style="color: var(--color-star);" id="lvl-${st.uid}">Level: 0</div>
+          <div class="card-cost" style="color: #d99b26;" id="lvl-${st.uid}">Level: 0</div>
         </div>
         <button class="btn" id="btn-${st.uid}" type="button">150 Beans</button>
       `;
@@ -3347,7 +3772,6 @@ class GameState {
       brewList.appendChild(card);
     });
 
-    // All 18 Currencies in Plinko Selector Grid (3 rows of 6)
     const plinkoGrid = document.getElementById("plinko-currency-grid");
     plinkoGrid.innerHTML = "";
     CURRENCY_META.forEach((meta) => {
@@ -3427,7 +3851,6 @@ class GameState {
       msList.appendChild(card);
     });
 
-    // Transmutation Forge with Full Currency Names
     const transList = document.getElementById("transmute-list");
     transList.innerHTML = "";
     const transmutes = [
@@ -3520,47 +3943,48 @@ class GameState {
       sinksList.appendChild(card);
     });
 
-    // All 12 Celestial Forges with Crystal-Clear Full Currency Names!
+    // 12 Celestial Forges (Supports Primordial +25% Forge Yield Bonus!)
+    const forgeGain = () => (this.rng && this.rng.counts[11] > 0 ? 2 : 1);
     const cForgeList = document.getElementById("cosmic-forges-list");
     cForgeList.innerHTML = "";
     this.cosmicForgeDefs = [
       { id: "cf1", name: "Dark Matter Roast", req: "Requires: 100 Sp Coffee Beans → +1 Dark Matter Roast (+100% Mult)", col: COLORS.darkMatter,
         can: () => this.beans >= 1e26, getOwned: () => this.darkMatter,
-        act: () => { this.beans -= 1e26; this.darkMatter += 1; } },
+        act: () => { this.beans -= 1e26; this.darkMatter += forgeGain(); } },
       { id: "cf2", name: "Supernova Bean", req: "Requires: 10 Oc Coffee Beans → +1 Supernova Bean (+250% Mult)", col: COLORS.supernova,
         can: () => this.beans >= 1e28, getOwned: () => this.supernovaBeans,
-        act: () => { this.beans -= 1e28; this.supernovaBeans += 1; } },
+        act: () => { this.beans -= 1e28; this.supernovaBeans += forgeGain(); } },
       { id: "cf3", name: "Chronos Crystal", req: "Requires: 1 No Coffee Beans → +1 Chronos Crystal (+600% Mult)", col: COLORS.chronos,
         can: () => this.beans >= 1e30, getOwned: () => this.chronosCrystals,
-        act: () => { this.beans -= 1e30; this.chronosCrystals += 1; } },
+        act: () => { this.beans -= 1e30; this.chronosCrystals += forgeGain(); } },
       { id: "cf4", name: "Aetherial Essence", req: "Requires: 100 No Coffee Beans → +1 Aetherial Essence (+1,500% Mult)", col: COLORS.aether,
         can: () => this.beans >= 1e32, getOwned: () => this.aetherEssence,
-        act: () => { this.beans -= 1e32; this.aetherEssence += 1; } },
+        act: () => { this.beans -= 1e32; this.aetherEssence += forgeGain(); } },
       { id: "cf5", name: "Omega Singularity", req: "Requires: 10 Dc Coffee Beans → +1 Omega Singularity (+7,500% Mult)", col: COLORS.omega,
         can: () => this.beans >= 1e34, getOwned: () => this.omegaSingularity,
-        act: () => { this.beans -= 1e34; this.omegaSingularity += 1; } },
+        act: () => { this.beans -= 1e34; this.omegaSingularity += forgeGain(); } },
       { id: "cf6", name: "Celestial Dew", req: "Requires: 1 No Coffee Beans + 10 Starlight Shards → +1 Celestial Dew", col: COLORS.celestialDew,
         can: () => this.beans >= 1e30 && this.starlightShards >= 10, getOwned: () => this.celestialDew,
-        act: () => { this.beans -= 1e30; this.starlightShards -= 10; this.celestialDew += 1; } },
+        act: () => { this.beans -= 1e30; this.starlightShards -= 10; this.celestialDew += forgeGain(); } },
       { id: "cf7", name: "Quasar Nectar", req: "Requires: 100 No Coffee Beans + 3 Omega Singularity → +1 Quasar Nectar", col: COLORS.quasarNectar,
         can: () => this.beans >= 1e32 && this.omegaSingularity >= 3, getOwned: () => this.quasarNectar,
-        act: () => { this.beans -= 1e32; this.omegaSingularity -= 3; this.quasarNectar += 1; } },
+        act: () => { this.beans -= 1e32; this.omegaSingularity -= 3; this.quasarNectar += forgeGain(); } },
       { id: "cf8", name: "Void Truffle", req: "Requires: 500 Sp Coffee Beans + 5 Dark Matter Roast → +1 Void Truffle (+10% Crit)", col: COLORS.voidTruffle,
         can: () => this.beans >= 5e26 && this.darkMatter >= 5, getOwned: () => this.voidTruffle,
-        act: () => { this.beans -= 5e26; this.darkMatter -= 5; this.voidTruffle += 1; } },
+        act: () => { this.beans -= 5e26; this.darkMatter -= 5; this.voidTruffle += forgeGain(); } },
       { id: "cf9", name: "Nebula Honey", req: "Requires: 50 Oc Coffee Beans + 5 Supernova Beans → +1 Nebula Honey (+25% Tips)", col: COLORS.nebulaHoney,
         can: () => this.beans >= 5e28 && this.supernovaBeans >= 5, getOwned: () => this.nebulaHoney,
-        act: () => { this.beans -= 5e28; this.supernovaBeans -= 5; this.nebulaHoney += 1; } },
-      { id: "cf10", name: "Solaris Amber", req: "Requires: 5 No Coffee Beans + 10 Chronos Crystals → +1 Solaris Amber (+15% Luck)", col: COLORS.solarisAmber,
+        act: () => { this.beans -= 5e28; this.supernovaBeans -= 5; this.nebulaHoney += forgeGain(); } },
+      { id: "cf10", name: "Solaris Amber", req: "Requires: 5 No Coffee Beans + 10 Chronos Crystals → +1 Solaris Amber (+0.5x Luck)", col: COLORS.solarisAmber,
         can: () => this.beans >= 5e30 && this.chronosCrystals >= 10, getOwned: () => this.solarisAmber,
-        act: () => { this.beans -= 5e30; this.chronosCrystals -= 10; this.solarisAmber += 1; } },
+        act: () => { this.beans -= 5e30; this.chronosCrystals -= 10; this.solarisAmber += forgeGain(); } },
       { id: "cf11", name: "Genesis Crema", req: "Requires: 500 No Coffee Beans + 5 Aetherial Essence + 5 Void Truffles → +1 Genesis Crema", col: COLORS.genesisCrema,
         can: () => this.beans >= 5e32 && this.aetherEssence >= 5 && this.voidTruffle >= 5, getOwned: () => this.genesisCrema,
-        act: () => { this.beans -= 5e32; this.aetherEssence -= 5; this.voidTruffle -= 5; this.genesisCrema += 1; } },
+        act: () => { this.beans -= 5e32; this.aetherEssence -= 5; this.voidTruffle -= 5; this.genesisCrema += forgeGain(); } },
       { id: "cf12", name: "The Eternal Bean", req: "Requires: 10 Dc Beans + 5 Quasar Nectar + 25 Celestial Dew + 3 Genesis Crema → +1 Eternal Bean", col: COLORS.eternalBean,
         can: () => this.beans >= 1e34 && this.quasarNectar >= 5 && this.celestialDew >= 25 && this.genesisCrema >= 3,
         getOwned: () => this.eternalBeans,
-        act: () => { this.beans -= 1e34; this.quasarNectar -= 5; this.celestialDew -= 25; this.genesisCrema -= 3; this.eternalBeans += 1; } }
+        act: () => { this.beans -= 1e34; this.quasarNectar -= 5; this.celestialDew -= 25; this.genesisCrema -= 3; this.eternalBeans += forgeGain(); } }
     ];
     this.cosmicForgeDefs.forEach((cf) => {
       const card = document.createElement("div");
@@ -3757,7 +4181,6 @@ class GameState {
       this.handleSceneClick(x, y);
     });
 
-    // Multiplier Breakdown & 18-Currency Glossary Popovers
     const multDisplay = document.getElementById("multiplier-display");
     const multPopover = document.getElementById("multiplier-popover");
     const glossaryBtn = document.getElementById("btn-open-glossary");
@@ -3838,7 +4261,6 @@ class GameState {
       if (!this.serveCurrentOrder()) this.sfx.playDeny(this.sfxEnabled, this.sfxVolume);
     });
 
-    // Plinko Controls
     const betInput = document.getElementById("plinko-bet-input");
     document.querySelectorAll(".chip-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -3942,7 +4364,6 @@ class GameState {
       }
     });
 
-    // Global Keyboard Hotkeys (Ignores Ctrl/Cmd/Alt browser shortcuts)
     window.addEventListener("keydown", (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (document.activeElement === betInput) return;
@@ -3957,7 +4378,7 @@ class GameState {
         if (this.activeTab === "plinko") {
           triggerPlinkoDrop(this.plinko.xCenter);
         } else if (this.activeTab === "rng") {
-          this.rng.startRoll(false);
+          this.rng.startRoll("standard", false);
         } else if (this.activeTab === "arcade" && this.arcade.activeGame === "shot") {
           this.arcade.pullEspressoShot();
         } else {
@@ -3968,7 +4389,7 @@ class GameState {
       } else if (e.key === "ArrowRight" && this.activeTab === "arcade" && this.arcade.catcherActive) {
         this.arcade.catcherCupX = Math.min(488, this.arcade.catcherCupX + 32);
       } else if (e.key === "r" || e.key === "R") {
-        if (this.rng) this.rng.startRoll(false);
+        if (this.rng) this.rng.startRoll("standard", false);
       } else if (e.key === "b" || e.key === "B") {
         if (this.activeTab === "roast") this.buyMaxAllRoastery();
         else if (this.activeTab === "dynasty") this.buyMaxAllDynasty();
@@ -4420,7 +4841,6 @@ class GameState {
     ctx.lineTo(450, 650);
     ctx.stroke();
 
-    // Sleeping Cat Mochi seated flush on y = 650 sill
     const { x: catX, y: catY } = this.catCenter;
     const rx = 34 * this.catScaleX;
     const ry = 22 * this.catScaleY;
@@ -4467,8 +4887,8 @@ class GameState {
       const pulse = 92 + Math.sin(performance.now() * 0.004) * 6;
       ctx.save();
       ctx.strokeStyle = eqRarity.color;
-      ctx.globalAlpha = 0.35;
-      ctx.lineWidth = 3 + this.rng.equippedIndex * 0.5;
+      ctx.globalAlpha = 0.4;
+      ctx.lineWidth = 3 + this.rng.equippedIndex * 0.4;
       ctx.beginPath();
       ctx.arc(cx, cy, pulse, 0, Math.PI * 2);
       ctx.stroke();
@@ -4535,7 +4955,6 @@ class GameState {
     for (const p of this.popups) p.draw(ctx);
   }
 
-  // Interactive 18-Currency & Number Suffix Glossary Renderer
   renderCurrencyGlossary() {
     const body = document.getElementById("glossary-pop-body");
     if (!body) return;
@@ -4573,7 +4992,7 @@ class GameState {
     const nm = this.notationMode;
     const b = this.multBreakdown;
 
-    const row = (label, valStr, color = "var(--color-text)") => `
+    const row = (label, valStr, color = "#3a2a22") => `
       <div class="mult-row">
         <span class="mult-row-label">${label}</span>
         <span class="mult-row-val" style="color: ${color};">${valStr}</span>
@@ -4586,7 +5005,7 @@ class GameState {
       const pctStr = retentionPct >= 0.01 ? `${retentionPct.toFixed(2)}%` : `${retentionPct.toExponential(2)}%`;
       softCapHtml = `
         <div class="mult-softcap-box mult-softcap-active">
-          <strong style="color: var(--color-danger);">Soft-Cap Active (Above ${formatNum(b.softCapStart, nm)}x)</strong><br/>
+          <strong style="color: #af4b4b;">Soft-Cap Active (Above ${formatNum(b.softCapStart, nm)}x)</strong><br/>
           Raw Total: <strong>${formatNum(b.rawMult, nm)}x</strong> &rarr; Compressed: <strong>${formatNum(b.finalMult, nm)}x</strong><br/>
           Formula: <code>Cap × (Raw / Cap)^0.65</code> (${pctStr} retained)
         </div>
@@ -4594,7 +5013,7 @@ class GameState {
     } else {
       softCapHtml = `
         <div class="mult-softcap-box">
-          <strong style="color: var(--color-success);">Soft-Cap Inactive (100% Efficiency)</strong><br/>
+          <strong style="color: #417d50;">Soft-Cap Inactive (100% Efficiency)</strong><br/>
           Compression begins above <strong>${formatNum(b.softCapStart, nm)}x</strong>
         </div>
       `;
@@ -4602,25 +5021,25 @@ class GameState {
 
     const html = `
       <div class="mult-section-label">Prestige &amp; Ascension</div>
-      ${row("Rebirth, Golden & Roastery", `${formatNum(b.rebirthAndGolden, nm)}x`, "var(--color-gold)")}
-      ${row("Dynasty & Pantheon Tiers", `${formatNum(b.dynastyAndPantheon, nm)}x`, "var(--color-pantheon)")}
-      ${row("Total Prestige Multiplier", `${formatNum(b.prestigeTotal, nm)}x`, "var(--color-astral)")}
+      ${row("Rebirth, Golden & Roastery", `${formatNum(b.rebirthAndGolden, nm)}x`, "#b88014")}
+      ${row("Dynasty & Pantheon Tiers", `${formatNum(b.dynastyAndPantheon, nm)}x`, "#8c44bf")}
+      ${row("Total Prestige Multiplier", `${formatNum(b.prestigeTotal, nm)}x`, "#436cc2")}
 
       <div class="mult-section-label">12 Cosmic &amp; Transcendent Currencies</div>
-      ${row("Cosmic Currencies & Sanctuary", `${formatNum(b.cosmicCurrencyMult, nm)}x`, "var(--color-omega)")}
-      ${row("God-Tier Cosmic Perks", `${formatNum(b.cosmicPerksMult, nm)}x`, "var(--color-aether)")}
-      ${row("Total Cosmic Multiplier", `${formatNum(b.cosmicTotal, nm)}x`, "var(--color-omega)")}
+      ${row("Cosmic Currencies & Sanctuary", `${formatNum(b.cosmicCurrencyMult, nm)}x`, "#d62b7c")}
+      ${row("God-Tier Cosmic Perks", `${formatNum(b.cosmicPerksMult, nm)}x`, "#23afc8")}
+      ${row("Total Cosmic Multiplier", `${formatNum(b.cosmicTotal, nm)}x`, "#d62b7c")}
 
-      <div class="mult-section-label">RNG Compendium, Arcade &amp; Cafe</div>
-      ${row("RNG Global Aura Mult", `${formatNum(b.rngGlobal, nm)}x`, "var(--color-supernova)")}
-      ${row("RNG Dedicated BPS / Click", `${formatNum(b.rngBps, nm)}x / ${formatNum(b.rngClick, nm)}x`, "var(--color-text-light)")}
-      ${row("Cafe Level, Stars, Brew & Sinks", `${formatNum(b.cafePermanent, nm)}x`, "var(--color-accent)")}
-      ${row("Boiler, Frenzy, Purr & Arcade", `${formatNum(b.activeTempAndEvents, nm)}x`, "var(--color-success)")}
+      <div class="mult-section-label">15-Tier RNG, Arcade &amp; Cafe</div>
+      ${row("RNG Global Aura Mult", `${formatNum(b.rngGlobal, nm)}x`, "#f56e23")}
+      ${row("RNG Dedicated BPS / Click", `${formatNum(b.rngBps, nm)}x / ${formatNum(b.rngClick, nm)}x`, "#7d685d")}
+      ${row("Cafe Level, Stars, Brew & Sinks", `${formatNum(b.cafePermanent, nm)}x`, "#c66c44")}
+      ${row("Boiler, Frenzy, Purr & Arcade", `${formatNum(b.activeTempAndEvents, nm)}x`, "#417d50")}
 
       <div class="mult-divider"></div>
       <div class="mult-row mult-row-total">
         <span class="mult-row-label">Effective Global Multiplier</span>
-        <span class="mult-row-val" style="color: var(--color-gold);">${formatNum(b.finalMult, nm)}x</span>
+        <span class="mult-row-val" style="color: #b88014;">${formatNum(b.finalMult, nm)}x</span>
       </div>
       ${softCapHtml}
     `;
@@ -4661,7 +5080,6 @@ class GameState {
     xpTextEl.textContent = xpStr;
     xpTextEl.classList.toggle("has-points", availPts > 0);
 
-    // 3-Column Active Secondary Currency Grid (All 17 non-bean currencies)
     const activeSecondary = CURRENCY_META
       .filter((m) => m.key !== "beans" && this.getCurrencyBalance(m.key) > 0)
       .map((m) => ({
@@ -4895,7 +5313,7 @@ class GameState {
         costEl.className = `card-cost ${can ? "cost-afford" : "cost-locked"}`;
         const btn = document.getElementById(`btn-${cp.uid}`);
         btn.disabled = !can;
-        btn.style.backgroundColor = can ? COLORS.omega : "";
+        btn.style.backgroundColor = can ? "#e63c8c" : "";
       }
     } else if (this.activeTab === "roast") {
       document.getElementById("roast-bal-header").textContent = `Available: ${formatNum(this.goldenBeans, nm)} Golden Beans`;
