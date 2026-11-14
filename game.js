@@ -4184,7 +4184,7 @@ class GameState {
     if (amt > 0) {
       if (cType === "stars") this.customerStars += amt;
       else if (cType === "tokens") this.arcadeTokens += amt;
-      else if (cType === "golden") { this.goldenBeans += amt; this.lifetimeGolden += amt; }
+      else if (cType === "golden") { this.goldenBeans += amt; }
       else if (cType === "astral") { this.astralCrystals += amt; this.lifetimeCrystals += amt; }
       else if (cType === "shards") this.starlightShards += amt;
       else if (cType === "dark_matter") this.darkMatter += amt;
@@ -4253,9 +4253,8 @@ class GameState {
 
   // Rebalanced Golden Bean & Prestige Thresholds (Anchored to lifetimeGolden, ^0.60-0.65 root)
   getRebirthThreshold() {
-    // Smooth polynomial scaling: never explodes into Sp/Oc even on high-stat saves
-    const scaleFactor = 1.0 + this.rebirthCount * 0.50 + this.goldenBeans * 0.15;
-    const base = 25000.0 * Math.pow(scaleFactor, 2.2);
+    // Scales strictly by Rebirth count (43.75K after 1 rebirth) — immune to Plinko/Crates
+    const base = 25000.0 * Math.pow(1.75, this.rebirthCount);
     const discount = Math.pow(0.95, this.talents[5].rank);
     return Math.max(10000.0, base * discount);
   }
