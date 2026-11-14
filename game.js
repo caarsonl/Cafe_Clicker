@@ -4253,11 +4253,12 @@ class GameState {
 
   // Rebalanced Golden Bean & Prestige Thresholds (Anchored to lifetimeGolden, ^0.60-0.65 root)
   getRebirthThreshold() {
-    const base = 25000.0 * Math.pow(1.08, Math.min(this.lifetimeGolden, 650));
+    // Smooth polynomial scaling: never explodes into Sp/Oc even on high-stat saves
+    const scaleFactor = 1.0 + this.rebirthCount * 0.50 + this.goldenBeans * 0.15;
+    const base = 25000.0 * Math.pow(scaleFactor, 2.2);
     const discount = Math.pow(0.95, this.talents[5].rank);
     return Math.max(10000.0, base * discount);
   }
-
   getPendingGoldenBeans() {
     const th = this.getRebirthThreshold();
     if (this.lifetimeBeansRun < th) return 0;
