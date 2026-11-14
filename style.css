@@ -9,6 +9,21 @@
   -webkit-user-select: none;
 }
 
+input,
+textarea,
+select,
+.selectable-text {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #c66c44;
+  outline-offset: 2px;
+}
+
 body {
   background-color: #d6ccc0;
   color: #3a2a22;
@@ -49,7 +64,7 @@ body {
 }
 
 /* =============================================================================
-   2. LEFT STAGE: WINDOW CANVAS, HUD OVERLAY & STABILIZERS
+   2. LEFT STAGE: WINDOW CANVAS, HUD OVERLAY, CLICK CONTROLS & STABILIZERS
    ============================================================================= */
 #left-stage {
   position: relative;
@@ -76,7 +91,7 @@ body {
   width: 422px;
   padding: 8px 10px;
   border-radius: 14px;
-  background-color: rgba(238, 232, 224, 0.84);
+  background-color: rgba(238, 232, 224, 0.86);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   text-align: center;
@@ -102,7 +117,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 4px;
   margin-top: 5px;
   pointer-events: auto;
 }
@@ -110,10 +126,10 @@ body {
 .hud-pill {
   cursor: pointer;
   font-family: inherit;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   color: #c66c44;
-  padding: 3px 9px;
+  padding: 3px 7px;
   border-radius: 12px;
   background-color: #fcf9f6;
   border: 1px solid rgba(198, 108, 68, 0.45);
@@ -130,6 +146,16 @@ body {
 .hud-pill-guide {
   color: #3a2a22;
   border-color: rgba(58, 42, 34, 0.28);
+}
+
+.hud-pill-stats {
+  color: #b88014;
+  border-color: rgba(212, 154, 42, 0.55);
+}
+
+.hud-pill-equip {
+  color: #417d50;
+  border-color: rgba(65, 125, 80, 0.55);
 }
 
 .hud-pill.frenzy-active {
@@ -173,7 +199,7 @@ body {
 }
 
 #xp-text {
-  font-size: 10.5px;
+  font-size: 11px;
   color: #7d685d;
   margin-top: 2px;
 }
@@ -207,7 +233,7 @@ body {
 }
 
 .curr-badge {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -224,6 +250,102 @@ body {
   display: inline-block;
   transform: rotate(45deg);
   flex-shrink: 0;
+}
+
+/* Active Click Stances & Click-Charged Ultimates */
+#click-controls-bar {
+  position: absolute;
+  left: 38px;
+  top: 234px;
+  width: 414px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.stance-row,
+.ultimate-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  pointer-events: auto;
+}
+
+.stance-btn,
+.ult-btn {
+  height: 24px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid rgba(58, 42, 34, 0.25);
+  background-color: rgba(252, 249, 246, 0.9);
+  color: #3a2a22;
+  transition: background-color 0.12s, transform 0.08s, border-color 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+}
+
+.stance-btn:hover,
+.ult-btn:hover:not(:disabled) {
+  background-color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.stance-btn.active {
+  background-color: #c66c44;
+  color: #ffffff;
+  border-color: #c66c44;
+}
+
+.ult-btn:disabled {
+  background-color: rgba(220, 210, 198, 0.78);
+  color: #7d685d;
+  cursor: not-allowed;
+}
+
+.ult-btn.ready {
+  background: linear-gradient(90deg, #d49a2a, #e67e22);
+  color: #ffffff;
+  border-color: #b88014;
+  box-shadow: 0 0 8px rgba(212, 154, 42, 0.65);
+}
+
+/* Welcome-Back Offline Summary Banner */
+.offline-banner {
+  position: absolute;
+  left: 38px;
+  top: 294px;
+  width: 414px;
+  background-color: #fff9eb;
+  border: 2px solid #d49a2a;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  box-shadow: 0 8px 20px rgba(42, 28, 20, 0.25);
+  z-index: 12;
+  animation: popFadeIn 0.18s ease-out;
+}
+
+.offline-banner-title {
+  font-size: 12.5px;
+  color: #b88014;
+  display: block;
+}
+
+.offline-banner-desc {
+  font-size: 11px;
+  font-weight: 600;
+  color: #3a2a22;
+  margin-top: 2px;
 }
 
 /* Stabilizer Meters */
@@ -346,7 +468,7 @@ body {
 }
 
 /* =============================================================================
-   3. HUD POPOVERS (MULTIPLIER BREAKDOWN & 30-CURRENCY GLOSSARY)
+   3. HUD POPOVERS (MULTIPLIER BREAKDOWN, 30-CURRENCY GLOSSARY & STATS/TROPHIES)
    ============================================================================= */
 .hud-popover {
   position: absolute;
@@ -415,6 +537,7 @@ body {
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .popover-close:hover {
@@ -430,7 +553,7 @@ body {
 }
 
 .mult-section-label {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -498,12 +621,13 @@ body {
 }
 
 .glossary-item-desc {
-  font-size: 10.5px;
+  font-size: 11px;
   color: #6e5a4f;
   margin-top: 2px;
 }
 
-.suffix-grid {
+.suffix-grid,
+.stats-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 4px;
@@ -512,10 +636,30 @@ body {
 .suffix-chip {
   background-color: #e6ded4;
   color: #3a2a22;
-  padding: 3px 6px;
+  padding: 4px 6px;
   border-radius: 4px;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
+}
+
+.achievements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ach-row {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background-color: #f2ece4;
+  border-left: 4px solid #b4a59b;
+  opacity: 0.78;
+}
+
+.ach-row.unlocked {
+  background-color: #eef8f0;
+  border-left-color: #417d50;
+  opacity: 1;
 }
 
 /* =============================================================================
@@ -546,6 +690,7 @@ body {
 }
 
 .tab-btn {
+  position: relative;
   height: 24px;
   background-color: #dcd2c6;
   color: #5e493e;
@@ -568,6 +713,18 @@ body {
   color: #3a2a22;
   font-weight: 700;
   box-shadow: 0 1px 3px rgba(58, 42, 34, 0.14);
+}
+
+.tab-btn.has-alert::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #d49a2a;
+  box-shadow: 0 0 4px rgba(212, 154, 42, 0.9);
 }
 
 .tab-btn.active[data-tab="talents"],
@@ -663,17 +820,17 @@ body {
 
 .buy-mode-group {
   display: flex;
-  gap: 5px;
+  gap: 4px;
 }
 
 .mode-btn {
-  width: 52px;
+  width: 48px;
   height: 28px;
   background-color: #dcd2c6;
   color: #3a2a22;
   border: none;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -810,13 +967,13 @@ body {
 .btn-sm {
   height: 28px;
   font-size: 11px;
-  padding: 0 12px;
+  padding: 0 10px;
 }
 
 .btn-silo-compact {
   min-width: 96px;
   height: 30px;
-  font-size: 10.5px;
+  font-size: 11px;
   padding: 0 6px;
   background-color: #417d50;
   color: #ffffff;
@@ -834,7 +991,7 @@ body {
 .btn-toggle {
   width: 48px;
   height: 30px;
-  font-size: 10.5px;
+  font-size: 11px;
   padding: 0 4px;
   background-color: #dcd2c6;
   color: #5e493e;
@@ -1065,6 +1222,7 @@ body {
   border: 1px solid #b4a59b;
   display: block;
   cursor: ew-resize;
+  touch-action: none;
 }
 
 .memory-grid {
@@ -1120,7 +1278,7 @@ body {
 }
 
 /* =============================================================================
-   7. PLINKO SIMULATOR STYLES (30 Currencies — 5 Rows x 6 Columns)
+   7. PLINKO SIMULATOR STYLES (30 Currencies — 5 Rows x 6 Columns + Risk Modes)
    ============================================================================= */
 .plinko-curr-grid {
   display: grid;
@@ -1130,12 +1288,12 @@ body {
 }
 
 .plinko-curr-btn {
-  height: 20px;
+  height: 22px;
   border: none;
   border-radius: 4px;
   background-color: #dcd2c6;
   color: #3a2a22;
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
@@ -1148,11 +1306,40 @@ body {
   color: #ffffff;
 }
 
+.plinko-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  gap: 6px;
+}
+
 .plinko-risk-text {
   font-size: 11px;
   font-weight: 700;
   color: #c66c44;
-  margin-bottom: 4px;
+}
+
+.plinko-risk-modes {
+  display: flex;
+  gap: 3px;
+}
+
+.plinko-risk-btn {
+  height: 20px;
+  padding: 0 7px;
+  border: none;
+  border-radius: 4px;
+  background-color: #dcd2c6;
+  color: #3a2a22;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.plinko-risk-btn.active {
+  background-color: #c66c44;
+  color: #ffffff;
 }
 
 #plinko-canvas {
@@ -1169,7 +1356,7 @@ body {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
 }
 
 .plinko-bal-text {
@@ -1181,18 +1368,18 @@ body {
 .plinko-input-wrap {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background-color: #fcf9f6;
   border: 1px solid #b4a59b;
   border-radius: 6px;
-  padding: 0 8px;
+  padding: 0 7px;
   height: 34px;
   font-size: 12px;
   font-weight: 600;
 }
 
 #plinko-bet-input {
-  width: 90px;
+  width: 78px;
   border: none;
   background: transparent;
   font-family: inherit;
@@ -1204,12 +1391,12 @@ body {
 
 .plinko-chips {
   display: flex;
-  gap: 4px;
+  gap: 3px;
 }
 
 .chip-btn {
-  min-width: 44px;
-  padding: 0 6px;
+  min-width: 38px;
+  padding: 0 5px;
   height: 34px;
   border: none;
   border-radius: 6px;
@@ -1224,9 +1411,21 @@ body {
   background-color: #fcf9f6;
 }
 
+.plinko-drop-group {
+  display: flex;
+  gap: 4px;
+}
+
 .btn-drop {
   height: 38px;
-  min-width: 112px;
+  min-width: 98px;
+  padding: 0 8px;
+}
+
+.btn-drop-multi {
+  height: 38px;
+  min-width: 40px;
+  padding: 0 8px;
 }
 
 /* =============================================================================
@@ -1366,7 +1565,7 @@ body {
   padding: 4px 8px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.07);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   color: #e1d2c3;
   text-align: center;
@@ -1430,7 +1629,7 @@ body {
 }
 
 .rng-pity-text {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   color: #ebb241;
   white-space: nowrap;
@@ -1569,7 +1768,254 @@ body {
   100% { background-position: 0% 50%; }
 }
 
-/* Full-Screen Cutscene Overlay */
+/* =============================================================================
+   10. BEANS EQUIPMENT ARMORY GUI (20 RARITIES, SYNERGIES & 2-SLOT LOADOUT)
+   ============================================================================= */
+.bean-equip-modal {
+  position: absolute;
+  left: 490px;
+  top: 0;
+  width: 630px;
+  height: 700px;
+  background-color: #e6ded4;
+  border-left: 2px solid #c66c44;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  z-index: 30;
+  animation: popFadeIn 0.14s ease-out;
+}
+
+.be-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #cfc3b4;
+  padding-bottom: 6px;
+}
+
+.be-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #3a2a22;
+}
+
+.be-subtitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6e5a4f;
+}
+
+.be-slots-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.be-slot-card {
+  background-color: #fcf9f6;
+  border: 2px solid #c66c44;
+  border-radius: 8px;
+  padding: 7px 10px;
+  min-height: 76px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.be-slot-card.empty {
+  background-color: #f2ece4;
+  border: 1.5px dashed #b4a59b;
+}
+
+.be-slot-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #7d685d;
+}
+
+.be-slot-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #3a2a22;
+  margin-top: 2px;
+}
+
+.be-slot-stats {
+  font-size: 11px;
+  color: #417d50;
+  font-weight: 700;
+  margin: 2px 0 4px;
+}
+
+.be-synergy-banner {
+  background-color: #eef8f0;
+  border: 1px solid rgba(65, 125, 80, 0.45);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #2f7d49;
+  text-align: center;
+}
+
+.be-combined-stats {
+  background-color: #fff9eb;
+  border: 1px solid rgba(212, 154, 42, 0.5);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #3a2a22;
+  text-align: center;
+}
+
+.be-roll-stage {
+  background: linear-gradient(180deg, #2a201c 0%, #1c1412 100%);
+  border: 2px solid #d49a2a;
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: #ffffff;
+}
+
+.be-roll-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-height: 50px;
+  justify-content: center;
+}
+
+.be-rarity-pill {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 10px;
+  border-radius: 12px;
+  color: #ffffff;
+  margin-bottom: 3px;
+}
+
+.be-roll-name {
+  font-size: 14.5px;
+  font-weight: 800;
+}
+
+.be-roll-stat-preview {
+  font-size: 11px;
+  color: #e1d2c3;
+  margin-top: 2px;
+}
+
+.be-roll-bar-track {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 3px;
+  margin: 6px 0 5px;
+  overflow: hidden;
+}
+
+.be-roll-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #d49a2a, #41a05f, #00d2ff);
+  transition: width 0.04s linear;
+}
+
+.be-pity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+
+.be-pity-text {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #ebb241;
+  white-space: nowrap;
+}
+
+.be-pity-track {
+  flex: 1;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.be-pity-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #41a05f, #ebb241);
+  transition: width 0.12s ease-out;
+}
+
+.be-roll-controls {
+  display: grid;
+  grid-template-columns: 1.3fr 0.55fr 1.15fr 0.85fr 1.05fr;
+  gap: 4px;
+}
+
+.be-roll-controls .btn {
+  padding: 4px 5px;
+  font-size: 10.5px;
+  height: 30px;
+}
+
+.be-roll-controls .btn.active {
+  background-color: #417d50;
+  color: #ffffff;
+}
+
+.be-catalog-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-right: 4px;
+}
+
+.be-catalog-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.be-catalog-scroll::-webkit-scrollbar-thumb {
+  background: #c66c44;
+  border-radius: 3px;
+}
+
+.be-item-card {
+  min-height: 52px;
+  padding: 6px 10px 6px 14px;
+}
+
+.be-item-card.is-equipped {
+  background-color: #fff9eb;
+  border-color: #d49a2a;
+}
+
+.be-equip-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: #417d50;
+  color: #ffffff;
+  margin-left: 6px;
+}
+
+/* =============================================================================
+   11. FULL-SCREEN CUTSCENE OVERLAY & SCREEN SHAKE
+   ============================================================================= */
 .rng-cutscene {
   position: absolute;
   inset: 0;

@@ -17,7 +17,7 @@
         <!-- Interactive Canvas: Sky, Rain, Shimmering Drops, Decor, Cat, Croissant, Mug & Popups -->
         <canvas id="scene-canvas" width="450" height="652"></canvas>
 
-        <!-- Single Clean Top Production & Level Overlay -->
+        <!-- Top Production, Level & Quick-Modal Overlay -->
         <header id="hud-overlay">
           <h1 id="beans-display">0 Coffee Beans</h1>
           <div id="rates-display">0.0/s &nbsp;|&nbsp; +1.0/sip</div>
@@ -27,7 +27,13 @@
               Multiplier: 1.0x ▾
             </button>
             <button id="btn-open-glossary" class="hud-pill hud-pill-guide" type="button" title="View all 30 Currencies & Number Suffixes">
-              30-Currency Guide 📖
+              30-Currency 📖
+            </button>
+            <button id="btn-open-stats" class="hud-pill hud-pill-stats" type="button" title="View Lifetime Stats & 25 Achievements">
+              Trophies 🏆
+            </button>
+            <button id="btn-open-bean-equip" class="hud-pill hud-pill-equip" type="button" title="Roll & Equip up to 2 Bean Equipments">
+              Bean Gear 🫘
             </button>
           </div>
 
@@ -43,6 +49,41 @@
           <!-- Compact 3-Column Active Currency Grid (Shows Full Names + Color Badges) -->
           <div id="currency-grid" aria-live="polite"></div>
         </header>
+
+        <!-- Active Click Stances & Click-Charged Ultimates Bar -->
+        <div id="click-controls-bar" aria-label="Barista Click Stances and Ultimates">
+          <div class="stance-row" role="group" aria-label="Click Stances">
+            <button class="stance-btn active" data-stance="turbo" type="button" title="[1] Turbo Shot: 2.5x Click Power, +2.4°C Heat, free Plinko drop every 10 clicks">
+              ⚡ Turbo [1]
+            </button>
+            <button class="stance-btn" data-stance="velvet" type="button" title="[2] Velvet Extract: Half Boiler Heat, +20% Crit Chance, 3x Velvet Crema Essence">
+              🌿 Velvet [2]
+            </button>
+            <button class="stance-btn" data-stance="fortune" type="button" title="[3] Fortune Tap: -0.15s RNG Roll timer & spawns Star Sparks per click">
+              🍀 Fortune [3]
+            </button>
+          </div>
+          <div class="ultimate-row" role="group" aria-label="Click-Charged Ultimates">
+            <button id="btn-ult-overdrive" class="ult-btn" type="button" disabled title="40 Clicks: 8s Double-Hits & freezes Boiler at 90°C">
+              🔥 Overdrive (0/40)
+            </button>
+            <button id="btn-ult-magnet" class="ult-btn" type="button" disabled title="80 Clicks: Spawns 5 Raindrop Pearls & 2 Croissants">
+              🌧️ Rain Magnet (0/80)
+            </button>
+            <button id="btn-ult-mochi" class="ult-btn" type="button" disabled title="120 Clicks: Mochi auto-clicks mug at 15x speed for 10s">
+              🐾 Paw Barrage (0/120)
+            </button>
+          </div>
+        </div>
+
+        <!-- Dismissible Welcome-Back Offline Summary Banner -->
+        <div id="offline-banner" class="offline-banner hidden" role="status">
+          <div class="offline-banner-main">
+            <strong class="offline-banner-title">Welcome Back to the Cafe!</strong>
+            <div id="offline-summary-text" class="offline-banner-desc">Earned 0 Coffee Beans while away.</div>
+          </div>
+          <button id="btn-close-offline" class="popover-close" type="button" aria-label="Dismiss">×</button>
+        </div>
 
         <!-- Clickable Multiplier Breakdown Popover -->
         <aside id="multiplier-popover" class="hud-popover hidden" aria-label="Multiplier Breakdown">
@@ -60,6 +101,19 @@
             <button id="btn-close-glossary" class="popover-close" type="button" aria-label="Close">×</button>
           </div>
           <div id="glossary-pop-body" class="popover-body glossary-scroll"></div>
+        </aside>
+
+        <!-- Interactive Stats & 25-Achievement Compendium Popover -->
+        <aside id="stats-popover" class="hud-popover glossary-popover hidden" aria-label="Stats and Achievements">
+          <div class="popover-header">
+            <span class="popover-title">Cafe Stats &amp; Achievements (0/25)</span>
+            <button id="btn-close-stats" class="popover-close" type="button" aria-label="Close">×</button>
+          </div>
+          <div id="stats-pop-body" class="popover-body glossary-scroll">
+            <div id="stats-summary-grid" class="stats-summary-grid"></div>
+            <div class="mult-section-label">Trophy Case (25 Achievements)</div>
+            <div id="achievements-list" class="achievements-list"></div>
+          </div>
         </aside>
 
         <!-- Bottom Stabilizer Meters (Silo Storage & Espresso Boiler with Sweet-Spot Marker) -->
@@ -115,24 +169,24 @@
         <!-- Dual-Row 16-Tab Navigation Shelf -->
         <nav id="tab-shelf" aria-label="Cafe Management Tabs">
           <div class="tab-row" id="tab-row-0">
-            <button class="tab-btn active" data-tab="menu" type="button">Menu</button>
-            <button class="tab-btn" data-tab="staff" type="button">Staff</button>
-            <button class="tab-btn" data-tab="decor" type="button">Decor</button>
-            <button class="tab-btn" data-tab="brew" type="button">Brew</button>
-            <button class="tab-btn" data-tab="orders" type="button">Orders</button>
-            <button class="tab-btn" data-tab="arcade" type="button">Arcade 🎮</button>
-            <button class="tab-btn" data-tab="plinko" type="button">Plinko</button>
-            <button class="tab-btn" data-tab="rng" type="button">RNG ★</button>
+            <button class="tab-btn active" data-tab="menu" type="button" title="Buy 30 Cafe Equipment Upgrades">Menu</button>
+            <button class="tab-btn" data-tab="staff" type="button" title="Hire 5 Cozy Cafe Companions">Staff</button>
+            <button class="tab-btn" data-tab="decor" type="button" title="Place 6 Visual Window & Cafe Decor Pieces">Decor</button>
+            <button class="tab-btn" data-tab="brew" type="button" title="Research 12 Permanent Specialty Coffee Recipes">Brew</button>
+            <button class="tab-btn" data-tab="orders" type="button" title="Serve Customer Orders & VIP Food Critics">Orders</button>
+            <button class="tab-btn" data-tab="arcade" type="button" title="Play 4 Skill & Luck Minigames for Arcade Tokens">Arcade 🎮</button>
+            <button class="tab-btn" data-tab="plinko" type="button" title="Wager any of your 30 Currencies in Physics Plinko">Plinko</button>
+            <button class="tab-btn" data-tab="rng" type="button" title="Roll 15 Celestial Auras & Craft Gear">RNG ★</button>
           </div>
           <div class="tab-row" id="tab-row-1">
-            <button class="tab-btn" data-tab="talents" type="button">Talents</button>
-            <button class="tab-btn" data-tab="sinks" type="button">Sinks</button>
-            <button class="tab-btn" data-tab="cosmos" type="button">Cosmos</button>
-            <button class="tab-btn" data-tab="roast" type="button">Roast</button>
-            <button class="tab-btn" data-tab="dynasty" type="button">Dynasty</button>
-            <button class="tab-btn" data-tab="pantheon" type="button">Pantheon</button>
-            <button class="tab-btn" data-tab="quests" type="button">Quests</button>
-            <button class="tab-btn" data-tab="config" type="button">Config</button>
+            <button class="tab-btn" data-tab="talents" type="button" title="Spend Barista Skill Points & Claim Level Crates">Talents</button>
+            <button class="tab-btn" data-tab="sinks" type="button" title="Altar, Specialty Rule-Changers & Endless Crucible">Sinks</button>
+            <button class="tab-btn" data-tab="cosmos" type="button" title="Forge 12 Endgame Celestial Currencies & Sanctuary">Cosmos</button>
+            <button class="tab-btn" data-tab="roast" type="button" title="Tier 1 Prestige: Reset for Golden Beans">Roast</button>
+            <button class="tab-btn" data-tab="dynasty" type="button" title="Tier 2 Prestige: Ascend for Astral Crystals">Dynasty</button>
+            <button class="tab-btn" data-tab="pantheon" type="button" title="Tier 3 Prestige: Ascend for Starlight Shards">Pantheon</button>
+            <button class="tab-btn" data-tab="quests" type="button" title="Complete Escalating Cafe Contracts">Quests</button>
+            <button class="tab-btn" data-tab="config" type="button" title="Audio, Visuals, Notation & Save Management">Config</button>
           </div>
         </nav>
 
@@ -145,11 +199,12 @@
               Buy cafe equipment to increase <strong>Beans/sec</strong> and <strong>Beans/sip</strong>. Every 25, 50, 100, 250, 500 &amp; 1,000 owned multiplies that item's output!
             </div>
             <div class="pane-toolbar">
-              <span class="toolbar-label">Buy Quantity:</span>
+              <span class="toolbar-label">Qty:</span>
               <div class="buy-mode-group" role="group" aria-label="Buy Quantity">
                 <button class="mode-btn active" data-mode="1" type="button">x1</button>
                 <button class="mode-btn" data-mode="10" type="button">x10</button>
                 <button class="mode-btn" data-mode="100" type="button">x100</button>
+                <button class="mode-btn" data-mode="next" type="button" title="Buy exact levels to reach next milestone">NEXT</button>
                 <button class="mode-btn" data-mode="max" type="button">MAX</button>
               </div>
               <button id="btn-buy-max-menu" class="btn btn-gold btn-sm" type="button">
@@ -262,7 +317,7 @@
                   <strong>Rainy Window Bean Catcher</strong>
                   <span id="catcher-hud-label" class="mg-badge">Score: 0 | Time: 25s</span>
                 </div>
-                <p class="mg-desc">Move your mouse (or Left/Right arrows) to catch falling Coffee Beans, Golden Beans &amp; Arcade Tokens while dodging Hot Steam Clouds!</p>
+                <p class="mg-desc">Move your mouse, touch, or Left/Right arrows to catch falling Coffee Beans, Golden Beans &amp; Arcade Tokens while dodging Hot Steam Clouds!</p>
                 <canvas id="catcher-canvas" width="520" height="230"></canvas>
                 <div class="mg-footer-row">
                   <span id="catcher-result-text" class="mg-status">25-second rush! Free to play.</span>
@@ -318,8 +373,15 @@
               Select any of your <strong>30 Currencies</strong> below, set your wager (up to 10% of balance), and click the top strip or <strong>DROP</strong> to aim!
             </div>
             <div id="plinko-currency-grid" class="plinko-curr-grid"></div>
-            <div id="plinko-risk-label" class="plinko-risk-text">
-              Coffee Beans: Bias Handicap 0%
+            <div class="plinko-meta-row">
+              <div id="plinko-risk-label" class="plinko-risk-text">
+                Coffee Beans: Bias Handicap 0%
+              </div>
+              <div class="plinko-risk-modes" role="group" aria-label="Plinko Risk Mode">
+                <button class="plinko-risk-btn" data-risk="cozy" type="button">Cozy (3x)</button>
+                <button class="plinko-risk-btn active" data-risk="standard" type="button">Standard (10x)</button>
+                <button class="plinko-risk-btn" data-risk="high" type="button">High (25x)</button>
+              </div>
             </div>
             <canvas id="plinko-canvas" width="545" height="350"></canvas>
             <div class="plinko-controls">
@@ -334,11 +396,16 @@
                 <button class="chip-btn" data-chip="min" type="button">Min</button>
                 <button class="chip-btn" data-chip="10" type="button">2%</button>
                 <button class="chip-btn" data-chip="50" type="button">5%</button>
-                <button class="chip-btn" data-chip="max" type="button">10% Max</button>
+                <button class="chip-btn" data-chip="max" type="button">10%</button>
               </div>
-              <button id="btn-plinko-drop" class="btn btn-accent btn-drop" type="button">
-                DROP (100)
-              </button>
+              <div class="plinko-drop-group">
+                <button id="btn-plinko-drop" class="btn btn-accent btn-drop" type="button">
+                  DROP (100)
+                </button>
+                <button id="btn-plinko-drop5" class="btn btn-gold btn-drop-multi" type="button" title="Drop 5 balls at once">
+                  x5
+                </button>
+              </div>
             </div>
           </div>
 
@@ -471,7 +538,7 @@
               <div class="card-accent accent-gold"></div>
               <div class="card-main">
                 <div id="altar-title" class="card-title">Altar of the Roast (Blessings: 0 ★)</div>
-                <div class="card-desc">Sacrifice 50% of Coffee Beans for +2% global multiplier &amp; massive Barista XP.</div>
+                <div class="card-desc">Sacrifice 50% of Coffee Beans for +2% global multiplier (1.5x every 25 blessings) &amp; massive Barista XP.</div>
               </div>
               <button id="btn-altar-sacrifice" class="btn btn-gold" type="button">
                 Offer 50% Beans
@@ -527,7 +594,7 @@
           <!-- 12. ROAST TAB (Tier 1 Prestige: Golden Beans) -->
           <div id="tab-roast" class="tab-pane">
             <div class="pane-helper-banner">
-              Reset your Coffee Beans and Menu Upgrades to claim <strong>Golden Beans</strong> (+5% global multiplier each + Roastery perks).
+              Reset your Coffee Beans and Menu Upgrades to claim <strong>Golden Beans</strong> (+15% additive &amp; compounding global multiplier + Roastery perks).
             </div>
             <div class="pane-header-row">
               <div id="roast-bal-header" class="prestige-bal text-gold" style="margin-bottom:0;">
@@ -556,7 +623,7 @@
           <!-- 13. DYNASTY TAB (Tier 2 Prestige: Astral Crystals) -->
           <div id="tab-dynasty" class="tab-pane">
             <div class="pane-helper-banner">
-              Reset Tier 1 progress to claim <strong>Astral Crystals</strong> and unlock franchise automation &amp; scaling perks.
+              Reset Tier 1 progress to claim <strong>Astral Crystals</strong> (+25% passive multiplier each) and unlock franchise automation &amp; scaling perks.
             </div>
             <div id="dynasty-bal-header" class="prestige-bal text-astral">
               Available: 0 Astral Crystals
@@ -565,7 +632,7 @@
               <span class="banner-accent accent-astral"></span>
               <span class="banner-content">
                 <strong class="banner-title">Ascend to Franchise Dynasty (Tier 2)</strong>
-                <span id="dynasty-status-text" class="banner-sub">0 / 100 Golden Beans</span>
+                <span id="dynasty-status-text" class="banner-sub">0 / 75 Golden Beans</span>
               </span>
             </button>
             <div class="pane-header-row section-spacer">
@@ -580,7 +647,7 @@
           <!-- 14. PANTHEON TAB (Tier 3 Prestige: Starlight Shards) -->
           <div id="tab-pantheon" class="tab-pane">
             <div class="pane-helper-banner">
-              Reset Tier 2 progress to claim <strong>Starlight Shards</strong> and unlock constellation-level multipliers.
+              Reset Tier 2 progress to claim <strong>Starlight Shards</strong> (+100% passive multiplier each) and unlock constellation-level multipliers.
             </div>
             <div id="pantheon-bal-header" class="prestige-bal text-pantheon">
               Available: 0 Starlight Shards
@@ -589,7 +656,7 @@
               <span class="banner-accent accent-pantheon"></span>
               <span class="banner-content">
                 <strong class="banner-title">Ascend to Cosmic Pantheon (Tier 3)</strong>
-                <span id="pantheon-status-text" class="banner-sub">0 / 50 Astral Crystals</span>
+                <span id="pantheon-status-text" class="banner-sub">0 / 40 Astral Crystals</span>
               </span>
             </button>
             <div class="pane-header-row section-spacer">
@@ -621,7 +688,7 @@
             <div class="card-list config-list">
               
               <div class="game-card config-row">
-                <span class="card-title">Sound Effects</span>
+                <span class="card-title">Sound Effects &amp; Rain Audio (M)</span>
                 <button id="btn-cfg-sfx" class="btn btn-success btn-cfg" type="button">ENABLED</button>
               </div>
 
@@ -635,7 +702,7 @@
               </div>
 
               <div class="game-card config-row">
-                <span class="card-title">Ambient Rain Streaks</span>
+                <span class="card-title">Ambient Rain Streaks &amp; Audio</span>
                 <button id="btn-cfg-rain" class="btn btn-success btn-cfg" type="button">ENABLED</button>
               </div>
 
@@ -653,7 +720,7 @@
 
               <div class="game-card config-row">
                 <div>
-                  <div class="card-title">Auto-Save &amp; Manual Save</div>
+                  <div class="card-title">Auto-Save &amp; Manual Save (S)</div>
                   <div id="cfg-last-saved" class="card-desc">Auto-saved just now ✓</div>
                 </div>
                 <button id="btn-cfg-save" class="btn btn-success btn-cfg-wide" type="button">
@@ -664,7 +731,7 @@
               <div class="game-card config-row">
                 <div>
                   <div class="card-title">Backup / Transfer Save Code</div>
-                  <div class="card-desc">Copy or paste your Base64 save string across devices.</div>
+                  <div id="cfg-export-status" class="card-desc">Copy or paste your Base64 save string across devices.</div>
                 </div>
                 <div class="sink-btn-group">
                   <button id="btn-cfg-export" class="btn btn-astral btn-sm" type="button">Copy Save</button>
@@ -688,6 +755,71 @@
 
         </div>
       </section>
+
+      <!-- =================================================================
+           BEANS EQUIPMENT GUI (20 RARITIES, SYNERGIES, ROLLING & 2-SLOT LOADOUT)
+           ================================================================= -->
+      <aside id="bean-equip-modal" class="bean-equip-modal hidden" aria-label="Beans Equipment Armory">
+        <div class="be-header">
+          <div>
+            <h2 class="be-title">Beans Equipment Armory</h2>
+            <div id="be-subtitle" class="be-subtitle">Equip up to 2 Bean Types &bull; Duplicates level up stats &bull; Keep clicking the mug!</div>
+          </div>
+          <button id="btn-close-bean-equip" class="popover-close" type="button" aria-label="Close">×</button>
+        </div>
+
+        <!-- Active 2-Slot Loadout -->
+        <div class="be-slots-grid">
+          <div id="be-slot-0" class="be-slot-card empty">
+            <div class="be-slot-tag">EQUIP SLOT 1</div>
+            <div id="be-slot-0-name" class="be-slot-name">Empty Slot</div>
+            <div id="be-slot-0-stats" class="be-slot-stats">Click Equip on any unlocked bean below</div>
+            <button id="btn-be-unequip-0" class="btn btn-sm btn-secondary hidden" type="button">Unequip</button>
+          </div>
+          <div id="be-slot-1" class="be-slot-card empty">
+            <div class="be-slot-tag">EQUIP SLOT 2</div>
+            <div id="be-slot-1-name" class="be-slot-name">Empty Slot</div>
+            <div id="be-slot-1-stats" class="be-slot-stats">Click Equip on any unlocked bean below</div>
+            <button id="btn-be-unequip-1" class="btn btn-sm btn-secondary hidden" type="button">Unequip</button>
+          </div>
+        </div>
+
+        <!-- Active 2-Bean Blend Synergy & Combined Stats Bar -->
+        <div id="be-synergy-banner" class="be-synergy-banner">
+          2-Bean Blend Synergy: Equip 2 compatible beans to unlock a Blend Combo!
+        </div>
+        <div id="be-combined-stats" class="be-combined-stats">
+          Active Loadout (0/2): +0% Click &bull; +0% Crit &bull; +0.0x Crit Dmg &bull; 0% Echo &bull; -0% Heat
+        </div>
+
+        <!-- Rolling Stage -->
+        <div class="be-roll-stage">
+          <div id="be-roll-display" class="be-roll-display">
+            <span id="be-roll-tier" class="be-rarity-pill" style="background:#8c7b70;">READY</span>
+            <strong id="be-roll-name" class="be-roll-name">Roll for Bean Equipment!</strong>
+            <span id="be-roll-stat-preview" class="be-roll-stat-preview">20 Rarities &bull; Fuse 5 duplicates to craft the next tier!</span>
+          </div>
+          <div class="be-roll-bar-track">
+            <div id="be-roll-bar" class="be-roll-bar" style="width: 0%;"></div>
+          </div>
+          <div class="be-pity-row">
+            <span id="be-pity-label" class="be-pity-text">Guaranteed Rare+ (T5) in 25 rolls</span>
+            <div class="be-pity-track">
+              <div id="be-pity-bar" class="be-pity-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+          <div class="be-roll-controls">
+            <button id="btn-be-roll-std" class="btn btn-gold" type="button">Roll (25 Beans)</button>
+            <button id="btn-be-roll-x10" class="btn btn-success" type="button" title="Roll 10 Beans at once">x10</button>
+            <button id="btn-be-roll-gld" class="btn btn-accent" type="button" title="2.5x Luck & bans Tiers 1–2">Golden (1)</button>
+            <button id="btn-be-auto" class="btn btn-secondary" type="button">Auto: OFF</button>
+            <button id="btn-be-luck-upg" class="btn btn-astral" type="button">Luck Lv.0</button>
+          </div>
+        </div>
+
+        <!-- Scrollable 20-Rarity Bean Equipment List -->
+        <div id="be-catalog-list" class="be-catalog-scroll"></div>
+      </aside>
 
       <!-- =================================================================
            FULL-SCREEN HIGH-RARITY RNG CUTSCENE OVERLAY
