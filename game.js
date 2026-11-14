@@ -32,11 +32,8 @@ if (typeof CanvasRenderingContext2D !== "undefined" && !CanvasRenderingContext2D
 
 function enableRetinaCanvas(canvas, logicalW, logicalH) {
   if (!canvas) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = logicalW * dpr;
-  canvas.height = logicalH * dpr;
-  const ctx = canvas.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvas.width = logicalW;
+  canvas.height = logicalH;
 }
 
 // =============================================================================
@@ -522,7 +519,7 @@ class WeatherEngine {
         this.pearlTimer = 26.0 + Math.random() * 18.0;
         this.pearlDrop = {
           x: 60 + Math.random() * (this.width - 120),
-          y: 265,
+          y: 165,
           vy: 28 + Math.random() * 14
         };
       }
@@ -571,11 +568,6 @@ class WeatherEngine {
       ctx.lineTo(d.x - d.len * 0.22, d.y + d.len);
     }
     ctx.stroke();
-
-    if (this.fogAlpha > 0.01) {
-      ctx.fillStyle = `rgba(242, 247, 252, ${this.fogAlpha.toFixed(3)})`;
-      ctx.fillRect(0, 0, this.width, this.height);
-    }
 
     if (this.pearlDrop) {
       drawShimmeringRaindrop(ctx, this.pearlDrop.x, this.pearlDrop.y, 11);
@@ -3385,7 +3377,7 @@ class GameState {
     this.autoForge = false;
 
     // Active Click Stances, Ultimates, Crema Spark & Juggle Beans
-    this.clickStance = "turbo";
+    this.clickStance = "normal";
     this.ultCharge = 0;
     this.overdriveTimer = 0.0;
     this.mochiBarrageTimer = 0.0;
@@ -6114,6 +6106,11 @@ class GameState {
 
   switchTab(tabId) {
     this.activeTab = tabId;
+    if (this.beanEquip) {
+      this.beanEquip.isOpen = false;
+      const modal = document.getElementById("bean-equip-modal");
+      if (modal) modal.classList.add("hidden");
+    }
     document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
     document.querySelectorAll(".tab-pane").forEach((p) => p.classList.toggle("active", p.id === `tab-${tabId}`));
   }
@@ -6265,15 +6262,19 @@ class GameState {
       this.quests[0].currentVal += 1;
 
       // Spawn airborne Juggle Bean every 20 manual clicks
+      // Spawn airborne Juggle Bean every 20 manual clicks
       if (!isAutomated && this.manualClicks % 20 === 0) {
         this.juggleBeans.push(new JuggleBean(cx, cy - 60));
       }
 
       // Stance & T8+ Bean Equipment On-Hit Procs
       if (!isAutomated) {
-        if ((this.clickStance === "turbo" || eqStats.hasT8Proc) && this.manualClicks % 10 === 0 && this.beans >= 10) {
+        if (eqStats.hasT8Proc && this.manualClicks % 10 === 0 && this.beans >= 100) {
+          const savedCurr = this.plinko.currencyType;
+          this.plinko.currencyType = "beans";
           const freeBet = Math.max(1, Math.floor(this.beans * 0.005));
           this.plinko.dropBall(this.plinko.xCenter, String(freeBet), this.beans, 0, freeBet);
+          this.plinko.currencyType = savedCurr;
         }
         if (this.clickStance === "fortune") {
           if (this.rng && this.rng.isRolling) this.rng.rollTimer += 0.15;

@@ -259,7 +259,7 @@ body {
   top: 234px;
   width: 414px;
   z-index: 3;
-  display: flex;
+  display: none !important;
   flex-direction: column;
   gap: 4px;
   pointer-events: none;
@@ -1343,6 +1343,8 @@ body {
 }
 
 #plinko-canvas {
+  width: 545px;
+  height: 350px;
   background-color: #fcf9f6;
   border: 1px solid rgba(58, 42, 34, 0.12);
   border-radius: 8px;
@@ -1774,15 +1776,15 @@ body {
 .bean-equip-modal {
   position: absolute;
   left: 490px;
-  top: 0;
+  top: 58px;
   width: 630px;
-  height: 700px;
+  height: 642px;
   background-color: #e6ded4;
   border-left: 2px solid #c66c44;
-  padding: 12px 14px;
+  padding: 10px 14px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
   z-index: 30;
   animation: popFadeIn 0.14s ease-out;
 }
