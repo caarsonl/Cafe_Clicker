@@ -2086,7 +2086,116 @@ body {
 .screen-shake {
   animation: shakeAnim 0.45s ease-in-out;
 }
+/* =============================================================================
+   12. DUAL-STYLE ROLL ANIMATIONS & SUSPENSE EFFECTS
+   ============================================================================= */
+.rng-suspense-banner {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.8px;
+  color: #00ffcc;
+  text-shadow: 0 0 10px rgba(0, 255, 204, 0.85);
+  margin-bottom: 5px;
+  animation: pulseGlow 0.35s ease-in-out infinite alternate;
+}
 
+@keyframes pulseGlow {
+  from { opacity: 0.65; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1.03); }
+}
+
+.rng-roulette-wrap {
+  position: relative;
+  width: 100%;
+  padding: 6px 0 2px;
+}
+
+.rng-roulette-pointer {
+  font-size: 13px;
+  line-height: 1;
+  color: #ffd166;
+  text-shadow: 0 0 8px #ffd166;
+  margin-bottom: 4px;
+}
+
+.rng-roulette-cards {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 1fr;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.rng-slot-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 7px 6px;
+  text-align: center;
+  opacity: 0.55;
+  transform: scale(0.93);
+  transition: transform 0.08s ease-out, border-color 0.12s;
+}
+
+.rng-slot-card.center {
+  opacity: 1;
+  transform: scale(1.03);
+  background: rgba(255, 255, 255, 0.12);
+  border-width: 2px;
+  box-shadow: 0 0 16px rgba(255, 209, 102, 0.35);
+}
+
+.rng-slot-card.tease-shake {
+  animation: cardTremble 0.09s linear infinite;
+}
+
+@keyframes cardTremble {
+  0% { transform: scale(1.05) translate(-2px, 1px); }
+  25% { transform: scale(1.05) translate(2px, -1px); }
+  50% { transform: scale(1.05) translate(-2px, -1px); }
+  75% { transform: scale(1.05) translate(2px, 1px); }
+  100% { transform: scale(1.05) translate(0, 0); }
+}
+
+.rng-slot-tier {
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.rng-slot-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Beans Equipment Roaster Drum Split Layout */
+.be-stage-split {
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+#be-roll-canvas {
+  width: 210px;
+  height: 74px;
+  border-radius: 8px;
+  background: radial-gradient(circle at center, #382720 0%, #140d0a 100%);
+  border: 1.5px solid rgba(212, 154, 42, 0.5);
+  display: block;
+}
+
+.be-roll-display {
+  align-items: flex-start;
+  text-align: left;
+  min-height: 64px;
+}
 @keyframes shakeAnim {
   0%, 100% { transform: translate(0, 0); }
   20% { transform: translate(-7px, 5px); }

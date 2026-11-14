@@ -438,10 +438,17 @@
             <!-- Slot Reel / Rolling Stage -->
             <div id="rng-stage-box" class="rng-stage">
               <div id="rng-reel-window" class="rng-reel-window">
-                <div id="rng-current-tier-badge" class="rng-tier-badge tier-common">READY TO ROLL</div>
-                <div id="rng-current-aura-name" class="rng-aura-name">Click Roll to Test Your Fate</div>
-                <div id="rng-current-odds" class="rng-aura-odds">15 Rarities Available (Up to 1 in 2.50B)</div>
-                <div id="rng-current-buff" class="rng-aura-buff">Farm duplicate auras to craft Gear &amp; reach 5★ Mastery!</div>
+                <div id="rng-suspense-banner" class="rng-suspense-banner hidden">⚡ CELESTIAL ANOMALY DETECTED...</div>
+                <div id="rng-roulette-track-wrap" class="rng-roulette-wrap hidden">
+                  <div class="rng-roulette-pointer">▼</div>
+                  <div id="rng-roulette-cards" class="rng-roulette-cards"></div>
+                </div>
+                <div id="rng-result-readout">
+                  <div id="rng-current-tier-badge" class="rng-tier-badge tier-common">READY TO ROLL</div>
+                  <div id="rng-current-aura-name" class="rng-aura-name">Click Roll to Test Your Fate</div>
+                  <div id="rng-current-odds" class="rng-aura-odds">15 Rarities Available (Up to 1 in 2.50B)</div>
+                  <div id="rng-current-buff" class="rng-aura-buff">Farm duplicate auras to craft Gear &amp; reach 5★ Mastery!</div>
+                </div>
               </div>
 
               <!-- Active Equipped Aura(s) Bar -->
@@ -794,10 +801,13 @@
 
         <!-- Rolling Stage -->
         <div class="be-roll-stage">
-          <div id="be-roll-display" class="be-roll-display">
-            <span id="be-roll-tier" class="be-rarity-pill" style="background:#8c7b70;">READY</span>
-            <strong id="be-roll-name" class="be-roll-name">Roll for Bean Equipment!</strong>
-            <span id="be-roll-stat-preview" class="be-roll-stat-preview">20 Rarities &bull; Fuse 5 duplicates to craft the next tier!</span>
+          <div class="be-stage-split">
+            <canvas id="be-roll-canvas" width="210" height="74"></canvas>
+            <div id="be-roll-display" class="be-roll-display">
+              <span id="be-roll-tier" class="be-rarity-pill" style="background:#8c7b70;">READY</span>
+              <strong id="be-roll-name" class="be-roll-name">Roll for Bean Equipment!</strong>
+              <span id="be-roll-stat-preview" class="be-roll-stat-preview">20 Rarities &bull; Fuse 5 duplicates to craft the next tier!</span>
+            </div>
           </div>
           <div class="be-roll-bar-track">
             <div id="be-roll-bar" class="be-roll-bar" style="width: 0%;"></div>

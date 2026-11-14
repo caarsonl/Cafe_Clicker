@@ -439,7 +439,59 @@ class PureSoundEngine {
     }
     this.rainGain.gain.setTargetAtTime(0.055 * volume, this.ctx.currentTime, 0.25);
   }
+  playCelestialTick(progress = 0.5, enabled = true, volume = 1.0) {
+    if (!enabled) return;
+    this._ensureContext();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(520 + progress * 680, now);
+    gain.gain.setValueAtTime(0.08 * volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.065);
+  }
 
+  playRoasterTick(progress = 0.5, enabled = true, volume = 1.0) {
+    if (!enabled) return;
+    this._ensureContext();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(160 + progress * 140, now);
+    osc.frequency.exponentialRampToValueAtTime(75, now + 0.045);
+    gain.gain.setValueAtTime(0.14 * volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.055);
+  }
+
+  playSuspenseBuild(enabled = true, volume = 1.0) {
+    if (!enabled) return;
+    this._ensureContext();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(110, now);
+    osc.frequency.exponentialRampToValueAtTime(660, now + 0.65);
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.exponentialRampToValueAtTime(0.11 * volume, now + 0.55);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.72);
+  }
   playBuffer(buf, enabled = true, volume = 1.0) {
     if (!enabled) return;
     this._ensureContext();
@@ -1520,15 +1572,12 @@ class RNGManager {
 
     if (this.isRolling || this.cutsceneActive) return;
 
-    // Auto-roll gracefully falls back to Standard if Golden/Astral currency runs dry
     if (!this.canAffordRoll(mode)) {
       if (autoFlag && mode !== "standard" && this.canAffordRoll("standard")) {
         mode = "standard";
         this.activeRollMode = "standard";
       } else {
-        if (!autoFlag) {
-          this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
-        }
+        if (!autoFlag) this.game.sfx.playDeny(this.game.sfxEnabled, this.game.sfxVolume);
         return;
       }
     }
@@ -1542,8 +1591,8 @@ class RNGManager {
     this.pendingCosts = costs;
     this.isRolling = true;
     this.rollTimer = 0.0;
-    this.rollDuration = this.getRollDuration();
     this.lastTickStep = -1;
+    this.suspenseTriggered = false;
 
     const rolls = this.getMultiRollCount();
     let best = RNG_RARITIES[0];
@@ -1554,6 +1603,38 @@ class RNGManager {
       if (picked.index > best.index) best = picked;
     }
     this.pendingResult = best;
+
+    // Build a 24-card roulette tape ending on the winning aura
+    this.hasSuspenseTease = best.index >= 4 && !this.turboRoll && !autoFlag;
+    this.rollDuration = this.hasSuspenseTease
+      ? Math.max(2.65, this.getRollDuration() * 1.25)
+      : this.getRollDuration();
+
+    this.reelTape = [];
+    for (let i = 0; i < 24; i++) {
+      this.reelTape.push(RNG_RARITIES[Math.floor(Math.random() * Math.min(RNG_RARITIES.length, 8))]);
+    }
+    this.decoyRarity = RNG_RARITIES[Math.min(3, Math.max(2, best.index - 2))];
+    this.reelTape[22] = this.hasSuspenseTease ? this.decoyRarity : best;
+
+    document.getElementById("rng-result-readout").classList.add("hidden");
+    document.getElementById("rng-roulette-track-wrap").classList.remove("hidden");
+    document.getElementById("rng-suspense-banner").classList.add("hidden");
+  }
+  renderRouletteFrame(centerIdx, isTeasing = false) {
+    const cardsEl = document.getElementById("rng-roulette-cards");
+    if (!cardsEl) return;
+    const left = this.reelTape[Math.max(0, centerIdx - 1)] || RNG_RARITIES[0];
+    const center = this.reelTape[Math.min(this.reelTape.length - 1, centerIdx)] || RNG_RARITIES[0];
+    const right = this.reelTape[Math.min(this.reelTape.length - 1, centerIdx + 1)] || RNG_RARITIES[1];
+
+    const renderSlot = (r, isCenter) => `
+      <div class="rng-slot-card${isCenter ? " center" : ""}${isCenter && isTeasing ? " tease-shake" : ""}" style="border-color: ${r.color};">
+        <div class="rng-slot-tier" style="color: ${r.color};">${r.tierName}</div>
+        <div class="rng-slot-name">${r.auraName}</div>
+      </div>
+    `;
+    cardsEl.innerHTML = renderSlot(left, false) + renderSlot(center, true) + renderSlot(right, false);
   }
 
   completeRoll() {
@@ -1779,7 +1860,47 @@ class RNGManager {
       this.closeCutscene();
       return;
     }
+    // PHASE 1 (0.0s - 1.15s): Mystery Vortex & Heartbeat Suspense Buildup
+    const buildupDur = 1.15;
+    const tierEl = document.getElementById("rng-cutscene-tier");
+    const nameEl = document.getElementById("rng-cutscene-name");
+    const oddsEl = document.getElementById("rng-cutscene-odds");
 
+    if (t < buildupDur) {
+      const p = t / buildupDur;
+      tierEl.textContent = "✦ FATE CONVERGING ✦";
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ★✦◈❖";
+      nameEl.textContent = Array.from({ length: 14 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+      oddsEl.textContent = "???";
+
+      // Converging light beams & pulsing mystery core
+      ctx.save();
+      ctx.translate(cx, cy);
+      for (let i = 0; i < 18; i++) {
+        const ang = (i / 18) * Math.PI * 2 + t * 3.5;
+        const innerR = (1 - p) * 280 + 25;
+        const outerR = innerR + 140;
+        ctx.strokeStyle = this.cutsceneTier.color;
+        ctx.globalAlpha = 0.25 + p * 0.65;
+        ctx.lineWidth = 2 + p * 3;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ang) * innerR, Math.sin(ang) * innerR);
+        ctx.lineTo(Math.cos(ang) * outerR, Math.sin(ang) * outerR);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(0, 0, 20 + Math.sin(t * 28) * 8 + p * 55, 0, Math.PI * 2);
+      ctx.fillStyle = this.cutsceneTier.color;
+      ctx.globalAlpha = 0.35 + p * 0.5;
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+
+    // Reveal true Aura Name at t >= 1.15s
+    tierEl.textContent = `★ ${this.cutsceneTier.tierName} ★`;
+    nameEl.textContent = this.cutsceneTier.auraName;
+    oddsEl.textContent = `1 in ${formatNum(this.cutsceneTier.odds, this.game.notationMode)}`;
     const canvas = document.getElementById("rng-cutscene-canvas");
     const ctx = canvas.getContext("2d");
     const W = 1120, H = 700;
@@ -2018,16 +2139,35 @@ class RNGManager {
       const pct = Math.min(1.0, this.rollTimer / this.rollDuration);
       document.getElementById("rng-roll-bar").style.width = `${pct * 100}%`;
 
-      const tickStep = Math.floor(Math.pow(pct, 0.65) * 11);
-      if (tickStep !== this.lastTickStep && pct < 0.96) {
-        this.lastTickStep = tickStep;
-        const previewIdx = Math.floor(Math.random() * Math.min(RNG_RARITIES.length, 6 + Math.floor(pct * 9)));
-        this.setStageDisplay(RNG_RARITIES[previewIdx], true);
-        this.game.sfx.playTap(this.game.sfxEnabled, this.game.sfxVolume * 0.35);
+      // Exponential ease-out deceleration curve (fast spin -> agonizing slow ticks)
+      const eased = 1.0 - Math.pow(1.0 - pct, 2.8);
+      const tapeIndex = Math.min(22, Math.floor(eased * 23));
+
+      // Suspense Fake-Out Tease at 72% when rolling Legendary+
+      const inTeaseWindow = this.hasSuspenseTease && pct >= 0.72 && pct < 0.96;
+      if (inTeaseWindow && !this.suspenseTriggered) {
+        this.suspenseTriggered = true;
+        document.getElementById("rng-suspense-banner").classList.remove("hidden");
+        this.game.sfx.playSuspenseBuild(this.game.sfxEnabled, this.game.sfxVolume);
+      }
+
+      if (pct >= 0.96 && this.hasSuspenseTease) {
+        this.reelTape[22] = this.pendingResult;
+      }
+
+      if (tapeIndex !== this.lastTickStep || inTeaseWindow) {
+        if (tapeIndex !== this.lastTickStep) {
+          this.lastTickStep = tapeIndex;
+          this.game.sfx.playCelestialTick(pct, this.game.sfxEnabled, this.game.sfxVolume * 0.8);
+        }
+        this.renderRouletteFrame(inTeaseWindow ? 22 : tapeIndex, inTeaseWindow);
       }
 
       if (this.rollTimer >= this.rollDuration) {
         document.getElementById("rng-roll-bar").style.width = "0%";
+        document.getElementById("rng-roulette-track-wrap").classList.add("hidden");
+        document.getElementById("rng-suspense-banner").classList.add("hidden");
+        document.getElementById("rng-result-readout").classList.remove("hidden");
         this.completeRoll();
       }
     } else if (this.autoRoll) {
@@ -2406,6 +2546,12 @@ class BeanEquipmentManager {
     this.pendingCost = {};
     this.pendingBatch = [];
     this.autoRoll = false;
+
+    // Roaster Drum & Cracking Pod Animation State
+    this.drumAngle = 0.0;
+    this.lastBestItem = null;
+    this.lastDrumTick = -1;
+    this.podSuspensePlayed = false;
   }
 
   getLuckMultiplier(mode = "standard") {
@@ -2560,6 +2706,7 @@ class BeanEquipmentManager {
     }
     this.counts[idx] -= 5;
     this.counts[idx + 1] += 1;
+    this.lastBestItem = BEAN_EQUIP_RARITIES[idx + 1];
     this.game.addXp(30 * (idx + 2));
     this.game.recalculateRates();
     this.game.markDirty();
@@ -2591,6 +2738,15 @@ class BeanEquipmentManager {
     return BEAN_EQUIP_RARITIES[minIdx];
   }
 
+  getBestPendingItem() {
+    if (!this.pendingBatch || this.pendingBatch.length === 0) return BEAN_EQUIP_RARITIES[0];
+    let best = this.pendingBatch[0];
+    for (const item of this.pendingBatch) {
+      if (item.index > best.index) best = item;
+    }
+    return best;
+  }
+
   startRoll(mode = "standard", isAuto = false, batchCount = 1) {
     if (this.isRolling) return;
     if (!this.canAffordRoll(mode, batchCount)) {
@@ -2612,6 +2768,8 @@ class BeanEquipmentManager {
     this.pendingCost = cost;
     this.isRolling = true;
     this.rollTimer = 0.0;
+    this.lastDrumTick = -1;
+    this.podSuspensePlayed = false;
     this.pendingBatch = [];
     for (let i = 0; i < batchCount; i++) {
       this.pendingBatch.push(this.pickRarity(mode));
@@ -2641,6 +2799,8 @@ class BeanEquipmentManager {
       this.game.addXp(16 * (item.index + 1));
     }
 
+    this.lastBestItem = bestItem;
+
     const tierEl = document.getElementById("be-roll-tier");
     const nameEl = document.getElementById("be-roll-name");
     const statEl = document.getElementById("be-roll-stat-preview");
@@ -2663,19 +2823,187 @@ class BeanEquipmentManager {
   }
 
   update(dt) {
+    this.drumAngle = (this.drumAngle + dt * (this.isRolling ? 11.0 : 1.2)) % (Math.PI * 2);
+
     if (this.isRolling) {
       this.rollTimer += dt;
-      const pct = Math.min(100, (this.rollTimer / this.rollDuration) * 100);
+      const bestPending = this.getBestPendingItem();
+      const isRareDrop = bestPending.index >= 4;
+      const activeDur = isRareDrop && !this.autoRoll ? 1.15 : this.rollDuration;
+      const pct = Math.min(1.0, this.rollTimer / activeDur);
+
       if (this.isOpen) {
-        document.getElementById("be-roll-bar").style.width = `${pct}%`;
+        document.getElementById("be-roll-bar").style.width = `${pct * 100}%`;
       }
-      if (this.rollTimer >= this.rollDuration) {
+
+      const tickStep = Math.floor(Math.pow(pct, 0.7) * 9);
+      if (tickStep !== this.lastDrumTick && pct < 0.72) {
+        this.lastDrumTick = tickStep;
+        if (this.game.sfx.playRoasterTick) {
+          this.game.sfx.playRoasterTick(pct, this.game.sfxEnabled, this.game.sfxVolume * 0.85);
+        }
+      }
+
+      if (isRareDrop && pct >= 0.65 && !this.podSuspensePlayed && !this.autoRoll) {
+        this.podSuspensePlayed = true;
+        if (this.game.sfx.playSuspenseBuild) {
+          this.game.sfx.playSuspenseBuild(this.game.sfxEnabled, this.game.sfxVolume * 0.85);
+        }
+      }
+
+      if (this.rollTimer >= activeDur) {
+        this.lastDrumTick = -1;
+        this.podSuspensePlayed = false;
         if (this.isOpen) document.getElementById("be-roll-bar").style.width = "0%";
         this.completeRoll();
       }
     } else if (this.autoRoll) {
       this.startRoll(this.rollMode || "standard", true, 1);
     }
+
+    if (this.isOpen) {
+      this.drawRoasterCanvas();
+    }
+  }
+
+  drawRoasterCanvas() {
+    const canvas = document.getElementById("be-roll-canvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const W = 210, H = 74;
+    const cx = W / 2, cy = H / 2;
+    ctx.clearRect(0, 0, W, H);
+
+    // Rotating Brass Roaster Drum Ribs
+    ctx.save();
+    ctx.strokeStyle = "rgba(212, 154, 42, 0.28)";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i++) {
+      const a = this.drumAngle + (i * Math.PI) / 3;
+      const rx = cx + Math.cos(a) * 85;
+      ctx.beginPath();
+      ctx.moveTo(rx, 4);
+      ctx.lineTo(rx, H - 4);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    const bestPending = this.getBestPendingItem();
+    const isRareDrop = this.isRolling && bestPending.index >= 4;
+    const activeDur = isRareDrop && !this.autoRoll ? 1.15 : this.rollDuration;
+    const pct = this.isRolling ? Math.min(1, this.rollTimer / activeDur) : 1;
+
+    // Phase 1 (0% - 65%): Tumbling Coffee Beans inside Drum
+    if (this.isRolling && pct < 0.65) {
+      for (let b = 0; b < 7; b++) {
+        const ang = this.drumAngle * 1.4 + b * 0.9;
+        const bx = cx + Math.cos(ang) * (58 - b * 5);
+        const by = cy + Math.sin(ang * 1.7) * 20;
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.rotate(ang);
+        ctx.fillStyle = b % 2 === 0 ? "#6f442a" : "#4a2c18";
+        ctx.strokeStyle = "#d49a2a";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 10, 6.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+      return;
+    }
+
+    // Phase 2 (65% - 100%): Sealed Bean Pod Pressure-Cracking Suspense
+    if (this.isRolling && pct >= 0.65) {
+      const crackIntensity = (pct - 0.65) / 0.35;
+      const shakeX = isRareDrop ? (Math.random() * 6 - 3) * crackIntensity : 0;
+      const shakeY = isRareDrop ? (Math.random() * 4 - 2) * crackIntensity : 0;
+
+      // Leaking Rarity Light Rays
+      if (isRareDrop) {
+        ctx.save();
+        ctx.translate(cx + shakeX, cy + shakeY);
+        for (let r = 0; r < 10; r++) {
+          const rayAng = (r / 10) * Math.PI * 2 + this.drumAngle * 0.5;
+          ctx.strokeStyle = bestPending.color;
+          ctx.globalAlpha = 0.35 + crackIntensity * 0.65;
+          ctx.lineWidth = 2 + crackIntensity * 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(rayAng) * (35 + crackIntensity * 65), Math.sin(rayAng) * (35 + crackIntensity * 65));
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // Giant Sealed Bean Capsule
+      ctx.save();
+      ctx.translate(cx + shakeX, cy + shakeY);
+      ctx.fillStyle = isRareDrop ? bestPending.color : "#8c7b70";
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 24 + crackIntensity * 4, 16 + crackIntensity * 3, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Glowing Jagged Crack Seam
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-14, -4);
+      ctx.lineTo(-4, 3);
+      ctx.lineTo(5, -3);
+      ctx.lineTo(15, 4);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    // Idle Showcase: Rotating 3D-Shaded Last Rolled Bean Emblem
+    let showcase = this.lastBestItem;
+    if (!showcase) {
+      let highestIdx = 0;
+      for (let i = BEAN_EQUIP_RARITIES.length - 1; i >= 0; i--) {
+        if (this.counts[i] > 0) {
+          highestIdx = i;
+          break;
+        }
+      }
+      showcase = BEAN_EQUIP_RARITIES[highestIdx];
+    }
+
+    const pulse = 1 + Math.sin(performance.now() * 0.005) * 0.06;
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (showcase.index >= 4) {
+      const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, 46);
+      glow.addColorStop(0, showcase.color);
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, 46, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.scale(pulse, pulse);
+    ctx.rotate(Math.sin(performance.now() * 0.0025) * 0.22);
+    ctx.fillStyle = showcase.color;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 24, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Center Bean Crease
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(-16, 0);
+    ctx.quadraticCurveTo(0, -5, 16, 0);
+    ctx.stroke();
+    ctx.restore();
   }
 
   buildDOM() {
